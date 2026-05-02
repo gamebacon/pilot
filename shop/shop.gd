@@ -10,6 +10,9 @@ func interact(_player: Node) -> void:
 	if ui:
 		ui.open(stock, self)
 
+func get_interact_hint(_player: Node) -> String:
+	return "[E]  Browse Shop"
+
 func spawn_item(item_data: ItemData) -> void:
 	var item_scene: PackedScene = preload("res://items/physical_item.tscn")
 	var item := item_scene.instantiate() as PhysicalItem

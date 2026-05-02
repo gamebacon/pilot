@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" path="res://ui/inventory_hud.tscn" id="4_invhud"]
 [ext_resource type="PackedScene" uid="uid://plot_scene_001" path="res://build/plot.tscn" id="5_plot"]
 [ext_resource type="PackedScene" uid="uid://build_sys_001" path="res://build/build_system.tscn" id="6_build"]
+[ext_resource type="PackedScene" uid="uid://player_hud_001" path="res://ui/player_hud.tscn" id="7_phud"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
 size = Vector3(50, 0.2, 50)
@@ -44,6 +45,8 @@ player_path = NodePath("../Player")
 [node name="ShopUI" parent="." unique_id=359418072 instance=ExtResource("3_shopui")]
 
 [node name="InventoryHUD" parent="." unique_id=1659200543 instance=ExtResource("4_invhud")]
+
+[node name="PlayerHUD" parent="." instance=ExtResource("7_phud")]
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=2016765552]
 transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 0, 10, 0)

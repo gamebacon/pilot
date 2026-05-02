@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://bp_inst_001"]
+
+[ext_resource type="Script" path="res://build/blueprint_instance.gd" id="1_bpinst"]
+
+[node name="BlueprintInstance" type="Node3D"]
+script = ExtResource("1_bpinst")

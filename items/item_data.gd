@@ -16,5 +16,6 @@ class_name ItemData
 # How many the player can carry at once (e.g. stones stack, glass doesn't)
 @export var carry_stack: int = 1
 
-# The scene to place during building (assigned later when build system is ready)
-@export var build_scene: PackedScene
+# Blueprint items — set is_blueprint = true and assign blueprint_data
+@export var is_blueprint: bool = false
+@export var blueprint_data: BlueprintData

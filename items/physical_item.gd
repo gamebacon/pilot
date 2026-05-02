@@ -37,3 +37,7 @@ func _apply_item_data() -> void:
 
 func interact(player: Node) -> void:
 	player.pick_up(self)
+
+func get_interact_hint(_player: Node) -> String:
+	var n: String = item_data.display_name if item_data else "item"
+	return "[E]  Pick up  %s" % n

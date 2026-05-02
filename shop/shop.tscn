@@ -1,9 +1,11 @@
 [gd_scene format=3 uid="uid://shop_scene_001"]
 
 [ext_resource type="Script" path="res://shop/shop.gd" id="1_shop"]
-[ext_resource type="Resource" path="res://items/resources/wood_plank.tres" id="2_wood"]
-[ext_resource type="Resource" path="res://items/resources/sauna_stone.tres" id="3_stone"]
-[ext_resource type="Resource" path="res://items/resources/glass_window.tres" id="4_glass"]
+[ext_resource type="Resource" path="res://items/resources/blueprint_starter.tres" id="2_bp"]
+[ext_resource type="Resource" path="res://items/resources/wood_plank.tres" id="3_wood"]
+[ext_resource type="Resource" path="res://items/resources/roofing_panel.tres" id="4_roof"]
+[ext_resource type="Resource" path="res://items/resources/sauna_stone.tres" id="5_stone"]
+[ext_resource type="Resource" path="res://items/resources/glass_window.tres" id="6_glass"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_shop"]
 size = Vector3(2.0, 2.5, 1.0)
@@ -25,7 +27,7 @@ albedo_color = Color(0.7, 0.5, 0.25, 1)
 
 [node name="Shop" type="StaticBody3D"]
 script = ExtResource("1_shop")
-stock = [ExtResource("2_wood"), ExtResource("3_stone"), ExtResource("4_glass")]
+stock = [ExtResource("2_bp"), ExtResource("3_wood"), ExtResource("4_roof"), ExtResource("5_stone"), ExtResource("6_glass")]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)

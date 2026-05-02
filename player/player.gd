@@ -7,6 +7,7 @@ const MOUSE_SENSITIVITY = 0.002
 
 var carry_capacity: int = 2
 var carried_items: Array[Node] = []
+var interact_target: Node = null  # updated every frame, read by PlayerHUD
 
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
@@ -54,6 +55,14 @@ func _physics_process(delta: float) -> void:
 		velocity.z = move_toward(velocity.z, 0, current_speed)
 
 	move_and_slide()
+	_update_interact_target()
+
+func _update_interact_target() -> void:
+	if interact_ray.is_colliding():
+		var t := interact_ray.get_collider()
+		interact_target = t if t.has_method("interact") else null
+	else:
+		interact_target = null
 
 # --- Carry system ---
 
