@@ -15,6 +15,7 @@ var interact_target: Node = null  # updated every frame, read by PlayerHUD
 @onready var carry_point: Node3D = $Head/CarryPoint
 
 func _ready() -> void:
+	add_to_group("player")
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 func _unhandled_input(event: InputEvent) -> void:

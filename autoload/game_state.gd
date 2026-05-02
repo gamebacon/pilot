@@ -2,7 +2,7 @@ extends Node
 
 signal currency_changed(new_amount: int)
 
-var currency: int = 500
+var currency: int = 5_000
 
 func add_currency(amount: int) -> void:
 	currency += amount
