@@ -1,0 +1,41 @@
+[gd_scene format=3 uid="uid://ologmjw1mvui"]
+
+[ext_resource type="PackedScene" path="res://player/player.tscn" id="1_main"]
+[ext_resource type="PackedScene" path="res://shop/shop.tscn" id="2_shop"]
+[ext_resource type="PackedScene" path="res://ui/shop_ui.tscn" id="3_shopui"]
+[ext_resource type="PackedScene" path="res://ui/inventory_hud.tscn" id="4_invhud"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
+size = Vector3(50, 0.2, 50)
+
+[sub_resource type="BoxMesh" id="BoxMesh_ground"]
+size = Vector3(50, 0.2, 50)
+
+[sub_resource type="StandardMaterial3D" id="Mat_ground"]
+albedo_color = Color(0.3, 0.55, 0.2, 1)
+
+[node name="World" type="Node3D" unique_id=729203708]
+
+[node name="Ground" type="StaticBody3D" parent="." unique_id=1246609012]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground" unique_id=138481837]
+shape = SubResource("BoxShape3D_ground")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Ground" unique_id=78236794]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.00057029724, 0, 0.012843609)
+mesh = SubResource("BoxMesh_ground")
+surface_material_override/0 = SubResource("Mat_ground")
+
+[node name="Player" parent="." unique_id=1598906135 instance=ExtResource("1_main")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
+
+[node name="Shop" parent="." unique_id=186529796 instance=ExtResource("2_shop")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, -8)
+
+[node name="ShopUI" parent="." unique_id=359418072 instance=ExtResource("3_shopui")]
+
+[node name="InventoryHUD" parent="." unique_id=1659200543 instance=ExtResource("4_invhud")]
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=2016765552]
+transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 0, 10, 0)
+shadow_enabled = true

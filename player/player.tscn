@@ -1,0 +1,25 @@
+[gd_scene format=3 uid="uid://dv4tifvdnmq6d"]
+
+[ext_resource type="Script" uid="uid://bmsnt18lgdlgw" path="res://player/player.gd" id="1_player"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_1"]
+radius = 0.3
+height = 1.8
+
+[node name="Player" type="CharacterBody3D" unique_id=1897289933]
+script = ExtResource("1_player")
+groups = ["player"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=814948635]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+shape = SubResource("CapsuleShape3D_1")
+
+[node name="Head" type="Node3D" parent="." unique_id=632801689]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+
+[node name="Camera3D" type="Camera3D" parent="Head" unique_id=495502854]
+
+[node name="InteractRay" type="RayCast3D" parent="Head" unique_id=1746480563]
+target_position = Vector3(0, 0, -2.5)
+
+[node name="CarryPoint" type="Node3D" parent="Head"]

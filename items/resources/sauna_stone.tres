@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://item_sauna_stone"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "sauna_stone"
+display_name = "Sauna Stone"
+price = 15
+description = "Heat-retaining stones for the kiuas (sauna stove)."

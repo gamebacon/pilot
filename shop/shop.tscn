@@ -1,0 +1,56 @@
+[gd_scene format=3 uid="uid://shop_scene_001"]
+
+[ext_resource type="Script" path="res://shop/shop.gd" id="1_shop"]
+[ext_resource type="Resource" path="res://items/resources/wood_plank.tres" id="2_wood"]
+[ext_resource type="Resource" path="res://items/resources/sauna_stone.tres" id="3_stone"]
+[ext_resource type="Resource" path="res://items/resources/glass_window.tres" id="4_glass"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_shop"]
+size = Vector3(2.0, 2.5, 1.0)
+
+[sub_resource type="BoxMesh" id="BoxMesh_shop"]
+size = Vector3(2.0, 2.5, 1.0)
+
+[sub_resource type="StandardMaterial3D" id="Mat_shop"]
+albedo_color = Color(0.55, 0.35, 0.15, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_counter"]
+size = Vector3(2.0, 0.1, 0.8)
+
+[sub_resource type="BoxMesh" id="BoxMesh_counter"]
+size = Vector3(2.0, 0.1, 0.8)
+
+[sub_resource type="StandardMaterial3D" id="Mat_counter"]
+albedo_color = Color(0.7, 0.5, 0.25, 1)
+
+[node name="Shop" type="StaticBody3D"]
+script = ExtResource("1_shop")
+stock = [ExtResource("2_wood"), ExtResource("3_stone"), ExtResource("4_glass")]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
+shape = SubResource("BoxShape3D_shop")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
+mesh = SubResource("BoxMesh_shop")
+surface_material_override/0 = SubResource("Mat_shop")
+
+[node name="Counter" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.95, 1.0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Counter"]
+shape = SubResource("BoxShape3D_counter")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Counter"]
+mesh = SubResource("BoxMesh_counter")
+surface_material_override/0 = SubResource("Mat_counter")
+
+[node name="SpawnPoint" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0, 1.0)
+
+[node name="Label3D" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.8, 0)
+text = "SHOP
+[E] to browse"
+font_size = 48

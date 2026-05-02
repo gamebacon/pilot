@@ -1,0 +1,45 @@
+[gd_scene format=3 uid="uid://shop_ui_001"]
+
+[ext_resource type="Script" path="res://ui/shop_ui.gd" id="1_shopui"]
+
+[node name="ShopUI" type="CanvasLayer"]
+script = ExtResource("1_shopui")
+
+[node name="Panel" type="Panel" parent="."]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -280.0
+offset_top = -220.0
+offset_right = 280.0
+offset_bottom = 220.0
+
+[node name="VBox" type="VBoxContainer" parent="Panel"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 12.0
+offset_top = 12.0
+offset_right = -12.0
+offset_bottom = -12.0
+
+[node name="Title" type="Label" parent="Panel/VBox"]
+text = "SHOP"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 22
+
+[node name="HSeparator" type="HSeparator" parent="Panel/VBox"]
+
+[node name="CurrencyLabel" type="Label" parent="Panel/VBox"]
+text = "Balance: $0"
+
+[node name="Scroll" type="ScrollContainer" parent="Panel/VBox"]
+size_flags_vertical = 3
+custom_minimum_size = Vector2(0, 200)
+
+[node name="ItemList" type="VBoxContainer" parent="Panel/VBox/Scroll"]
+size_flags_horizontal = 3
+
+[node name="CloseButton" type="Button" parent="Panel/VBox"]
+text = "Close  [Esc]"
