@@ -8,3 +8,7 @@ id = "sauna_stone"
 display_name = "Sauna Stone"
 price = 15
 description = "Heat-retaining stones for the kiuas (sauna stove)."
+color = Color(0.28, 0.26, 0.24, 1.0)
+size = Vector3(0.28, 0.22, 0.3)
+mass = 5.0
+carry_stack = 4

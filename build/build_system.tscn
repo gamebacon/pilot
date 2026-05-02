@@ -1,0 +1,27 @@
+[gd_scene format=3 uid="uid://build_sys_001"]
+
+[ext_resource type="Script" path="res://build/build_system.gd" id="1_build"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_ghost"]
+size = Vector3(1.0, 0.1, 1.0)
+
+[node name="BuildSystem" type="Node"]
+script = ExtResource("1_build")
+
+[node name="Ghost" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_ghost")
+
+[node name="BuildUI" type="CanvasLayer" parent="."]
+
+[node name="BuildLabel" type="Label" parent="BuildUI"]
+anchor_left = 0.5
+anchor_right = 0.5
+anchor_top = 0.0
+anchor_bottom = 0.0
+offset_left = -160.0
+offset_top = 16.0
+offset_right = 160.0
+offset_bottom = 46.0
+text = "BUILD MODE  [LMB] Place  [B] Cancel"
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 15

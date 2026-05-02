@@ -8,7 +8,6 @@ height = 1.8
 
 [node name="Player" type="CharacterBody3D" unique_id=1897289933]
 script = ExtResource("1_player")
-groups = ["player"]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=814948635]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
@@ -22,4 +21,4 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
 [node name="InteractRay" type="RayCast3D" parent="Head" unique_id=1746480563]
 target_position = Vector3(0, 0, -2.5)
 
-[node name="CarryPoint" type="Node3D" parent="Head"]
+[node name="CarryPoint" type="Node3D" parent="Head" unique_id=865329273]

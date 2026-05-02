@@ -8,3 +8,7 @@ id = "wood_plank"
 display_name = "Wood Plank"
 price = 25
 description = "Basic wall and floor material."
+color = Color(0.72, 0.48, 0.18, 1.0)
+size = Vector3(0.2, 0.06, 1.4)
+mass = 2.0
+carry_stack = 2
