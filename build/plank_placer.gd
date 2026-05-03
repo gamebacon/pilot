@@ -5,7 +5,7 @@ extends Node
 # How close (metres) a ghost socket must be to a placed socket to snap
 const SNAP_DIST := 0.3
 # Degrees rotated per key press
-const ROT_STEP  := 45.0
+const ROT_STEP  := 22.5
 # Max ray distance when aiming
 const MAX_REACH := 15.0
 
@@ -35,7 +35,6 @@ func _ready() -> void:
 
 	# Use get_parent() or the node itself as the anchor, not current_scene
 	get_parent().call_deferred("add_child", _planks_root)
-	# get_tree().current_scene.add_child(_planks_root)
 
 	_mat_free = _ghost_mat(Color(COLOR_WOOD.r, COLOR_WOOD.g, COLOR_WOOD.b, 0.50))
 	_mat_snap = _ghost_mat(Color(0.25, 0.90, 0.35, 0.55))
@@ -99,7 +98,15 @@ func _update_ghost() -> void:
 
 	_ghost.show()
 	# Sit the plank on top of whatever surface was hit
-	_ghost.global_position = hit.position + hit.normal * PlacedPlank.HH
+	var basis := _ghost.global_transform.basis
+	# Project each local half-extent onto the surface normal
+	var half_extent: float = (
+		abs(basis.x.dot(hit.normal)) * PlacedPlank.HL +
+		abs(basis.y.dot(hit.normal)) * PlacedPlank.HH +
+		abs(basis.z.dot(hit.normal)) * PlacedPlank.HW
+	)
+	_ghost.global_position = hit.position + hit.normal * half_extent
+	# _ghost.global_position = hit.position + hit.normal * PlacedPlank.HH
 
 	# Snap: translate ghost so the closest socket pair aligns — rotation unchanged
 	var offset := _find_snap_offset()
