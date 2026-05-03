@@ -9,6 +9,9 @@ var occupied: Dictionary = {}          # Vector2i -> placed StaticBody3D
 var blueprint_instance: BlueprintInstance = null
 var _grid_node: Node3D = null
 
+func _ready() -> void:
+	show_grid()
+
 func is_in_bounds(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.x < GRID_WIDTH and cell.y >= 0 and cell.y < GRID_DEPTH
 

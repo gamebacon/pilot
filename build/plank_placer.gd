@@ -5,7 +5,7 @@ extends Node
 # How close (metres) a ghost socket must be to a placed socket to snap
 const SNAP_DIST := 0.3
 # Degrees rotated per key press
-const ROT_STEP  := 15.0
+const ROT_STEP  := 45.0
 # Max ray distance when aiming
 const MAX_REACH := 15.0
 
@@ -28,10 +28,14 @@ var _mat_snap: StandardMaterial3D  # green tint — snap active
 func _ready() -> void:
 	_player = get_node(player_path)
 
+
 	# Container for all placed planks in the scene
 	_planks_root      = Node3D.new()
 	_planks_root.name = "PlacedPlanks"
-	get_tree().current_scene.add_child(_planks_root)
+
+	# Use get_parent() or the node itself as the anchor, not current_scene
+	get_parent().call_deferred("add_child", _planks_root)
+	# get_tree().current_scene.add_child(_planks_root)
 
 	_mat_free = _ghost_mat(Color(COLOR_WOOD.r, COLOR_WOOD.g, COLOR_WOOD.b, 0.50))
 	_mat_snap = _ghost_mat(Color(0.25, 0.90, 0.35, 0.55))
@@ -84,7 +88,7 @@ func _update_ghost() -> void:
 	var dir   := -camera.global_transform.basis.z   # forward
 	var to    := from + dir * MAX_REACH
 
-	var space := get_world_3d().direct_space_state
+	var space := _player.get_world_3d().direct_space_state
 	var query := PhysicsRayQueryParameters3D.create(from, to)
 	query.exclude = [_player.get_rid()]
 	var hit   := space.intersect_ray(query)
@@ -130,28 +134,32 @@ func _ghost_world_sockets() -> Array:
 	return result
 
 # ── Placement ────────────────────────────────────────────────────────────────
-
 func _place() -> void:
 	if not _ghost.visible:
 		return
 
 	var plank := PlacedPlank.new()
+	_planks_root.add_child(plank)
 
-	var col   := CollisionShape3D.new()
+	# Capture transform NOW (before any deferred frame changes it)
+	var t := _ghost.global_transform
+	plank.set_deferred("global_transform", t)
+
 	var shape := BoxShape3D.new()
 	shape.size = Vector3(PlacedPlank.PLANK_LENGTH, PlacedPlank.PLANK_HEIGHT, PlacedPlank.PLANK_WIDTH)
-	col.shape  = shape
+	var col := CollisionShape3D.new()
+	col.shape = shape
 	plank.add_child(col)
 
-	var mi  := MeshInstance3D.new()
 	var box := BoxMesh.new()
 	box.size = Vector3(PlacedPlank.PLANK_LENGTH, PlacedPlank.PLANK_HEIGHT, PlacedPlank.PLANK_WIDTH)
-	mi.mesh              = box
+	var mi := MeshInstance3D.new()
+	mi.mesh = box
 	mi.material_override = _wood_mat()
 	plank.add_child(mi)
 
-	_planks_root.add_child(plank)
-	plank.global_transform = _ghost.global_transform
+	print("plank global pos: ", plank.global_position)
+	print("ghost global pos: ", _ghost.global_position)
 
 # ── Mode enter / exit ─────────────────────────────────────────────────────────
 
