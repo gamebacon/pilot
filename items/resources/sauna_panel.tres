@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://item_sauna_panel"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "sauna_panel"
+display_name = "Sauna Panel"
+price = 20
+description = "Tongue-and-groove aspen cladding for sauna interiors. 10cm wide, 1m long."
+color = Color(0.88, 0.78, 0.55, 1.0)
+size = Vector3(0.1, 0.015, 1.0)
+mass = 0.4
+carry_stack = 5

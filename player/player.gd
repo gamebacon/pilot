@@ -5,7 +5,7 @@ const SPRINT_SPEED = 9.0
 const JUMP_VELOCITY = 4.5
 const MOUSE_SENSITIVITY = 0.002
 
-var carry_capacity: int = 2
+var carry_capacity: int = 10
 var carried_items: Array[Node] = []
 var interact_target: Node = null  # updated every frame, read by PlayerHUD
 

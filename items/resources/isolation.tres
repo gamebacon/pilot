@@ -5,10 +5,10 @@
 [resource]
 script = ExtResource("1_itemdata")
 id = "isolation"
-display_name = "Rockwool"
-price = 10
-description = "Basic rockwool for isolation."
-color = Color(0.83, 0.83, 0.13, 1.0)
-size = Vector3(0.2, 1.0, 1.0)
+display_name = "Rockwool Batt"
+price = 12
+description = "100mm insulation batt. Fills a 1x1m wall section."
+color = Color(0.88, 0.83, 0.13, 1.0)
+size = Vector3(0.1, 1.0, 1.0)
 mass = 0.5
 carry_stack = 4

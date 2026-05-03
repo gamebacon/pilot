@@ -9,13 +9,15 @@ const ROT_STEP  := 90.0
 # Max ray distance when aiming
 const MAX_REACH := 15.0
 
-# Base wood colour for placed planks (slight per-plank tonal variation is added on place)
-const COLOR_WOOD := Color(0.70, 0.46, 0.20)
-
 var _player: CharacterBody3D
 var _active    := false
 var _snapping  := false
 var _planks_root: Node3D
+
+# Item currently being placed (taken from the player's carry)
+var _held_item: PhysicalItem = null
+var _held_data: ItemData     = null
+var _held_size: Vector3      = Vector3.ONE
 
 @onready var _ghost: MeshInstance3D = $Ghost
 @onready var _label: Label          = $UI/Label
@@ -33,21 +35,14 @@ func _ready() -> void:
 	_planks_root.name = "PlacedPlanks"
 	get_parent().call_deferred("add_child", _planks_root)
 
-	_mat_free    = _ghost_mat(Color(COLOR_WOOD.r, COLOR_WOOD.g, COLOR_WOOD.b, 0.50))
 	_mat_snap    = _ghost_mat(Color(0.25, 0.90, 0.35, 0.55))
 	_mat_blocked = _ghost_mat(Color(0.90, 0.20, 0.20, 0.55))
+	_mat_free    = _ghost_mat(Color(1.0, 1.0, 1.0, 0.50))   # replaced per-item on _enter
 
-	var box  := BoxMesh.new()
-	box.size = Vector3(PlacedPlank.PLANK_LENGTH, PlacedPlank.PLANK_HEIGHT, PlacedPlank.PLANK_WIDTH)
-	_ghost.mesh              = box
-	_ghost.material_override = _mat_free
 	_ghost.cast_shadow       = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_ghost.material_override = _mat_free
 	_ghost.hide()
 
-	_label.text = (
-		"PLANK MODE    [LMB] Place    [RMB] Exit\n"
-		+ "[R / Shift+R] Yaw    [X / Shift+X] Pitch    [Z / Shift+Z] Roll    [Q] Reset    [F] Remove"
-	)
 	_label.hide()
 
 # ── Input ────────────────────────────────────────────────────────────────────
@@ -69,7 +64,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_X: _ghost.global_rotate(Vector3.RIGHT,   step)
 			KEY_Z: _ghost.global_rotate(Vector3.FORWARD, step)
 			KEY_Q: _ghost.rotation_degrees = Vector3.ZERO
-			KEY_F: _remove_plank()
+			KEY_F: _remove_piece()
 
 	if event is InputEventMouseButton and event.pressed:
 		match event.button_index:
@@ -99,11 +94,15 @@ func _update_ghost() -> void:
 
 	_ghost.show()
 
+	# Sit the piece flush against whatever surface was hit.
+	# Project the held size onto the surface normal so the offset is correct
+	# regardless of current rotation.
 	var basis := _ghost.global_transform.basis
+	var hh    := _held_size * 0.5
 	var half_extent: float = (
-		abs(basis.x.dot(hit.normal)) * PlacedPlank.HL +
-		abs(basis.y.dot(hit.normal)) * PlacedPlank.HH +
-		abs(basis.z.dot(hit.normal)) * PlacedPlank.HW
+		abs(basis.x.dot(hit.normal)) * hh.x +
+		abs(basis.y.dot(hit.normal)) * hh.y +
+		abs(basis.z.dot(hit.normal)) * hh.z
 	)
 	_ghost.global_position = hit.position + hit.normal * half_extent
 
@@ -124,7 +123,7 @@ func _update_ghost() -> void:
 func _is_blocked() -> bool:
 	var params      := PhysicsShapeQueryParameters3D.new()
 	var shape       := BoxShape3D.new()
-	shape.size       = Vector3(PlacedPlank.PLANK_LENGTH, PlacedPlank.PLANK_HEIGHT, PlacedPlank.PLANK_WIDTH)
+	shape.size       = _held_size
 	params.shape     = shape
 	params.transform = _ghost.global_transform
 	params.margin    = -0.02
@@ -141,8 +140,8 @@ func _find_snap_offset() -> Vector3:
 	var best_dist     := SNAP_DIST
 	var best_offset   := Vector3.ZERO
 
-	for plank in get_tree().get_nodes_in_group("placed_planks"):
-		for placed_pos: Vector3 in plank.get_world_sockets():
+	for piece in get_tree().get_nodes_in_group("placed_planks"):
+		for placed_pos: Vector3 in piece.get_world_sockets():
 			for ghost_pos: Vector3 in ghost_sockets:
 				var d := ghost_pos.distance_to(placed_pos)
 				if d < best_dist:
@@ -153,38 +152,56 @@ func _find_snap_offset() -> Vector3:
 
 func _ghost_world_sockets() -> Array:
 	var result := []
-	for local_pos: Vector3 in PlacedPlank.LOCAL_SOCKETS:
+	for local_pos: Vector3 in PlacedPlank.sockets_for(_held_size):
 		result.append(_ghost.global_transform * local_pos)
 	return result
 
 # ── Placement ────────────────────────────────────────────────────────────────
 
 func _place() -> void:
-	if not _ghost.visible or _is_blocked():
+	if not _ghost.visible or _is_blocked() or _held_item == null:
 		return
 
-	var plank := PlacedPlank.new()
-	_planks_root.add_child(plank)
+	var piece := PlacedPlank.new()
+	piece.size  = _held_size
+	piece.color = _held_data.color
+	_planks_root.add_child(piece)
 
 	var t := _ghost.global_transform
-	plank.set_deferred("global_transform", t)
+	piece.set_deferred("global_transform", t)
 
 	var shape := BoxShape3D.new()
-	shape.size = Vector3(PlacedPlank.PLANK_LENGTH, PlacedPlank.PLANK_HEIGHT, PlacedPlank.PLANK_WIDTH)
+	shape.size = _held_size
 	var col := CollisionShape3D.new()
 	col.shape = shape
-	plank.add_child(col)
+	piece.add_child(col)
 
 	var box := BoxMesh.new()
-	box.size = Vector3(PlacedPlank.PLANK_LENGTH, PlacedPlank.PLANK_HEIGHT, PlacedPlank.PLANK_WIDTH)
+	box.size = _held_size
 	var mi := MeshInstance3D.new()
 	mi.mesh              = box
-	mi.material_override = _wood_mat()
-	plank.add_child(mi)
+	mi.material_override = _piece_mat(_held_data.color)
+	piece.add_child(mi)
 
+	_held_item.play_place_sound()
 
-# ── Remove plank ─────────────────────────────────────────────────────────
-func _remove_plank() -> void:
+	_consume_held()
+
+func _consume_held() -> void:
+	_player.carried_items.erase(_held_item)
+	_held_item.queue_free()
+	_held_item = null
+
+	# If more items remain, switch to the next one; otherwise exit build mode
+	if _player.carried_items.is_empty():
+		_exit()
+	else:
+		_hold(_player.carried_items.back())
+		_refresh_ghost_for_held()
+
+# ── Remove placed piece ───────────────────────────────────────────────────────
+
+func _remove_piece() -> void:
 	var camera: Camera3D = _player.get_node("Head/Camera3D")
 	var from  := camera.global_position
 	var dir   := -camera.global_transform.basis.z
@@ -204,15 +221,51 @@ func _remove_plank() -> void:
 	elif collider != null and collider.get_parent() is PlacedPlank:
 		collider.get_parent().queue_free()
 
+# ── Held item management ─────────────────────────────────────────────────────
+
+func _hold(item: PhysicalItem) -> void:
+	_held_item = item
+	_held_data = item.item_data
+	_held_size = _held_data.size if _held_data else Vector3.ONE
+
+func _refresh_ghost_for_held() -> void:
+	var box := BoxMesh.new()
+	box.size = _held_size
+	_ghost.mesh = box
+
+	var c := _held_data.color if _held_data else Color(1, 1, 1)
+	_mat_free = _ghost_mat(Color(c.r, c.g, c.b, 0.5))
+	_ghost.material_override = _mat_free
+
+	# Keep rotation for next peice? ( commented out )
+	# _ghost.rotation = Vector3.ZERO
+
+	_label.text = _hint_text()
+
+func _hint_text() -> String:
+	var item_name: String = _held_data.display_name if _held_data else "Item"
+	return (
+		"BUILD MODE: %s    [LMB] Place    [RMB] Exit\n" % item_name
+		+ "[R / Shift+R] Yaw    [X / Shift+X] Pitch    [Z / Shift+Z] Roll    [Q] Reset    [F] Remove"
+	)
+
 # ── Mode enter / exit ─────────────────────────────────────────────────────────
 
 func _enter() -> void:
+	if _player.carried_items.is_empty():
+		return  # Need an item in hand to enter build mode
+
+	_hold(_player.carried_items.back())
+	_refresh_ghost_for_held()
+
 	_active = true
 	_ghost.show()
 	_label.show()
 
 func _exit() -> void:
-	_active = false
+	_active     = false
+	_held_item  = null
+	_held_data  = null
 	_ghost.hide()
 	_label.hide()
 
@@ -225,12 +278,14 @@ func _ghost_mat(color: Color) -> StandardMaterial3D:
 	m.shading_mode  = BaseMaterial3D.SHADING_MODE_UNSHADED
 	return m
 
-func _wood_mat() -> StandardMaterial3D:
+# Solid material with slight per-piece tonal variation for a natural look
+func _piece_mat(base: Color) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
-	var v   := randf_range(-0.07, 0.07)
+	var v   := randf_range(-0.05, 0.05)
 	mat.albedo_color = Color(
-		clampf(COLOR_WOOD.r + v,        0.0, 1.0),
-		clampf(COLOR_WOOD.g + v * 0.55, 0.0, 1.0),
-		clampf(COLOR_WOOD.b + v * 0.30, 0.0, 1.0)
+		clampf(base.r + v, 0.0, 1.0),
+		clampf(base.g + v, 0.0, 1.0),
+		clampf(base.b + v, 0.0, 1.0),
+		base.a
 	)
 	return mat
