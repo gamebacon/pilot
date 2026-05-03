@@ -1,12 +1,12 @@
 [gd_scene format=3 uid="uid://ologmjw1mvui"]
 
-[ext_resource type="PackedScene" path="res://player/player.tscn" id="1_main"]
+[ext_resource type="PackedScene" uid="uid://dv4tifvdnmq6d" path="res://player/player.tscn" id="1_main"]
 [ext_resource type="PackedScene" path="res://shop/shop.tscn" id="2_shop"]
 [ext_resource type="PackedScene" path="res://ui/shop_ui.tscn" id="3_shopui"]
 [ext_resource type="PackedScene" path="res://ui/inventory_hud.tscn" id="4_invhud"]
-[ext_resource type="PackedScene" uid="uid://plot_scene_001" path="res://build/plot.tscn" id="5_plot"]
-[ext_resource type="PackedScene" uid="uid://build_sys_001" path="res://build/build_system.tscn" id="6_build"]
-[ext_resource type="PackedScene" uid="uid://player_hud_001" path="res://ui/player_hud.tscn" id="7_phud"]
+[ext_resource type="PackedScene" path="res://build/plot.tscn" id="5_plot"]
+[ext_resource type="PackedScene" path="res://build/build_system.tscn" id="6_build"]
+[ext_resource type="PackedScene" path="res://ui/player_hud.tscn" id="7_phud"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
 size = Vector3(50, 0.2, 50)
@@ -35,10 +35,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
 [node name="Shop" parent="." unique_id=186529796 instance=ExtResource("2_shop")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, -8)
 
-[node name="Plot" parent="." instance=ExtResource("5_plot")]
+[node name="Plot" parent="." unique_id=1774234740 instance=ExtResource("5_plot")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.1, -4)
 
-[node name="BuildSystem" parent="." instance=ExtResource("6_build")]
+[node name="BuildSystem" parent="." unique_id=2119495639 instance=ExtResource("6_build")]
 plot_path = NodePath("../Plot")
 player_path = NodePath("../Player")
 
@@ -46,7 +46,7 @@ player_path = NodePath("../Player")
 
 [node name="InventoryHUD" parent="." unique_id=1659200543 instance=ExtResource("4_invhud")]
 
-[node name="PlayerHUD" parent="." instance=ExtResource("7_phud")]
+[node name="PlayerHUD" parent="." unique_id=283809856 instance=ExtResource("7_phud")]
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=2016765552]
 transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 0, 10, 0)

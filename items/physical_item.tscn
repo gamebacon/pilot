@@ -1,6 +1,6 @@
-[gd_scene format=3 uid="uid://physical_item_001"]
+[gd_scene format=3 uid="uid://bjmqtnmkhdtua"]
 
-[ext_resource type="Script" path="res://items/physical_item.gd" id="1_physitem"]
+[ext_resource type="Script" uid="uid://bl0k0n1tdctld" path="res://items/physical_item.gd" id="1_physitem"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_item"]
 size = Vector3(0.4, 0.1, 1.2)
@@ -11,22 +11,17 @@ size = Vector3(0.4, 0.1, 1.2)
 [sub_resource type="StandardMaterial3D" id="Mat_item"]
 albedo_color = Color(0.75, 0.52, 0.22, 1)
 
-[sub_resource type="StandardMaterial3D" id="Mat_Glas"]
-albedo_color = Color(0.15, 0.12, 0.82, 1)
-
-[node name="PhysicalItem" type="RigidBody3D"]
-script = ExtResource("1_physitem")
+[node name="PhysicalItem" type="RigidBody3D" unique_id=535527087]
 mass = 2.0
+script = ExtResource("1_physitem")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=2018211478]
 shape = SubResource("BoxShape3D_item")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=1144007416]
 mesh = SubResource("BoxMesh_item")
 surface_material_override/0 = SubResource("Mat_item")
 
-[node name="Label3D" type="Label3D" parent="."]
+[node name="Label3D" type="Label3D" parent="." unique_id=840519938]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.12, 0)
-pixel_size = 0.005
-text = "item"
-font_size = 32
+text = ""

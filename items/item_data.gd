@@ -4,7 +4,15 @@ class_name ItemData
 @export var id: String = ""
 @export var display_name: String = ""
 @export var price: int = 10
-@export var description: String = ""
+@export var descoription: String = ""
+
+# --- Audio (all optional — leave empty to use defaults) ---
+@export_group("Audio")
+@export var sound_collide: AudioStream
+@export var sound_pickup: AudioStream
+@export var sound_place: AudioStream
+@export var sound_walk: AudioStream   # footstep when carrying this item
+
 
 # Physical appearance
 @export var color: Color = Color(0.75, 0.52, 0.22, 1.0)

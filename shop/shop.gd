@@ -18,6 +18,6 @@ func spawn_item(item_data: ItemData) -> void:
 	var item := item_scene.instantiate() as PhysicalItem
 	item.item_data = item_data
 	# Show the item name on its label
-	item.get_node("Label3D").text = item_data.display_name
+	# item.get_node("Label3D").text = item_data.display_name
 	get_tree().current_scene.add_child(item)
 	item.global_position = spawn_point.global_position + Vector3(randf_range(-0.3, 0.3), 0.5, 0)

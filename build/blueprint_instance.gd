@@ -14,17 +14,18 @@ const PHASE_COLORS: Array[Color] = [
 ]
 
 # Ghost visual size by PlacementType int (FLOOR=0, WALL=1, ROOF=2)
+# Slightly smaller than placed pieces so adjacent ghosts show a thin gap
 const GHOST_SIZE: Array[Vector3] = [
-	Vector3(0.92, 0.05, 0.92),  # FLOOR
-	Vector3(0.92, 0.92, 0.12),  # WALL
-	Vector3(0.92, 0.05, 0.92),  # ROOF
+	Vector3(0.95, 0.12, 0.95),  # FLOOR
+	Vector3(0.95, 2.20, 0.95),  # WALL
+	Vector3(0.95, 0.20, 0.95),  # ROOF
 ]
 
 # Ghost Y centre relative to plot surface, by PlacementType int
 const GHOST_Y: Array[float] = [
-	0.025,  # FLOOR
-	0.50,   # WALL  (mid-point of 1 m wall)
-	1.05,   # ROOF  (just above walls)
+	0.06,   # FLOOR  (half of 0.12)
+	1.10,   # WALL   (half of 2.2)
+	2.30,   # ROOF   (2.2 walls + half of 0.2)
 ]
 
 func activate(data: BlueprintData) -> void:
@@ -61,7 +62,6 @@ func _make_ghost(slot: BlueprintSlot) -> MeshInstance3D:
 		GHOST_Y[pt],
 		(slot.cell.y + 0.5)
 	)
-	mesh_inst.rotation_degrees.y = slot.rotation_y_deg
 	return mesh_inst
 
 # Returns [BlueprintSlot, slot_index] for the active phase at this cell, or []

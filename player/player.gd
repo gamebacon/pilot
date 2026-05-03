@@ -9,10 +9,17 @@ var carry_capacity: int = 2
 var carried_items: Array[Node] = []
 var interact_target: Node = null  # updated every frame, read by PlayerHUD
 
+const WALK_STEP_INTERVAL  = 0.45  # seconds between footsteps
+const SPRINT_STEP_INTERVAL = 0.28
+var _step_timer := 0.0
+
+
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
 @onready var interact_ray: RayCast3D = $Head/InteractRay
 @onready var carry_point: Node3D = $Head/CarryPoint
+@onready var walk_audio: AudioStreamPlayer = $WalkAudioPlayer  # add this node
+
 
 func _ready() -> void:
 	add_to_group("player")
@@ -65,30 +72,53 @@ func _update_interact_target() -> void:
 	else:
 		interact_target = null
 
-# --- Carry system ---
-
-func pick_up(item: Node) -> bool:
+# Replace pick_up() ---
+func pick_up(item: PhysicalItem) -> bool:
 	if carried_items.size() >= carry_capacity:
 		return false
+	item.play_pickup_sound()          # <-- pickup sound on the item itself
 	item.reparent(carry_point, false)
 	item.freeze = true
 	item.collision_layer = 0
 	item.collision_mask = 0
-	# Stack items slightly offset so multiple are visible
 	item.position = Vector3(0.25 * carried_items.size(), -0.3, -0.6)
 	item.rotation = Vector3(-0.3, 0.0, 0.1)
 	carried_items.append(item)
 	return true
 
+# Replace drop_last() ---
 func drop_last() -> void:
 	if carried_items.is_empty():
 		return
-	var item: Node = carried_items.pop_back()
+	var item: PhysicalItem = carried_items.pop_back()
 	item.reparent(get_tree().current_scene, true)
 	item.collision_layer = 1
 	item.collision_mask = 1
 	item.freeze = false
 	item.linear_velocity = -transform.basis.z * 3.0 + Vector3(0, 1, 0)
+
+# Add to _physics_process(), after move_and_slide() ---
+func _tick_footsteps(delta: float) -> void:
+	var moving := Vector2(velocity.x, velocity.z).length() > 0.5
+	if not is_on_floor() or not moving:
+		_step_timer = 0.0
+		return
+	var interval := SPRINT_STEP_INTERVAL if Input.is_action_pressed("sprint") else WALK_STEP_INTERVAL
+	_step_timer += delta
+	if _step_timer >= interval:
+		_step_timer = 0.0
+		_play_footstep()
+
+func _play_footstep() -> void:
+	# Use the sound of the last carried item, or a generic footstep
+	var stream: AudioStream
+	if not carried_items.is_empty():
+		stream = (carried_items.back() as PhysicalItem).get_walk_sound()
+	else:
+		stream = preload("res://audio/sfx/footstep_default.mp3")
+	walk_audio.stream = stream
+	walk_audio.pitch_scale = randf_range(0.9, 1.1)
+	walk_audio.play()
 
 # --- Interaction ---
 
