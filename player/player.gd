@@ -68,6 +68,9 @@ func _physics_process(delta: float) -> void:
 func _update_interact_target() -> void:
 	if interact_ray.is_colliding():
 		var t := interact_ray.get_collider()
+		if t == null:
+			interact_target = null
+			return
 		interact_target = t if t.has_method("interact") else null
 	else:
 		interact_target = null

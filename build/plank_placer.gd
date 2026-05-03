@@ -5,7 +5,7 @@ extends Node
 # How close (metres) a ghost socket must be to a placed socket to snap
 const SNAP_DIST := 0.3
 # Degrees rotated per key press
-const ROT_STEP  := 22.5
+const ROT_STEP  := 90.0
 # Max ray distance when aiming
 const MAX_REACH := 15.0
 
@@ -20,35 +20,33 @@ var _planks_root: Node3D
 @onready var _ghost: MeshInstance3D = $Ghost
 @onready var _label: Label          = $UI/Label
 
-var _mat_free: StandardMaterial3D  # semi-transparent wood — no snap
-var _mat_snap: StandardMaterial3D  # green tint — snap active
+var _mat_free:    StandardMaterial3D
+var _mat_snap:    StandardMaterial3D
+var _mat_blocked: StandardMaterial3D
 
 # ── Lifecycle ────────────────────────────────────────────────────────────────
 
 func _ready() -> void:
 	_player = get_node(player_path)
 
-
-	# Container for all placed planks in the scene
 	_planks_root      = Node3D.new()
 	_planks_root.name = "PlacedPlanks"
-
-	# Use get_parent() or the node itself as the anchor, not current_scene
 	get_parent().call_deferred("add_child", _planks_root)
 
-	_mat_free = _ghost_mat(Color(COLOR_WOOD.r, COLOR_WOOD.g, COLOR_WOOD.b, 0.50))
-	_mat_snap = _ghost_mat(Color(0.25, 0.90, 0.35, 0.55))
+	_mat_free    = _ghost_mat(Color(COLOR_WOOD.r, COLOR_WOOD.g, COLOR_WOOD.b, 0.50))
+	_mat_snap    = _ghost_mat(Color(0.25, 0.90, 0.35, 0.55))
+	_mat_blocked = _ghost_mat(Color(0.90, 0.20, 0.20, 0.55))
 
 	var box  := BoxMesh.new()
 	box.size = Vector3(PlacedPlank.PLANK_LENGTH, PlacedPlank.PLANK_HEIGHT, PlacedPlank.PLANK_WIDTH)
-	_ghost.mesh             = box
+	_ghost.mesh              = box
 	_ghost.material_override = _mat_free
-	_ghost.cast_shadow      = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_ghost.cast_shadow       = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_ghost.hide()
 
 	_label.text = (
-		"PLANK MODE    [LMB] Place    [RMB / B] Exit\n"
-		+ "[R / Shift+R] Yaw    [X / Shift+X] Pitch    [Z / Shift+Z] Roll"
+		"PLANK MODE    [LMB] Place    [RMB] Exit\n"
+		+ "[R / Shift+R] Yaw    [X / Shift+X] Pitch    [Z / Shift+Z] Roll    [Q] Reset    [F] Remove"
 	)
 	_label.hide()
 
@@ -65,10 +63,13 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	if event is InputEventKey and event.pressed and not event.echo:
 		var sign := -1.0 if event.shift_pressed else 1.0
+		var step  := deg_to_rad(ROT_STEP) * sign
 		match event.keycode:
-			KEY_R: _ghost.rotation_degrees.y += ROT_STEP * sign
-			KEY_X: _ghost.rotation_degrees.x += ROT_STEP * sign
-			KEY_Z: _ghost.rotation_degrees.z += ROT_STEP * sign
+			KEY_R: _ghost.global_rotate(Vector3.UP,      step)
+			KEY_X: _ghost.global_rotate(Vector3.RIGHT,   step)
+			KEY_Z: _ghost.global_rotate(Vector3.FORWARD, step)
+			KEY_Q: _ghost.rotation_degrees = Vector3.ZERO
+			KEY_F: _remove_plank()
 
 	if event is InputEventMouseButton and event.pressed:
 		match event.button_index:
@@ -84,7 +85,7 @@ func _process(_delta: float) -> void:
 func _update_ghost() -> void:
 	var camera: Camera3D = _player.get_node("Head/Camera3D")
 	var from  := camera.global_position
-	var dir   := -camera.global_transform.basis.z   # forward
+	var dir   := -camera.global_transform.basis.z
 	var to    := from + dir * MAX_REACH
 
 	var space := _player.get_world_3d().direct_space_state
@@ -97,25 +98,41 @@ func _update_ghost() -> void:
 		return
 
 	_ghost.show()
-	# Sit the plank on top of whatever surface was hit
+
 	var basis := _ghost.global_transform.basis
-	# Project each local half-extent onto the surface normal
 	var half_extent: float = (
 		abs(basis.x.dot(hit.normal)) * PlacedPlank.HL +
 		abs(basis.y.dot(hit.normal)) * PlacedPlank.HH +
 		abs(basis.z.dot(hit.normal)) * PlacedPlank.HW
 	)
 	_ghost.global_position = hit.position + hit.normal * half_extent
-	# _ghost.global_position = hit.position + hit.normal * PlacedPlank.HH
 
-	# Snap: translate ghost so the closest socket pair aligns — rotation unchanged
 	var offset := _find_snap_offset()
 	_snapping   = offset != Vector3.ZERO
 	if _snapping:
-		_ghost.global_position  += offset
+		_ghost.global_position += offset
+
+	if _is_blocked():
+		_ghost.material_override = _mat_blocked
+	elif _snapping:
 		_ghost.material_override = _mat_snap
 	else:
 		_ghost.material_override = _mat_free
+
+# ── Overlap check ─────────────────────────────────────────────────────────────
+
+func _is_blocked() -> bool:
+	var params      := PhysicsShapeQueryParameters3D.new()
+	var shape       := BoxShape3D.new()
+	shape.size       = Vector3(PlacedPlank.PLANK_LENGTH, PlacedPlank.PLANK_HEIGHT, PlacedPlank.PLANK_WIDTH)
+	params.shape     = shape
+	params.transform = _ghost.global_transform
+	params.margin    = -0.02
+	params.exclude   = [_player.get_rid()]
+
+	var space   := _player.get_world_3d().direct_space_state
+	var results := space.intersect_shape(params, 1)
+	return results.size() > 0
 
 # ── Snap logic ───────────────────────────────────────────────────────────────
 
@@ -141,14 +158,14 @@ func _ghost_world_sockets() -> Array:
 	return result
 
 # ── Placement ────────────────────────────────────────────────────────────────
+
 func _place() -> void:
-	if not _ghost.visible:
+	if not _ghost.visible or _is_blocked():
 		return
 
 	var plank := PlacedPlank.new()
 	_planks_root.add_child(plank)
 
-	# Capture transform NOW (before any deferred frame changes it)
 	var t := _ghost.global_transform
 	plank.set_deferred("global_transform", t)
 
@@ -161,12 +178,31 @@ func _place() -> void:
 	var box := BoxMesh.new()
 	box.size = Vector3(PlacedPlank.PLANK_LENGTH, PlacedPlank.PLANK_HEIGHT, PlacedPlank.PLANK_WIDTH)
 	var mi := MeshInstance3D.new()
-	mi.mesh = box
+	mi.mesh              = box
 	mi.material_override = _wood_mat()
 	plank.add_child(mi)
 
-	print("plank global pos: ", plank.global_position)
-	print("ghost global pos: ", _ghost.global_position)
+
+# ── Remove plank ─────────────────────────────────────────────────────────
+func _remove_plank() -> void:
+	var camera: Camera3D = _player.get_node("Head/Camera3D")
+	var from  := camera.global_position
+	var dir   := -camera.global_transform.basis.z
+	var to    := from + dir * MAX_REACH
+
+	var space := _player.get_world_3d().direct_space_state
+	var query := PhysicsRayQueryParameters3D.create(from, to)
+	query.exclude = [_player.get_rid()]
+	var hit   := space.intersect_ray(query)
+
+	if hit.is_empty():
+		return
+
+	var collider: Object = hit["collider"]
+	if collider is PlacedPlank:
+		collider.queue_free()
+	elif collider != null and collider.get_parent() is PlacedPlank:
+		collider.get_parent().queue_free()
 
 # ── Mode enter / exit ─────────────────────────────────────────────────────────
 
