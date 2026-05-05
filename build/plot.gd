@@ -10,7 +10,7 @@ var blueprint_instance: BlueprintInstance = null
 var _grid_node: Node3D = null
 
 func _ready() -> void:
-	show_grid()
+	pass  # grid shown only when build mode is entered
 
 func is_in_bounds(cell: Vector2i) -> bool:
 	return cell.x >= 0 and cell.x < GRID_WIDTH and cell.y >= 0 and cell.y < GRID_DEPTH

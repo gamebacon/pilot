@@ -3,6 +3,7 @@ extends Node
 signal currency_changed(new_amount: int)
 
 var currency: int = 5_000
+var active_build_mode: String = ""  # "blueprint" | "freeplace" | ""
 
 func add_currency(amount: int) -> void:
 	currency += amount

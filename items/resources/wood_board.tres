@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_itemdata")
 id = "wood_board"
-display_name = "Floor Board"
+display_name = "Wood Board"
 price = 35
 description = "Wide decking board for floors. 20cm wide, 1m long."
 color = Color(0.78, 0.55, 0.22, 1.0)

@@ -48,7 +48,7 @@ func _ready() -> void:
 # ── Input ────────────────────────────────────────────────────────────────────
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("build_mode"):
+	if event.is_action_pressed("plank_mode"):
 		if _active: _exit()
 		else:       _enter()
 		return
@@ -245,15 +245,18 @@ func _refresh_ghost_for_held() -> void:
 func _hint_text() -> String:
 	var item_name: String = _held_data.display_name if _held_data else "Item"
 	return (
-		"BUILD MODE: %s    [LMB] Place    [RMB] Exit\n" % item_name
-		+ "[R / Shift+R] Yaw    [X / Shift+X] Pitch    [Z / Shift+Z] Roll    [Q] Reset    [F] Remove"
+		"FREEPLACE: %s    [LMB] Place    [RMB] Exit\n" % item_name
+		+ "[R/X/Z] Rotate    [Q] Reset    [F] Remove    [V] Exit"
 	)
 
 # ── Mode enter / exit ─────────────────────────────────────────────────────────
 
 func _enter() -> void:
+	if GameState.active_build_mode != "":
+		return
 	if _player.carried_items.is_empty():
 		return  # Need an item in hand to enter build mode
+	GameState.active_build_mode = "freeplace"
 
 	_hold(_player.carried_items.back())
 	_refresh_ghost_for_held()
@@ -263,6 +266,7 @@ func _enter() -> void:
 	_label.show()
 
 func _exit() -> void:
+	GameState.active_build_mode = ""
 	_active     = false
 	_held_item  = null
 	_held_data  = null

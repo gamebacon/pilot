@@ -18,12 +18,17 @@ var _step_timer := 0.0
 @onready var camera: Camera3D = $Head/Camera3D
 @onready var interact_ray: RayCast3D = $Head/InteractRay
 @onready var carry_point: Node3D = $Head/CarryPoint
-@onready var walk_audio: AudioStreamPlayer = $WalkAudioPlayer  # add this node
+
+var walk_audio: AudioStreamPlayer
 
 
 func _ready() -> void:
-	add_to_group("player")
+	walk_audio = AudioStreamPlayer.new()
+	walk_audio.bus = "Ambient"
+	add_child(walk_audio)
+
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	add_to_group("player")
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
@@ -63,6 +68,7 @@ func _physics_process(delta: float) -> void:
 		velocity.z = move_toward(velocity.z, 0, current_speed)
 
 	move_and_slide()
+	_tick_footsteps(delta)
 	_update_interact_target()
 
 func _update_interact_target() -> void:

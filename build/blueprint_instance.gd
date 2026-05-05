@@ -3,68 +3,121 @@ class_name BlueprintInstance
 
 var blueprint_data: BlueprintData = null
 var current_phase: int = 0
-var filled: Dictionary = {}       # slot_index (int) -> true
-var ghost_nodes: Dictionary = {}  # slot_index (int) -> MeshInstance3D
-
-# Semi-transparent ghost colors per phase
-const PHASE_COLORS: Array[Color] = [
-	Color(0.9, 0.70, 0.30, 0.38),  # 0 STRUCTURE — warm wood
-	Color(0.25, 0.18, 0.10, 0.38), # 1 ROOFING   — dark timber
-	Color(0.85, 0.85, 0.85, 0.38), # 2 INTERIOR  — light tile
-]
-
-# Ghost visual size by PlacementType int (FLOOR=0, WALL=1, ROOF=2)
-# Slightly smaller than placed pieces so adjacent ghosts show a thin gap
-const GHOST_SIZE: Array[Vector3] = [
-	Vector3(0.95, 0.12, 0.95),  # FLOOR
-	Vector3(0.95, 2.20, 0.95),  # WALL
-	Vector3(0.95, 0.20, 0.95),  # ROOF
-]
-
-# Ghost Y centre relative to plot surface, by PlacementType int
-const GHOST_Y: Array[float] = [
-	0.06,   # FLOOR  (half of 0.12)
-	1.10,   # WALL   (half of 2.2)
-	2.30,   # ROOF   (2.2 walls + half of 0.2)
-]
+var filled: Dictionary = {}      # slot_index -> true
+var slot_zones: Dictionary = {}  # slot_index -> zone_mesh_index
+var zone_meshes: Array[MeshInstance3D] = []
+var zone_phases: Array[int] = []
 
 func activate(data: BlueprintData) -> void:
 	blueprint_data = data
 	current_phase = 0
-	_build_ghosts()
+	_build_zones()
 
-func _build_ghosts() -> void:
+# ── Zone construction ────────────────────────────────────────────────────────
+
+func _build_zones() -> void:
+	# Group slot indices by (phase, placement_type)
+	var groups: Dictionary = {}
 	for i in range(blueprint_data.slots.size()):
 		var slot: BlueprintSlot = blueprint_data.slots[i]
-		var ghost := _make_ghost(slot)
-		ghost_nodes[i] = ghost
-		add_child(ghost)
-		ghost.visible = (int(slot.phase) == current_phase)
+		var key := Vector2i(int(slot.phase), int(slot.placement_type))
+		if not groups.has(key):
+			groups[key] = []
+		groups[key].append(i)
 
-func _make_ghost(slot: BlueprintSlot) -> MeshInstance3D:
-	var mesh_inst := MeshInstance3D.new()
+	for key in groups:
+		var phase_idx: int = key.x
+		var pt: int = key.y
+		var indices: Array = groups[key]
+		if pt == BlueprintSlot.PlacementType.WALL:
+			_build_wall_zones(indices, phase_idx)
+		else:
+			_build_slab_zone(indices, phase_idx, pt)
+
+# Floor and roof: one flat slab covering the bounding box of all cells
+func _build_slab_zone(indices: Array, phase_idx: int, pt: int) -> void:
+	var min_x := 9999;  var min_z := 9999
+	var max_x := -9999; var max_z := -9999
+	var item_id: String = blueprint_data.slots[indices[0]].required_item_id
+	for idx in indices:
+		var c: Vector2i = blueprint_data.slots[idx].cell
+		min_x = mini(min_x, c.x); min_z = mini(min_z, c.y)
+		max_x = maxi(max_x, c.x); max_z = maxi(max_z, c.y)
+
+	var size := Vector3((max_x - min_x + 1) * 0.98, 0.05, (max_z - min_z + 1) * 0.98)
+	var y    := 0.025 if pt == BlueprintSlot.PlacementType.FLOOR else 2.30
+	var pos  := Vector3((min_x + max_x + 1) * 0.5, y, (min_z + max_z + 1) * 0.5)
+	var zone_idx := _add_zone(size, pos, item_id, phase_idx)
+	for idx in indices:
+		slot_zones[idx] = zone_idx
+
+# Walls: split into connected runs, orient each run correctly
+func _build_wall_zones(indices: Array, phase_idx: int) -> void:
+	var visited: Dictionary = {}
+	for start_idx in indices:
+		if visited.has(start_idx):
+			continue
+		# BFS — find connected wall run
+		var component: Array = []
+		var queue := [start_idx]
+		visited[start_idx] = true
+		while not queue.is_empty():
+			var curr: int = queue.pop_front()
+			component.append(curr)
+			var cc: Vector2i = blueprint_data.slots[curr].cell
+			for other in indices:
+				if visited.has(other): continue
+				var oc: Vector2i = blueprint_data.slots[other].cell
+				if abs(oc.x - cc.x) + abs(oc.y - cc.y) == 1:
+					visited[other] = true
+					queue.append(other)
+
+		var min_x := 9999;  var min_z := 9999
+		var max_x := -9999; var max_z := -9999
+		var item_id: String = blueprint_data.slots[component[0]].required_item_id
+		for idx in component:
+			var c: Vector2i = blueprint_data.slots[idx].cell
+			min_x = mini(min_x, c.x); min_z = mini(min_z, c.y)
+			max_x = maxi(max_x, c.x); max_z = maxi(max_z, c.y)
+
+		var span_x := max_x - min_x + 1
+		var span_z := max_z - min_z + 1
+		# Orient panel to face inward — thin in the short axis
+		var size: Vector3
+		if span_x >= span_z:  # horizontal run along X
+			size = Vector3(span_x * 1.0, 2.20, 0.08)
+		else:                  # vertical run along Z
+			size = Vector3(0.08, 2.20, span_z * 1.0)
+
+		var pos := Vector3((min_x + max_x + 1) * 0.5, 1.10, (min_z + max_z + 1) * 0.5)
+		var zone_idx := _add_zone(size, pos, item_id, phase_idx)
+		for idx in component:
+			slot_zones[idx] = zone_idx
+
+func _add_zone(size: Vector3, pos: Vector3, item_id: String, phase_idx: int) -> int:
+	var mi  := MeshInstance3D.new()
 	var box := BoxMesh.new()
-	var pt: int = int(slot.placement_type)
-	box.size = GHOST_SIZE[pt]
-	mesh_inst.mesh = box
+	box.size = size
+	mi.mesh = box
 
+	var item_res := load("res://items/resources/" + item_id + ".tres") as ItemData
+	var base: Color = item_res.color if item_res else Color(0.7, 0.5, 0.2)
 	var mat := StandardMaterial3D.new()
-	var phase_idx: int = clampi(int(slot.phase), 0, PHASE_COLORS.size() - 1)
-	mat.albedo_color = PHASE_COLORS[phase_idx]
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mesh_inst.material_override = mat
-	mesh_inst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mat.albedo_color     = Color(base.r, base.g, base.b, 0.38)
+	mat.transparency     = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode     = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mi.material_override = mat
+	mi.cast_shadow       = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.position          = pos
+	mi.visible           = (phase_idx == current_phase)
+	add_child(mi)
 
-	# Position and rotation in local space — blueprint_instance sits at the plot's origin
-	mesh_inst.position = Vector3(
-		(slot.cell.x + 0.5),
-		GHOST_Y[pt],
-		(slot.cell.y + 0.5)
-	)
-	return mesh_inst
+	zone_meshes.append(mi)
+	zone_phases.append(phase_idx)
+	return zone_meshes.size() - 1
 
-# Returns [BlueprintSlot, slot_index] for the active phase at this cell, or []
+# ── Slot access ───────────────────────────────────────────────────────────────
+
 func get_active_slot_at(cell: Vector2i) -> Array:
 	for i in range(blueprint_data.slots.size()):
 		var slot: BlueprintSlot = blueprint_data.slots[i]
@@ -74,8 +127,16 @@ func get_active_slot_at(cell: Vector2i) -> Array:
 
 func fill_slot(index: int) -> void:
 	filled[index] = true
-	if ghost_nodes.has(index):
-		ghost_nodes[index].hide()
+	# Hide zone mesh when all its slots are filled
+	var zone_idx: int = slot_zones.get(index, -1)
+	if zone_idx >= 0:
+		var all_done := true
+		for si in slot_zones:
+			if slot_zones[si] == zone_idx and not filled.get(si, false):
+				all_done = false
+				break
+		if all_done:
+			zone_meshes[zone_idx].hide()
 	_check_phase_advance()
 
 func _check_phase_advance() -> void:
@@ -83,12 +144,10 @@ func _check_phase_advance() -> void:
 		var slot: BlueprintSlot = blueprint_data.slots[i]
 		if int(slot.phase) == current_phase and not filled.get(i, false):
 			return
-	# All slots in this phase filled — advance
 	current_phase += 1
-	for i in range(blueprint_data.slots.size()):
-		var slot: BlueprintSlot = blueprint_data.slots[i]
-		if int(slot.phase) == current_phase and not filled.get(i, false):
-			ghost_nodes[i].show()
+	for i in range(zone_meshes.size()):
+		if zone_phases[i] == current_phase:
+			zone_meshes[i].show()
 
 func is_complete() -> bool:
 	return filled.size() == blueprint_data.slots.size()
