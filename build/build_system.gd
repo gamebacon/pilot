@@ -7,29 +7,25 @@ const MAX_REACH := 12.0
 
 const COLOR_VALID   := Color(0.1, 1.0, 0.2, 0.45)
 const COLOR_WRONG   := Color(1.0, 0.85, 0.0, 0.45)
-const COLOR_INVALID := Color(1.0, 0.1, 0.1, 0.40)
 
 var _plot: Plot = null
 var _player: CharacterBody3D = null
 var _active := false
-var _current_cell := Vector2i(-1, -1)
 var _current_slot_index := -1
-var _placement_valid := false
+var _placement_valid    := false
 
 @onready var _ghost: MeshInstance3D = $Ghost
-@onready var _build_label: Label = $BuildUI/BuildLabel
+@onready var _build_label: Label    = $BuildUI/BuildLabel
 
 var _mat_valid: StandardMaterial3D
 var _mat_wrong: StandardMaterial3D
-var _mat_invalid: StandardMaterial3D
 
 func _ready() -> void:
-	_plot  = get_node(plot_path)  as Plot
+	_plot   = get_node(plot_path)   as Plot
 	_player = get_node(player_path) as CharacterBody3D
 
-	_mat_valid   = _make_overlay_mat(COLOR_VALID)
-	_mat_wrong   = _make_overlay_mat(COLOR_WRONG)
-	_mat_invalid = _make_overlay_mat(COLOR_INVALID)
+	_mat_valid = _make_overlay_mat(COLOR_VALID)
+	_mat_wrong = _make_overlay_mat(COLOR_WRONG)
 
 	_ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_ghost.hide()
@@ -69,40 +65,41 @@ func _process(_delta: float) -> void:
 	var hit := _raycast_plot_surface()
 	if hit == Vector3.INF:
 		_ghost.hide()
+		_current_slot_index = -1
+		_placement_valid    = false
 		return
-
-	var cell: Vector2i = _plot.world_to_cell(hit)
-	_current_cell = cell
-	_current_slot_index = -1
-	_placement_valid    = false
 
 	var bp := _plot.blueprint_instance
 	if not bp:
 		_ghost.hide()
+		_current_slot_index = -1
 		return
 
-	var result: Array = bp.get_active_slot_at(cell)
+	var local_hit := _plot.to_local(hit)
+	var result: Array = bp.get_nearest_active_slot(local_hit)
 	if result.is_empty():
 		_ghost.hide()
+		_current_slot_index = -1
+		_placement_valid    = false
 		return
 
 	var slot: BlueprintSlot = result[0]
-	_current_slot_index  = result[1]
-	var item_data: ItemData = _get_item_data(slot.required_item_id)
-	var has_item: bool   = _carrying_item_id(slot.required_item_id)
-	_placement_valid     = has_item
+	_current_slot_index = result[1]
 
-	_show_ghost(cell, item_data, _mat_valid if has_item else _mat_wrong)
+	var item_data := _get_item_data(slot.required_item_id)
+	var has_item  := _carrying_item_id(slot.required_item_id)
+	_placement_valid = has_item
 
-func _show_ghost(cell: Vector2i, item_data: ItemData, mat: StandardMaterial3D) -> void:
-	var box := BoxMesh.new()
-	var size := item_data.size if item_data else Vector3.ONE
-	box.size = size
-	_ghost.mesh = box
+	_show_ghost(slot, item_data, _mat_valid if has_item else _mat_wrong)
+
+func _show_ghost(slot: BlueprintSlot, item_data: ItemData,
+		mat: StandardMaterial3D) -> void:
+	var box  := BoxMesh.new()
+	box.size = item_data.size if item_data else Vector3.ONE
+	_ghost.mesh              = box
 	_ghost.material_override = mat
-	_ghost.global_position    = _plot.cell_to_world_center(cell)
-	_ghost.global_position.y  = _plot.get_surface_y() + 0.01  # Slightly above surface
-	_ghost.rotation_degrees   = Vector3.ZERO
+	_ghost.global_position   = _plot.to_global(slot.position)
+	_ghost.rotation_degrees  = slot.rotation_deg
 	_ghost.show()
 
 # ── Build mode ────────────────────────────────────────────────────────────────
@@ -113,14 +110,14 @@ func _enter_build() -> void:
 	GameState.active_build_mode = "blueprint"
 	_active = true
 	_build_label.show()
-	_plot.show_grid()
 
 func _exit_build() -> void:
 	GameState.active_build_mode = ""
 	_active = false
 	_ghost.hide()
 	_build_label.hide()
-	_plot.hide_grid()
+	_current_slot_index = -1
+	_placement_valid    = false
 
 func _update_build_label() -> void:
 	var bp := _plot.blueprint_instance
@@ -132,16 +129,16 @@ func _update_build_label() -> void:
 		return
 	var idx: int            = bp.current_phase
 	var data: BlueprintData = bp.blueprint_data
-	var phase_name: String  = data.phase_names[idx] if idx < data.phase_names.size() else "Phase %d" % idx
+	var phase_name: String  = data.phase_names[idx] if idx < data.phase_names.size() \
+		else "Phase %d" % idx
 
-	# Show which item the currently hovered slot needs
 	var item_hint := ""
 	if _current_slot_index >= 0:
 		var slot: BlueprintSlot = data.slots[_current_slot_index]
 		var item_res := load("res://items/resources/" + slot.required_item_id + ".tres") as ItemData
 		var item_name: String = item_res.display_name if item_res else slot.required_item_id
 		var has: bool = _carrying_item_id(slot.required_item_id)
-		item_hint = "  →  %s %s" % [item_name, "" if has else "(not carrying)"]
+		item_hint = "  →  %s%s" % [item_name, "" if has else " (not carrying)"]
 
 	_build_label.text = "%s%s    [LMB] Place    [B] Exit" % [phase_name, item_hint]
 
@@ -153,56 +150,46 @@ func _try_place() -> void:
 	var bp := _plot.blueprint_instance
 	if not bp:
 		return
-
-	var result: Array = bp.get_active_slot_at(_current_cell)
-	if result.is_empty():
+	if bp.filled.get(_current_slot_index, false):
 		return
 
-	var slot: BlueprintSlot = result[0]
-	var slot_idx: int       = result[1]
-
-	# Get the actual carried item
-	var carried_item: PhysicalItem = _get_carried_item(slot.required_item_id)
+	var slot: BlueprintSlot = bp.blueprint_data.slots[_current_slot_index]
+	var carried_item := _get_carried_item(slot.required_item_id)
 	if not carried_item:
 		return
 
 	carried_item.play_place_sound()
 	_consume_item_by_id(slot.required_item_id)
 
-	# Create placed piece using the actual item
-	var piece := _create_placed_piece_from_item(carried_item)
+	var piece := _create_placed_piece(carried_item)
 	_plot.get_node("PlacedPieces").add_child(piece)
-	piece.global_position   = _plot.cell_to_world_center(_current_cell)
-	piece.global_position.y = _plot.get_surface_y() + 0.01
+	piece.global_position  = _plot.to_global(slot.position)
+	piece.rotation_degrees = slot.rotation_deg
 
-	_plot.place(_current_cell, piece)
-	bp.fill_slot(slot_idx)
+	bp.fill_slot(_current_slot_index)
+	_current_slot_index = -1
+	_placement_valid    = false
 
-# ── Piece creation from actual items ──────────────────────────────────────────
-
-func _create_placed_piece_from_item(carried: PhysicalItem) -> PlacedPlank:
-	var piece := PlacedPlank.new()
+func _create_placed_piece(carried: PhysicalItem) -> PlacedPlank:
+	var piece   := PlacedPlank.new()
 	piece.size  = carried.item_data.size
 	piece.color = carried.item_data.color
 
-	# Build collision
 	var col   := CollisionShape3D.new()
 	var shape := BoxShape3D.new()
 	shape.size = carried.item_data.size
 	col.shape  = shape
 	piece.add_child(col)
 
-	# Build mesh
 	var box := BoxMesh.new()
 	box.size = carried.item_data.size
-	var mi := MeshInstance3D.new()
+	var mi  := MeshInstance3D.new()
 	mi.mesh              = box
 	mi.material_override = _wood_mat(carried.item_data.color)
 	piece.add_child(mi)
 
 	return piece
 
-# Slight random tonal variation per plank to suggest wood grain
 func _wood_mat(base: Color) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
 	var v   := randf_range(-0.07, 0.07)
@@ -213,7 +200,7 @@ func _wood_mat(base: Color) -> StandardMaterial3D:
 	)
 	return mat
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# ── Raycast ───────────────────────────────────────────────────────────────────
 
 func _raycast_plot_surface() -> Vector3:
 	var camera: Camera3D = _player.get_node("Head/Camera3D")
@@ -226,6 +213,8 @@ func _raycast_plot_surface() -> Vector3:
 	if t < 0.1 or t > MAX_REACH:
 		return Vector3.INF
 	return from + dir * t
+
+# ── Inventory helpers ─────────────────────────────────────────────────────────
 
 func _carrying_item_id(item_id: String) -> bool:
 	for item in _player.carried_items:
@@ -246,17 +235,13 @@ func _get_item_data(item_id: String) -> ItemData:
 		var pi := item as PhysicalItem
 		if pi.item_data and pi.item_data.id == item_id:
 			return pi.item_data
+	var path := "res://items/resources/" + item_id + ".tres"
+	if ResourceLoader.exists(path):
+		return load(path) as ItemData
 	return null
 
-func _get_item_color(item_id: String) -> Color:
-	for item in _player.carried_items:
-		var pi := item as PhysicalItem
-		if pi.item_data and pi.item_data.id == item_id:
-			return pi.item_data.color
-	return Color(0.65, 0.42, 0.15)
-
-
 func _consume_item_by_id(item_id: String) -> void:
+	return;
 	for i in range(_player.carried_items.size() - 1, -1, -1):
 		var item := _player.carried_items[i] as PhysicalItem
 		if item.item_data and item.item_data.id == item_id:

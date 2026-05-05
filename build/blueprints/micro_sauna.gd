@@ -1,52 +1,36 @@
 extends BlueprintData
 class_name MicroSaunaBlueprint
 
-# Tiny satisfying build: 2×2 meter sauna
-# Footprint: cells (1,1) to (2,2)
-# Just floor, walls, and roof. Uses all the new materials nicely.
+# Tiny build: 2 m × 2 m floor, wood_board floor, wood_plank walls.
 
 func _init() -> void:
 	display_name = "Micro Sauna"
-	phase_names = [
-		"Structure — planks & floor",
-		"Roof — panels",
-	]
+	phase_names  = ["Structure — planks & boards", "Roof — panels"]
 	_add_structure()
 	_add_roofing()
 
 func _add_structure() -> void:
-	# Interior floor (2×2)
-	for x in range(1, 3):
-		for z in range(1, 3):
-			_slot(Vector2i(x, z), BlueprintSlot.PlacementType.FLOOR, "wood_board", BlueprintSlot.Phase.STRUCTURE)
+	var plank := _load_item("wood_plank")
+	if not plank: return
+	var half_t := plank.size.y * 0.5
+	var height := plank.size.z
 
-	# Perimeter walls
+	# Interior floor: 2 m × 2 m with wood_board
+	_fill_floor(0.0, 0.0, 2.0, 2.0, "wood_board", BlueprintSlot.Phase.STRUCTURE)
+
 	# North wall
-	for x in range(1, 3):
-		_slot(Vector2i(x, 0), BlueprintSlot.PlacementType.WALL, "wood_plank", BlueprintSlot.Phase.STRUCTURE)
+	_fill_wall_x(0.0, 2.0, -half_t, "wood_plank", BlueprintSlot.Phase.STRUCTURE)
 
-	# South wall
-	for x in range(1, 3):
-		_slot(Vector2i(x, 2), BlueprintSlot.PlacementType.WALL, "wood_plank", BlueprintSlot.Phase.STRUCTURE)
+	# South wall — full (no door gap on micro sauna; hatch-style entry)
+	_fill_wall_x(0.0, 2.0, 2.0 + half_t, "wood_plank", BlueprintSlot.Phase.STRUCTURE)
 
 	# West wall
-	for z in range(1, 3):
-		_slot(Vector2i(0, z), BlueprintSlot.PlacementType.WALL, "wood_plank", BlueprintSlot.Phase.STRUCTURE)
+	_fill_wall_z(0.0, 2.0, -half_t, "wood_plank", BlueprintSlot.Phase.STRUCTURE)
 
 	# East wall
-	for z in range(1, 3):
-		_slot(Vector2i(2, z), BlueprintSlot.PlacementType.WALL, "wood_plank", BlueprintSlot.Phase.STRUCTURE)
+	_fill_wall_z(0.0, 2.0, 2.0 + half_t, "wood_plank", BlueprintSlot.Phase.STRUCTURE)
 
 func _add_roofing() -> void:
-	# Roof panels (2×2)
-	for x in range(1, 3):
-		for z in range(1, 3):
-			_slot(Vector2i(x, z), BlueprintSlot.PlacementType.ROOF, "roofing_panel", BlueprintSlot.Phase.ROOFING)
-
-func _slot(cell: Vector2i, type: BlueprintSlot.PlacementType, item_id: String, phase: BlueprintSlot.Phase) -> void:
-	var s := BlueprintSlot.new()
-	s.cell = cell
-	s.placement_type = type
-	s.required_item_id = item_id
-	s.phase = phase
-	slots.append(s)
+	var plank := _load_item("wood_plank")
+	if not plank: return
+	_fill_roof(0.0, 0.0, 2.0, 2.0, plank.size.z, "roofing_panel", BlueprintSlot.Phase.ROOFING)
