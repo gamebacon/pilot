@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://item_insulation_batt"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "insulation_batt"
+display_name = "Insulation Batt"
+price = 15
+description = "140 mm mineral-wool batt, 400 mm wide × 2.4 m tall. Fills one stud bay."
+color = Color(0.90, 0.84, 0.14, 1.0)
+size = Vector3(0.4, 0.14, 2.4)
+mass = 1.2
+carry_stack = 2

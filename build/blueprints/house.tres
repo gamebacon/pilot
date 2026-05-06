@@ -1,0 +1,6 @@
+[gd_resource type="Resource" script_class="HouseBlueprint" format=3 uid="uid://bp_house"]
+
+[ext_resource type="Script" path="res://build/blueprints/house.gd" id="1_bpscript"]
+
+[resource]
+script = ExtResource("1_bpscript")

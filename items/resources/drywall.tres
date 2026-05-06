@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://item_drywall"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "drywall"
+display_name = "Plasterboard"
+price = 16
+description = "13 mm gypsum plasterboard, 1.2 m wide × 2.4 m tall."
+color = Color(0.94, 0.94, 0.92, 1.0)
+size = Vector3(1.2, 0.013, 2.4)
+mass = 3.5
+carry_stack = 1
