@@ -13,6 +13,11 @@
 [ext_resource type="Resource" path="res://items/resources/sauna_panel.tres" id="10_sauna_panel"]
 
 [ext_resource type="Resource" path="res://items/resources/blueprint_traditional_sauna.tres" id="11_bp"]
+[ext_resource type="Resource" path="res://items/resources/blueprint_house.tres" id="12_bp_house"]
+[ext_resource type="Resource" path="res://items/resources/concrete_slab.tres" id="13_concrete_slab"]
+[ext_resource type="Resource" path="res://items/resources/framing_section.tres" id="14_framing_section"]
+[ext_resource type="Resource" path="res://items/resources/insulation_batt.tres" id="15_insulation_batt"]
+[ext_resource type="Resource" path="res://items/resources/drywall.tres" id="16_drywall"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_shop"]
 size = Vector3(2.0, 2.5, 1.0)
@@ -45,7 +50,12 @@ stock = [
     ExtResource("8_wood_board"),
     ExtResource("9_timber_stud"),
     ExtResource("10_sauna_panel"),
-    ExtResource("11_bp")
+    ExtResource("11_bp"),
+    ExtResource("12_bp_house"),
+    ExtResource("13_concrete_slab"),
+    ExtResource("14_framing_section"),
+    ExtResource("15_insulation_batt"),
+    ExtResource("16_drywall")
 ]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
