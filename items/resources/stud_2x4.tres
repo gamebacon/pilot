@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://item_stud_2x4"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "stud_2x4"
+display_name = "2×4 Stud"
+price = 8
+description = "Standard 38×89 mm framing stud, 2.4 m long. The backbone of timber framing."
+color = Color(0.90, 0.76, 0.52, 1.0)
+size = Vector3(0.038, 0.089, 2.4)
+mass = 2.5
+carry_stack = 2

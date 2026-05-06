@@ -10,36 +10,46 @@ anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -280.0
-offset_top = -220.0
-offset_right = 280.0
-offset_bottom = 220.0
+offset_left = -340.0
+offset_top = -280.0
+offset_right = 340.0
+offset_bottom = 280.0
 
 [node name="VBox" type="VBoxContainer" parent="Panel"]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 12.0
-offset_top = 12.0
-offset_right = -12.0
-offset_bottom = -12.0
+offset_left = 16.0
+offset_top = 14.0
+offset_right = -16.0
+offset_bottom = -14.0
+theme_override_constants/separation = 8
 
-[node name="Title" type="Label" parent="Panel/VBox"]
+[node name="Header" type="HBoxContainer" parent="Panel/VBox"]
+
+[node name="TitleLabel" type="Label" parent="Panel/VBox/Header"]
 text = "SHOP"
-horizontal_alignment = 1
-theme_override_font_sizes/font_size = 22
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 20
 
-[node name="HSeparator" type="HSeparator" parent="Panel/VBox"]
+[node name="CurrencyLabel" type="Label" parent="Panel/VBox/Header"]
+text = "$0"
+horizontal_alignment = 2
+theme_override_font_sizes/font_size = 20
 
-[node name="CurrencyLabel" type="Label" parent="Panel/VBox"]
-text = "Balance: $0"
+[node name="HSep" type="HSeparator" parent="Panel/VBox"]
 
 [node name="Scroll" type="ScrollContainer" parent="Panel/VBox"]
 size_flags_vertical = 3
-custom_minimum_size = Vector2(0, 200)
 
 [node name="ItemList" type="VBoxContainer" parent="Panel/VBox/Scroll"]
 size_flags_horizontal = 3
+theme_override_constants/separation = 6
 
-[node name="CloseButton" type="Button" parent="Panel/VBox"]
+[node name="Footer" type="HBoxContainer" parent="Panel/VBox"]
+
+[node name="Spacer" type="Control" parent="Panel/VBox/Footer"]
+size_flags_horizontal = 3
+
+[node name="CloseButton" type="Button" parent="Panel/VBox/Footer"]
 text = "Close  [Esc]"

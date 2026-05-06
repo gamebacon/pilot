@@ -12,6 +12,10 @@ func _process(_delta: float) -> void:
 		_player = get_tree().get_first_node_in_group("player")
 		return
 
+	if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+		hint_label.hide()
+		return
+
 	var target: Node = _player.interact_target
 	if target and target.has_method("get_interact_hint"):
 		var hint: String = target.get_interact_hint(_player)

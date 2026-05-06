@@ -1,23 +1,6 @@
 [gd_scene format=3 uid="uid://shop_scene_001"]
 
 [ext_resource type="Script" path="res://shop/shop.gd" id="1_shop"]
-[ext_resource type="Resource" path="res://items/resources/blueprint_starter.tres" id="2_bp"]
-[ext_resource type="Resource" path="res://items/resources/blueprint_micro_sauna.tres" id="2b_bp_micro"]
-[ext_resource type="Resource" path="res://items/resources/wood_plank.tres" id="3_wood"]
-[ext_resource type="Resource" path="res://items/resources/roofing_panel.tres" id="4_roof"]
-[ext_resource type="Resource" path="res://items/resources/sauna_stone.tres" id="5_stone"]
-[ext_resource type="Resource" path="res://items/resources/glass_window.tres" id="6_glass"]
-[ext_resource type="Resource" path="res://items/resources/isolation.tres" id="7_isolation"]
-[ext_resource type="Resource" path="res://items/resources/wood_board.tres" id="8_wood_board"]
-[ext_resource type="Resource" path="res://items/resources/timber_stud.tres" id="9_timber_stud"]
-[ext_resource type="Resource" path="res://items/resources/sauna_panel.tres" id="10_sauna_panel"]
-
-[ext_resource type="Resource" path="res://items/resources/blueprint_traditional_sauna.tres" id="11_bp"]
-[ext_resource type="Resource" path="res://items/resources/blueprint_house.tres" id="12_bp_house"]
-[ext_resource type="Resource" path="res://items/resources/concrete_slab.tres" id="13_concrete_slab"]
-[ext_resource type="Resource" path="res://items/resources/framing_section.tres" id="14_framing_section"]
-[ext_resource type="Resource" path="res://items/resources/insulation_batt.tres" id="15_insulation_batt"]
-[ext_resource type="Resource" path="res://items/resources/drywall.tres" id="16_drywall"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_shop"]
 size = Vector3(2.0, 2.5, 1.0)
@@ -39,23 +22,22 @@ albedo_color = Color(0.7, 0.5, 0.25, 1)
 
 [node name="Shop" type="StaticBody3D"]
 script = ExtResource("1_shop")
-stock = [
-    ExtResource("2b_bp_micro"),
-    ExtResource("2_bp"),
-    ExtResource("3_wood"),
-    ExtResource("4_roof"),
-    ExtResource("5_stone"),
-    ExtResource("6_glass"),
-    ExtResource("7_isolation"),
-    ExtResource("8_wood_board"),
-    ExtResource("9_timber_stud"),
-    ExtResource("10_sauna_panel"),
-    ExtResource("11_bp"),
-    ExtResource("12_bp_house"),
-    ExtResource("13_concrete_slab"),
-    ExtResource("14_framing_section"),
-    ExtResource("15_insulation_batt"),
-    ExtResource("16_drywall")
+stock_ids = [
+	"blueprint_micro_sauna",
+	"blueprint_starter",
+	"blueprint_traditional_sauna",
+	"blueprint_house",
+	"concrete_slab",
+	"floor_joist",
+	"wall_plate",
+	"wall_stud",
+	"wood_plank",
+	"wood_board",
+	"roofing_panel",
+	"sauna_panel",
+	"sauna_stone",
+	"glass_window",
+	"insulation_batt",
 ]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]

@@ -1,77 +1,117 @@
 extends BlueprintData
 class_name HouseBlueprint
 
-# Nordic cabin — 4 m wide (X) × 6 m long (Z), 2.4 m ceiling.
-# Phase 0 — concrete-slab foundation + stud-wall framing.
-# Phase 1 — flat roof deck and tiles.
-# Phase 2 — mineral-wool insulation + plasterboard lining + wood floor.
+# 4 m wide (X) × 6 m long (Z) house.
+# Builds like a real frame, phase by phase:
+#   0 — concrete slab foundation
+#   1 — floor frame  (2x10 joists, 600 mm OC)
+#   2 — wall skeleton (bottom plate → 2x4 studs at 600 mm OC → top plate)
+#   3 — sheathing & roofing panels
+#
+# Door: 0.8 m rough opening centred at X = 2.0 on the south wall.
 
 const W := 4.0
 const L := 6.0
 
+# Item IDs
+const SLAB  := "concrete_slab"
+const JOIST := "floor_joist"    # 2x10, 4 m span
+const STUD  := "wall_stud"      # 2x4, 2.4 m — vertical framing
+const PLATE := "wall_plate"     # 2x4, 1 m  — horizontal plates
+const ROOF  := "roofing_panel"
+
+# Door rough opening
+const DOOR_X0 := 1.6
+const DOOR_X1 := 2.4
+
 func _init() -> void:
-	display_name = "Simple House"
+	display_name = "House"
 	phase_names = [
-		"Foundation & Framing",
-		"Roof Deck & Tiles",
-		"Insulation & Interior Lining",
+		"Pour Foundation",
+		"Floor Frame",
+		"Wall Skeleton",
+		"Sheathing & Roofing",
 	]
-	_add_structure()
+	_add_foundation()
+	_add_floor_frame()
+	_add_wall_skeleton()
 	_add_roofing()
-	_add_interior()
 
-func _add_structure() -> void:
-	var slab := _load_item("concrete_slab")
-	var stud := _load_item("framing_section")
-	if not (slab and stud): return
+# ── Phase 0 — Foundation ──────────────────────────────────────────────────────
 
-	var half_t := stud.size.y * 0.5
+func _add_foundation() -> void:
+	_fill_floor(0.0, 0.0, W, L, SLAB, 0)
 
-	# Foundation — 4 × 6 m footprint
-	_fill_floor(0.0, 0.0, W, L, "concrete_slab", BlueprintSlot.Phase.STRUCTURE)
+# ── Phase 1 — Floor frame ─────────────────────────────────────────────────────
 
-	# North wall — full span
-	_fill_wall_x(0.0, W, -half_t, "framing_section", BlueprintSlot.Phase.STRUCTURE)
+func _add_floor_frame() -> void:
+	var slab  := _load_item(SLAB)
+	var joist := _load_item(JOIST)
+	if not (slab and joist): return
 
-	# South wall — 0.8 m door gap centred at x = 2.0
-	_fill_wall_x(0.0, 1.6, L + half_t, "framing_section", BlueprintSlot.Phase.STRUCTURE)
-	_fill_wall_x(2.4, W,   L + half_t, "framing_section", BlueprintSlot.Phase.STRUCTURE)
+	# Full-width joists resting on the slab, spaced 600 mm OC.
+	# z = 0 and z = L serve as rim joists at each gable end.
+	var y_base := slab.size.y   # top of slab
+	var z := 0.0
+	while z <= L + 0.001:
+		_fill_horiz_x(0.0, W, z, y_base, JOIST, 1)
+		z = snappedf(z + 0.6, 0.001)
 
-	# West wall
-	_fill_wall_z(0.0, L, -half_t, "framing_section", BlueprintSlot.Phase.STRUCTURE)
+# ── Phase 2 — Wall skeleton ───────────────────────────────────────────────────
 
-	# East wall
-	_fill_wall_z(0.0, L, W + half_t, "framing_section", BlueprintSlot.Phase.STRUCTURE)
+func _add_wall_skeleton() -> void:
+	var slab  := _load_item(SLAB)
+	var joist := _load_item(JOIST)
+	var stud  := _load_item(STUD)
+	var plate := _load_item(PLATE)
+	if not (slab and joist and stud and plate): return
+
+	# Plates sit on top of the floor frame; studs sit on top of the bottom plate.
+	var y_plate := slab.size.y + joist.size.y   # bottom of wall plate = top of joists
+	var y_studs := y_plate + plate.size.y        # bottom of studs
+
+	# Top of studs (= stud height stored as size.z, becomes Y after rotation)
+	var y_top := y_studs + stud.size.z
+
+	# Wall centre positions — inside face flush with plot boundary
+	var half_d := stud.size.y * 0.5
+	var z_n := -half_d
+	var z_s :=  L + half_d
+	var x_w := -half_d
+	var x_e :=  W + half_d
+
+	# ── Bottom plates ────────────────────────────────────────────────────────
+	_fill_horiz_x(0.0, W, z_n, y_plate, PLATE, 2)
+	_fill_horiz_x(0.0, W, z_s, y_plate, PLATE, 2)
+	_fill_horiz_z(0.0, L, x_w, y_plate, PLATE, 2)
+	_fill_horiz_z(0.0, L, x_e, y_plate, PLATE, 2)
+
+	# ── Studs ─────────────────────────────────────────────────────────────────
+	# North wall — full span, 600 mm OC, corner posts at ends
+	_fill_vertical_x(0.0, W, z_n, y_studs, STUD, 2)
+
+	# South wall — king studs at door edges (1.6 and 2.4), rest at 600 mm OC
+	_fill_vertical_x(0.0,    DOOR_X0, z_s, y_studs, STUD, 2)
+	_fill_vertical_x(DOOR_X1, W,      z_s, y_studs, STUD, 2)
+
+	# West and east walls — full span, 600 mm OC, corners included
+	_fill_vertical_z(0.0, L, x_w, y_studs, STUD, 2)
+	_fill_vertical_z(0.0, L, x_e, y_studs, STUD, 2)
+
+	# ── Top plates ───────────────────────────────────────────────────────────
+	_fill_horiz_x(0.0, W, z_n, y_top, PLATE, 2)
+	_fill_horiz_x(0.0, W, z_s, y_top, PLATE, 2)
+	_fill_horiz_z(0.0, L, x_w, y_top, PLATE, 2)
+	_fill_horiz_z(0.0, L, x_e, y_top, PLATE, 2)
+
+# ── Phase 3 — Sheathing & roofing ────────────────────────────────────────────
 
 func _add_roofing() -> void:
-	var stud := _load_item("framing_section")
-	if not stud: return
-	_fill_roof(0.0, 0.0, W, L, stud.size.z, "roofing_panel", BlueprintSlot.Phase.ROOFING)
+	var slab  := _load_item(SLAB)
+	var joist := _load_item(JOIST)
+	var stud  := _load_item(STUD)
+	var plate := _load_item(PLATE)
+	if not (slab and joist and stud and plate): return
 
-func _add_interior() -> void:
-	var stud := _load_item("framing_section")
-	var ins  := _load_item("insulation_batt")
-	var dry  := _load_item("drywall")
-	var slab := _load_item("concrete_slab")
-	if not (stud and ins and dry and slab): return
-
-	# Wood floor boards over the concrete slab
-	_fill_floor(0.0, 0.0, W, L, "wood_board", BlueprintSlot.Phase.INTERIOR, slab.size.y)
-
-	# Offset from the room-edge (inner face of framing)
-	var ins_offset := stud.size.y * 0.5 + ins.size.y * 0.5
-	var dry_offset := stud.size.y * 0.5 + ins.size.y + dry.size.y * 0.5
-
-	# Insulation batts — inside all four walls
-	_fill_wall_x(0.0, W,   ins_offset,       "insulation_batt", BlueprintSlot.Phase.INTERIOR)  # north
-	_fill_wall_x(0.0, 1.6, L - ins_offset,   "insulation_batt", BlueprintSlot.Phase.INTERIOR)  # south left
-	_fill_wall_x(2.4, W,   L - ins_offset,   "insulation_batt", BlueprintSlot.Phase.INTERIOR)  # south right
-	_fill_wall_z(0.0, L,   ins_offset,       "insulation_batt", BlueprintSlot.Phase.INTERIOR)  # west
-	_fill_wall_z(0.0, L,   W - ins_offset,   "insulation_batt", BlueprintSlot.Phase.INTERIOR)  # east
-
-	# Plasterboard — innermost layer on all walls
-	_fill_wall_x(0.0, W,   dry_offset,       "drywall", BlueprintSlot.Phase.INTERIOR)  # north
-	_fill_wall_x(0.0, 1.6, L - dry_offset,   "drywall", BlueprintSlot.Phase.INTERIOR)  # south left
-	_fill_wall_x(2.4, W,   L - dry_offset,   "drywall", BlueprintSlot.Phase.INTERIOR)  # south right
-	_fill_wall_z(0.0, L,   dry_offset,       "drywall", BlueprintSlot.Phase.INTERIOR)  # west
-	_fill_wall_z(0.0, L,   W - dry_offset,   "drywall", BlueprintSlot.Phase.INTERIOR)  # east
+	var roof_y := slab.size.y + joist.size.y + plate.size.y + stud.size.z + plate.size.y
+	_fill_roof(0.0, 0.0, W, L, roof_y, ROOF, 3)

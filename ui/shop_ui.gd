@@ -1,12 +1,15 @@
 extends CanvasLayer
 class_name ShopUI
 
-@onready var panel: Panel = $Panel
+@onready var panel: Panel           = $Panel
 @onready var item_list: VBoxContainer = $Panel/VBox/Scroll/ItemList
-@onready var currency_label: Label = $Panel/VBox/CurrencyLabel
-@onready var close_button: Button = $Panel/VBox/CloseButton
+@onready var currency_label: Label  = $Panel/VBox/Header/CurrencyLabel
+@onready var close_button: Button   = $Panel/VBox/Footer/CloseButton
 
 var _current_shop: Node = null
+
+const COL_DIM  := Color(0.60, 0.60, 0.60)
+const COL_HEAD := Color(0.50, 0.50, 0.50)
 
 func _ready() -> void:
 	add_to_group("shop_ui")
@@ -26,24 +29,107 @@ func _on_close() -> void:
 	_current_shop = null
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
+# ── Population ────────────────────────────────────────────────────────────────
+
 func _populate(stock: Array[ItemData]) -> void:
 	for child in item_list.get_children():
 		child.queue_free()
 
+	var blueprints: Array[ItemData] = []
+	var materials:  Array[ItemData] = []
 	for item in stock:
-		var row := HBoxContainer.new()
+		if item.is_blueprint:
+			blueprints.append(item)
+		else:
+			materials.append(item)
 
-		var name_label := Label.new()
-		name_label.text = "%s — $%d" % [item.display_name, item.price]
-		name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(name_label)
+	blueprints.sort_custom(func(a, b): return a.display_name < b.display_name)
+	materials.sort_custom(func(a, b): return a.display_name < b.display_name)
 
-		var buy_btn := Button.new()
-		buy_btn.text = "Buy"
-		buy_btn.pressed.connect(_buy_item.bind(item))
-		row.add_child(buy_btn)
+	if blueprints.size() > 0:
+		_add_section("BLUEPRINTS")
+		for item in blueprints:
+			_add_row(item)
+	if materials.size() > 0:
+		_add_section("MATERIALS")
+		for item in materials:
+			_add_row(item)
 
-		item_list.add_child(row)
+func _add_section(title: String) -> void:
+	var sep := HSeparator.new()
+	item_list.add_child(sep)
+	var lbl := Label.new()
+	lbl.text = title
+	lbl.add_theme_font_size_override("font_size", 10)
+	lbl.add_theme_color_override("font_color", COL_HEAD)
+	lbl.add_theme_constant_override("outline_size", 0)
+	item_list.add_child(lbl)
+
+func _add_row(item: ItemData) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+
+	# ── Color swatch ──────────────────────────────────────────────────────────
+	var swatch := ColorRect.new()
+	swatch.color = item.color
+	swatch.custom_minimum_size = Vector2(26, 26)
+	swatch.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(swatch)
+
+	# ── Name + subtitle ───────────────────────────────────────────────────────
+	var col := VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_theme_constant_override("separation", 1)
+
+	var name_lbl := Label.new()
+	name_lbl.text = item.display_name
+	name_lbl.add_theme_font_size_override("font_size", 14)
+	col.add_child(name_lbl)
+
+	var sub_lbl := Label.new()
+	sub_lbl.text = _subtitle(item)
+	sub_lbl.add_theme_font_size_override("font_size", 10)
+	sub_lbl.add_theme_color_override("font_color", COL_DIM)
+	col.add_child(sub_lbl)
+
+	row.add_child(col)
+
+	# ── Price ─────────────────────────────────────────────────────────────────
+	var price_lbl := Label.new()
+	price_lbl.text = "$%d" % item.price
+	price_lbl.custom_minimum_size = Vector2(52, 0)
+	price_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	price_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	price_lbl.add_theme_font_size_override("font_size", 14)
+	row.add_child(price_lbl)
+
+	# ── Buy button ────────────────────────────────────────────────────────────
+	var btn := Button.new()
+	btn.text = "Buy"
+	btn.custom_minimum_size = Vector2(58, 0)
+	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	btn.pressed.connect(_buy_item.bind(item))
+	row.add_child(btn)
+
+	item_list.add_child(row)
+
+# ── Formatting ────────────────────────────────────────────────────────────────
+
+func _subtitle(item: ItemData) -> String:
+	if item.is_blueprint and item.blueprint_data:
+		var n := item.blueprint_data.phase_names.size()
+		return "%d-phase build guide" % n
+	return _fmt_dims(item.size)
+
+func _fmt_dims(s: Vector3) -> String:
+	return "%s × %s × %s" % [_fmt_val(s.x), _fmt_val(s.y), _fmt_val(s.z)]
+
+func _fmt_val(v: float) -> String:
+	if v < 0.095:
+		return "%d mm" % roundi(v * 1000.0)
+	return "%.1f m" % v
+
+# ── Buying ────────────────────────────────────────────────────────────────────
 
 func _buy_item(item: ItemData) -> void:
 	if not GameState.spend_currency(item.price):
@@ -53,7 +139,7 @@ func _buy_item(item: ItemData) -> void:
 		_current_shop.spawn_item(item)
 
 func _update_currency(amount: int) -> void:
-	currency_label.text = "Balance: $%d" % amount
+	currency_label.text = "$%d" % amount
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") and panel.visible:

@@ -71,7 +71,7 @@ func _play(stream: AudioStream) -> void:
 
 # --- Collision sound (automatic) ---
 func _on_body_entered(body: Node) -> void:
-	if _collide_cooldown > 0.0:
+	if freeze or _collide_cooldown > 0.0:
 		return
 	# Only play if impact is strong enough
 	var impact := linear_velocity.length()

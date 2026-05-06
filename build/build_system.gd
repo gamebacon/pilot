@@ -62,21 +62,13 @@ func _process(_delta: float) -> void:
 
 	_update_build_label()
 
-	var hit := _raycast_plot_surface()
-	if hit == Vector3.INF:
-		_ghost.hide()
-		_current_slot_index = -1
-		_placement_valid    = false
-		return
-
 	var bp := _plot.blueprint_instance
 	if not bp:
 		_ghost.hide()
 		_current_slot_index = -1
 		return
 
-	var local_hit := _plot.to_local(hit)
-	var result: Array = bp.get_nearest_active_slot(local_hit)
+	var result: Array = _nearest_slot_on_ray(bp)
 	if result.is_empty():
 		_ghost.hide()
 		_current_slot_index = -1
@@ -200,19 +192,42 @@ func _wood_mat(base: Color) -> StandardMaterial3D:
 	)
 	return mat
 
-# ── Raycast ───────────────────────────────────────────────────────────────────
+# ── Slot picking via camera ray ───────────────────────────────────────────────
 
-func _raycast_plot_surface() -> Vector3:
+# Returns [BlueprintSlot, index] of the active slot whose world position is
+# closest to the camera ray, within MAX_REACH and a 1.2 m snap radius.
+func _nearest_slot_on_ray(bp: BlueprintInstance) -> Array:
 	var camera: Camera3D = _player.get_node("Head/Camera3D")
-	var from := camera.global_position
-	var dir  := -camera.global_transform.basis.z.normalized()
-	var sy   := _plot.get_surface_y()
-	if abs(dir.y) < 0.001:
-		return Vector3.INF
-	var t := (sy - from.y) / dir.y
-	if t < 0.1 or t > MAX_REACH:
-		return Vector3.INF
-	return from + dir * t
+	var ray_origin := camera.global_position
+	var ray_dir    := -camera.global_transform.basis.z.normalized()
+
+	const SNAP_DIST := 1.2
+
+	var best_dist := SNAP_DIST
+	var best_slot: BlueprintSlot = null
+	var best_idx  := -1
+
+	for i in range(bp.blueprint_data.slots.size()):
+		var slot: BlueprintSlot = bp.blueprint_data.slots[i]
+		if int(slot.phase) != bp.current_phase: continue
+		if bp.filled.get(i, false):             continue
+
+		var world_pos := _plot.to_global(slot.position)
+		var to_slot   := world_pos - ray_origin
+		var proj      := to_slot.dot(ray_dir)
+		if proj < 0.1 or proj > MAX_REACH:      continue
+
+		# perpendicular distance from slot centre to the ray
+		var closest := ray_origin + ray_dir * proj
+		var dist    := (world_pos - closest).length()
+		if dist < best_dist:
+			best_dist = dist
+			best_slot = slot
+			best_idx  = i
+
+	if best_slot:
+		return [best_slot, best_idx]
+	return []
 
 # ── Inventory helpers ─────────────────────────────────────────────────────────
 

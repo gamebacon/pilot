@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://item_wall_plate"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "wall_plate"
+display_name = "Wall Plate"
+price = 5
+description = "1 m 2x4 plate. Used as bottom and top plates in wall framing."
+color = Color(0.82, 0.68, 0.44, 1.0)
+size = Vector3(0.038, 0.038, 1.0)
+mass = 1.5
+carry_stack = 4

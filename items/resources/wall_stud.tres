@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://item_wall_stud"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "wall_stud"
+display_name = "Wall Stud"
+price = 8
+description = "2x4 framing stud, 2.4 m tall. Used for wall skeleton framing."
+color = Color(0.85, 0.70, 0.48, 1.0)
+size = Vector3(0.089, 0.038, 2.4)
+mass = 3.5
+carry_stack = 2
