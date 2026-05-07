@@ -32,4 +32,8 @@ func spawn_item(item_data: ItemData) -> void:
 	var item := item_scene.instantiate() as PhysicalItem
 	item.item_data = item_data
 	get_tree().current_scene.add_child(item)
-	item.global_position = spawn_point.global_position + Vector3(randf_range(-0.3, 0.3), 0.5, 0)
+	# Spawn in front of the counter face so items can't clip inside the mesh.
+	var forward := -global_transform.basis.z
+	item.global_position = spawn_point.global_position \
+		+ forward * 0.7 \
+		+ Vector3(randf_range(-0.2, 0.2), 0.1, 0.0)

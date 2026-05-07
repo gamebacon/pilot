@@ -1,31 +1,25 @@
 extends CanvasLayer
 
-@onready var carry_label: Label = $Panel/VBox/CarryLabel
+@onready var carry_label:    Label = $Panel/VBox/CarryLabel
 @onready var currency_label: Label = $Panel/VBox/CurrencyLabel
-
-var _player: Node = null
 
 func _ready() -> void:
 	GameState.currency_changed.connect(func(v): currency_label.text = "$%d" % v)
 	currency_label.text = "$%d" % GameState.currency
 
 func _process(_delta: float) -> void:
-	if not _player:
-		_player = get_tree().get_first_node_in_group("player")
+	var player = get_tree().get_first_node_in_group("player")
+	if not player:
 		return
+	player.inventory.changed.connect(_on_inventory_changed)
+	_on_inventory_changed(player.inventory.items, player.inventory.capacity)
+	set_process(false)
 
-	var items: Array = _player.carried_items
+func _on_inventory_changed(items: Array[PhysicalItem], capacity: int) -> void:
 	if items.is_empty():
 		carry_label.text = "Hands empty"
 		return
-
 	var lines := PackedStringArray()
 	for item in items:
-		var name: String = item.item_data.display_name if item.item_data else "?"
-		lines.append(name)
-
-	carry_label.text = "Carrying (%d/%d):\n%s" % [
-		items.size(),
-		_player.carry_capacity,
-		"\n".join(lines)
-	]
+		lines.append(item.item_data.display_name if item.item_data else "?")
+	carry_label.text = "Carrying (%d/%d):\n%s" % [items.size(), capacity, "\n".join(lines)]

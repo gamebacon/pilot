@@ -1,26 +1,20 @@
 extends Node
 
-@export var player_path: NodePath
-
-# How close (metres) a ghost socket must be to a placed socket to snap
 const SNAP_DIST := 0.3
-# Degrees rotated per key press
 const ROT_STEP  := 90.0
-# Max ray distance when aiming
 const MAX_REACH := 15.0
 
-var _player: CharacterBody3D
-var _active    := false
-var _snapping  := false
+var _active   := false
+var _snapping := false
 var _planks_root: Node3D
 
-# Item currently being placed (taken from the player's carry)
 var _held_item: PhysicalItem = null
 var _held_data: ItemData     = null
 var _held_size: Vector3      = Vector3.ONE
 
-@onready var _ghost: MeshInstance3D = $Ghost
-@onready var _label: Label          = $UI/Label
+@onready var player: Player = get_tree().get_first_node_in_group("player")
+@onready var _ghost: MeshInstance3D  = $Ghost
+@onready var _label: Label           = $UI/Label
 
 var _mat_free:    StandardMaterial3D
 var _mat_snap:    StandardMaterial3D
@@ -29,20 +23,17 @@ var _mat_blocked: StandardMaterial3D
 # ── Lifecycle ────────────────────────────────────────────────────────────────
 
 func _ready() -> void:
-	_player = get_node(player_path)
-
 	_planks_root      = Node3D.new()
 	_planks_root.name = "PlacedPlanks"
 	get_parent().call_deferred("add_child", _planks_root)
 
 	_mat_snap    = _ghost_mat(Color(0.25, 0.90, 0.35, 0.55))
 	_mat_blocked = _ghost_mat(Color(0.90, 0.20, 0.20, 0.55))
-	_mat_free    = _ghost_mat(Color(1.0, 1.0, 1.0, 0.50))   # replaced per-item on _enter
+	_mat_free    = _ghost_mat(Color(1.0, 1.0, 1.0, 0.50))
 
 	_ghost.cast_shadow       = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_ghost.material_override = _mat_free
 	_ghost.hide()
-
 	_label.hide()
 
 # ── Input ────────────────────────────────────────────────────────────────────
@@ -81,15 +72,15 @@ func _process(_delta: float) -> void:
 		_update_ghost()
 
 func _update_ghost() -> void:
-	var camera: Camera3D = _player.get_node("Head/Camera3D")
-	var from  := camera.global_position
-	var dir   := -camera.global_transform.basis.z
-	var to    := from + dir * MAX_REACH
+	var cam  := player.camera
+	var from := cam.global_position
+	var dir  := -cam.global_transform.basis.z
+	var to   := from + dir * MAX_REACH
 
-	var space := _player.get_world_3d().direct_space_state
+	var space := player.get_world_3d().direct_space_state
 	var query := PhysicsRayQueryParameters3D.create(from, to)
-	query.exclude = [_player.get_rid()]
-	var hit   := space.intersect_ray(query)
+	query.exclude = [player.get_rid()]
+	var hit := space.intersect_ray(query)
 
 	if hit.is_empty():
 		_ghost.hide()
@@ -97,9 +88,6 @@ func _update_ghost() -> void:
 
 	_ghost.show()
 
-	# Sit the piece flush against whatever surface was hit.
-	# Project the held size onto the surface normal so the offset is correct
-	# regardless of current rotation.
 	var basis := _ghost.global_transform.basis
 	var hh    := _held_size * 0.5
 	var half_extent: float = (
@@ -130,11 +118,8 @@ func _is_blocked() -> bool:
 	params.shape     = shape
 	params.transform = _ghost.global_transform
 	params.margin    = -0.02
-	params.exclude   = [_player.get_rid()]
-
-	var space   := _player.get_world_3d().direct_space_state
-	var results := space.intersect_shape(params, 1)
-	return results.size() > 0
+	params.exclude   = [player.get_rid()]
+	return player.get_world_3d().direct_space_state.intersect_shape(params, 1).size() > 0
 
 # ── Snap logic ───────────────────────────────────────────────────────────────
 
@@ -165,55 +150,36 @@ func _place() -> void:
 	if not _ghost.visible or _is_blocked() or _held_item == null:
 		return
 
-	var piece := PlacedPlank.new()
-	piece.size  = _held_size
-	piece.color = _held_data.color
+	var piece := PlacedPlank.build(_held_size, _held_data.color)
 	_planks_root.add_child(piece)
-
-	var t := _ghost.global_transform
-	piece.set_deferred("global_transform", t)
-
-	var shape := BoxShape3D.new()
-	shape.size = _held_size
-	var col := CollisionShape3D.new()
-	col.shape = shape
-	piece.add_child(col)
-
-	var box := BoxMesh.new()
-	box.size = _held_size
-	var mi := MeshInstance3D.new()
-	mi.mesh              = box
-	mi.material_override = _piece_mat(_held_data.color)
-	piece.add_child(mi)
+	piece.set_deferred("global_transform", _ghost.global_transform)
 
 	_held_item.play_place_sound()
-
 	_consume_held()
 
 func _consume_held() -> void:
-	_player.carried_items.erase(_held_item)
+	player.inventory.remove(_held_item)
 	_held_item.queue_free()
 	_held_item = null
 
-	# If more items remain, switch to the next one; otherwise exit build mode
-	if _player.carried_items.is_empty():
+	if player.inventory.is_empty():
 		_exit()
 	else:
-		_hold(_player.carried_items.back())
+		_hold(player.inventory.last())
 		_refresh_ghost_for_held()
 
 # ── Remove placed piece ───────────────────────────────────────────────────────
 
 func _remove_piece() -> void:
-	var camera: Camera3D = _player.get_node("Head/Camera3D")
-	var from  := camera.global_position
-	var dir   := -camera.global_transform.basis.z
-	var to    := from + dir * MAX_REACH
+	var cam  := player.camera
+	var from := cam.global_position
+	var dir  := -cam.global_transform.basis.z
+	var to   := from + dir * MAX_REACH
 
-	var space := _player.get_world_3d().direct_space_state
+	var space := player.get_world_3d().direct_space_state
 	var query := PhysicsRayQueryParameters3D.create(from, to)
-	query.exclude = [_player.get_rid()]
-	var hit   := space.intersect_ray(query)
+	query.exclude = [player.get_rid()]
+	var hit := space.intersect_ray(query)
 
 	if hit.is_empty():
 		return
@@ -240,9 +206,6 @@ func _refresh_ghost_for_held() -> void:
 	_mat_free = _ghost_mat(Color(c.r, c.g, c.b, 0.5))
 	_ghost.material_override = _mat_free
 
-	# Keep rotation for next peice? ( commented out )
-	# _ghost.rotation = Vector3.ZERO
-
 	_label.text = _hint_text()
 
 func _hint_text() -> String:
@@ -264,11 +227,11 @@ func _hint_text() -> String:
 func _enter() -> void:
 	if GameState.active_build_mode != GameConstants.BUILD_NONE:
 		return
-	if _player.carried_items.is_empty():
+	if player.inventory.is_empty():
 		return
 	GameState.active_build_mode = GameConstants.BUILD_FREEPLACE
 
-	_hold(_player.carried_items.back())
+	_hold(player.inventory.last())
 	_refresh_ghost_for_held()
 
 	_active = true
@@ -277,13 +240,13 @@ func _enter() -> void:
 
 func _exit() -> void:
 	GameState.active_build_mode = GameConstants.BUILD_NONE
-	_active     = false
-	_held_item  = null
-	_held_data  = null
+	_active    = false
+	_held_item = null
+	_held_data = null
 	_ghost.hide()
 	_label.hide()
 
-# ── Material helpers ──────────────────────────────────────────────────────────
+# ── Ghost material ────────────────────────────────────────────────────────────
 
 func _ghost_mat(color: Color) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
@@ -291,15 +254,3 @@ func _ghost_mat(color: Color) -> StandardMaterial3D:
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.shading_mode  = BaseMaterial3D.SHADING_MODE_UNSHADED
 	return m
-
-# Solid material with slight per-piece tonal variation for a natural look
-func _piece_mat(base: Color) -> StandardMaterial3D:
-	var mat := StandardMaterial3D.new()
-	var v   := randf_range(-0.05, 0.05)
-	mat.albedo_color = Color(
-		clampf(base.r + v, 0.0, 1.0),
-		clampf(base.g + v, 0.0, 1.0),
-		clampf(base.b + v, 0.0, 1.0),
-		base.a
-	)
-	return mat
