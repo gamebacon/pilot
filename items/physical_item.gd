@@ -88,4 +88,4 @@ func interact(player: Node) -> void:
 
 func get_interact_hint(_player: Node) -> String:
 	var n: String = item_data.display_name if item_data else "item"
-	return "[E]  Pick up  %s" % n
+	return "%s  Pick up  %s" % [InputHelper.action_label("interact"), n]

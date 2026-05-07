@@ -6,7 +6,7 @@ class_name ItemData
 @export var price: int = 10
 @export var description: String = ""
 
-# Shop section — e.g. "Timber & Framing", "Boarding & Cladding", "Masonry" etc.
+# Shop section — use constants from GameConstants (CAT_TIMBER, CAT_SAUNA, etc.)
 @export var category: String = ""
 
 # --- Audio (all optional — leave empty to use defaults) ---

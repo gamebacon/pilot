@@ -56,20 +56,23 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not _active:
 		return
 
-	if event is InputEventKey and event.pressed and not event.echo:
-		var sign := -1.0 if event.shift_pressed else 1.0
-		var step  := deg_to_rad(ROT_STEP) * sign
-		match event.keycode:
-			KEY_R: _ghost.global_rotate(Vector3.UP,      step)
-			KEY_X: _ghost.global_rotate(Vector3.RIGHT,   step)
-			KEY_Z: _ghost.global_rotate(Vector3.FORWARD, step)
-			KEY_Q: _ghost.rotation_degrees = Vector3.ZERO
-			KEY_F: _remove_piece()
+	if event is InputEventKey and not event.echo:
+		if event.is_action_pressed("rotate_y"):
+			var sign := -1.0 if event.shift_pressed else 1.0
+			_ghost.global_rotate(Vector3.UP, deg_to_rad(ROT_STEP) * sign)
+		elif event.is_action_pressed("rotate_x"):
+			_ghost.global_rotate(Vector3.RIGHT, deg_to_rad(ROT_STEP))
+		elif event.is_action_pressed("rotate_z"):
+			_ghost.global_rotate(Vector3.FORWARD, deg_to_rad(ROT_STEP))
+		elif event.is_action_pressed("reset_rotation"):
+			_ghost.rotation_degrees = Vector3.ZERO
+		elif event.is_action_pressed("remove_piece"):
+			_remove_piece()
 
-	if event is InputEventMouseButton and event.pressed:
-		match event.button_index:
-			MOUSE_BUTTON_LEFT:  _place()
-			MOUSE_BUTTON_RIGHT: _exit()
+	if event.is_action_pressed("place"):
+		_place()
+	elif event.is_action_pressed("exit_build"):
+		_exit()
 
 # ── Per-frame ────────────────────────────────────────────────────────────────
 
@@ -243,20 +246,27 @@ func _refresh_ghost_for_held() -> void:
 	_label.text = _hint_text()
 
 func _hint_text() -> String:
-	var item_name: String = _held_data.display_name if _held_data else "Item"
+	var item_name := _held_data.display_name if _held_data else "Item"
+	var ry  := InputHelper.action_label("rotate_y")
+	var rx  := InputHelper.action_label("rotate_x")
+	var rz  := InputHelper.action_label("rotate_z")
+	var rst := InputHelper.action_label("reset_rotation")
+	var rem := InputHelper.action_label("remove_piece")
+	var plc := InputHelper.action_label("place")
+	var ext := InputHelper.action_label("exit_build")
 	return (
-		"FREEPLACE: %s    [LMB] Place    [RMB] Exit\n" % item_name
-		+ "[R/X/Z] Rotate    [Q] Reset    [F] Remove    [V] Exit"
+		"FREEPLACE: %s    %s Place    %s Exit\n" % [item_name, plc, ext]
+		+ "%s/%s/%s Rotate    %s Reset    %s Remove" % [ry, rx, rz, rst, rem]
 	)
 
 # ── Mode enter / exit ─────────────────────────────────────────────────────────
 
 func _enter() -> void:
-	if GameState.active_build_mode != "":
+	if GameState.active_build_mode != GameConstants.BUILD_NONE:
 		return
 	if _player.carried_items.is_empty():
-		return  # Need an item in hand to enter build mode
-	GameState.active_build_mode = "freeplace"
+		return
+	GameState.active_build_mode = GameConstants.BUILD_FREEPLACE
 
 	_hold(_player.carried_items.back())
 	_refresh_ghost_for_held()
@@ -266,7 +276,7 @@ func _enter() -> void:
 	_label.show()
 
 func _exit() -> void:
-	GameState.active_build_mode = ""
+	GameState.active_build_mode = GameConstants.BUILD_NONE
 	_active     = false
 	_held_item  = null
 	_held_data  = null

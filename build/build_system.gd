@@ -97,14 +97,14 @@ func _show_ghost(slot: BlueprintSlot, item_data: ItemData,
 # ── Build mode ────────────────────────────────────────────────────────────────
 
 func _enter_build() -> void:
-	if GameState.active_build_mode != "":
+	if GameState.active_build_mode != GameConstants.BUILD_NONE:
 		return
-	GameState.active_build_mode = "blueprint"
+	GameState.active_build_mode = GameConstants.BUILD_BLUEPRINT
 	_active = true
 	_build_label.show()
 
 func _exit_build() -> void:
-	GameState.active_build_mode = ""
+	GameState.active_build_mode = GameConstants.BUILD_NONE
 	_active = false
 	_ghost.hide()
 	_build_label.hide()
@@ -113,11 +113,14 @@ func _exit_build() -> void:
 
 func _update_build_label() -> void:
 	var bp := _plot.blueprint_instance
+	var e_key  := InputHelper.action_label("interact")
+	var b_key  := InputHelper.action_label("build_mode")
+	var lmb    := InputHelper.action_label("place")
 	if not bp:
-		_build_label.text = "Carry a blueprint to the plot, walk up and press [E]    [B] Exit"
+		_build_label.text = "Carry a blueprint to the plot, walk up and press %s    %s Exit" % [e_key, b_key]
 		return
 	if bp.is_complete():
-		_build_label.text = "BUILD COMPLETE!    [B] Exit"
+		_build_label.text = "BUILD COMPLETE!    %s Exit" % b_key
 		return
 	var idx: int            = bp.current_phase
 	var data: BlueprintData = bp.blueprint_data
@@ -127,12 +130,12 @@ func _update_build_label() -> void:
 	var item_hint := ""
 	if _current_slot_index >= 0:
 		var slot: BlueprintSlot = data.slots[_current_slot_index]
-		var item_res := load("res://items/resources/" + slot.required_item_id + ".tres") as ItemData
+		var item_res := ItemRegistry.get_item(slot.required_item_id)
 		var item_name: String = item_res.display_name if item_res else slot.required_item_id
 		var has: bool = _carrying_item_id(slot.required_item_id)
 		item_hint = "  →  %s%s" % [item_name, "" if has else " (not carrying)"]
 
-	_build_label.text = "%s%s    [LMB] Place    [B] Exit" % [phase_name, item_hint]
+	_build_label.text = "%s%s    %s Place    %s Exit" % [phase_name, item_hint, lmb, b_key]
 
 # ── Placement ────────────────────────────────────────────────────────────────
 
@@ -250,10 +253,7 @@ func _get_item_data(item_id: String) -> ItemData:
 		var pi := item as PhysicalItem
 		if pi.item_data and pi.item_data.id == item_id:
 			return pi.item_data
-	var path := "res://items/resources/" + item_id + ".tres"
-	if ResourceLoader.exists(path):
-		return load(path) as ItemData
-	return null
+	return ItemRegistry.get_item(item_id)
 
 func _consume_item_by_id(item_id: String) -> void:
 	return;

@@ -8,11 +8,10 @@ class_name BlueprintData
 # ── Item loading ──────────────────────────────────────────────────────────────
 
 func _load_item(item_id: String) -> ItemData:
-	var path := "res://items/resources/" + item_id + ".tres"
-	if ResourceLoader.exists(path):
-		return load(path) as ItemData
-	push_error("BlueprintData: missing item resource: " + item_id)
-	return null
+	var item := ItemRegistry.get_item(item_id)
+	if not item:
+		push_error("BlueprintData: unknown item id: " + item_id)
+	return item
 
 # ── Primitive slot builder ────────────────────────────────────────────────────
 

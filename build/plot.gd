@@ -12,7 +12,7 @@ func get_interact_hint(player: Node) -> String:
 	for item in player.carried_items:
 		var pi := item as PhysicalItem
 		if pi.item_data and pi.item_data.is_blueprint:
-			return "[E]  Unroll Blueprint"
+			return "%s  Unroll Blueprint" % InputHelper.action_label("interact")
 	return ""
 
 func interact(player: Node) -> void:

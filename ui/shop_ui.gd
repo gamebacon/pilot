@@ -11,17 +11,6 @@ var _current_shop: Node = null
 const COL_DIM  := Color(0.60, 0.60, 0.60)
 const COL_HEAD := Color(0.72, 0.72, 0.72)
 
-# Ordered list of material categories — sections appear in this order.
-const CATEGORY_ORDER: Array[String] = [
-	"Timber & Framing",
-	"Boarding & Cladding",
-	"Roofing",
-	"Masonry",
-	"Insulation",
-	"Glazing",
-	"Sauna",
-]
-
 func _ready() -> void:
 	add_to_group("shop_ui")
 	panel.hide()
@@ -46,13 +35,13 @@ func _on_close() -> void:
 
 func _capture_mouse() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
 # ── Population ────────────────────────────────────────────────────────────────
 
 func _populate(stock: Array[ItemData]) -> void:
 	for child in item_list.get_children():
 		child.queue_free()
 
-	# Split blueprints from material items
 	var blueprints: Array[ItemData] = []
 	var by_category: Dictionary = {}   # category -> Array[ItemData]
 
@@ -68,13 +57,13 @@ func _populate(stock: Array[ItemData]) -> void:
 	blueprints.sort_custom(func(a, b): return a.display_name < b.display_name)
 
 	if blueprints.size() > 0:
-		_add_section("BLUEPRINTS")
+		_add_section(GameConstants.CAT_BLUEPRINTS.to_upper())
 		for item in blueprints:
 			_add_row(item)
 
-	# Emit categories in predefined order, then any unexpected ones alphabetically
+	# Emit categories in predefined order, then any unrecognised ones alphabetically
 	var ordered: Array[String] = []
-	for cat in CATEGORY_ORDER:
+	for cat in GameConstants.MATERIAL_CATEGORY_ORDER:
 		if by_category.has(cat):
 			ordered.append(cat)
 	for cat in by_category.keys():

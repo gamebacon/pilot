@@ -43,10 +43,7 @@ func _build_zones() -> void:
 		zone_phases[i] = int(slot.phase)
 
 func _load_item(item_id: String) -> ItemData:
-	var path := "res://items/resources/" + item_id + ".tres"
-	if ResourceLoader.exists(path):
-		return load(path) as ItemData
-	return null
+	return ItemRegistry.get_item(item_id)
 
 # ── Slot lookup ───────────────────────────────────────────────────────────────
 
