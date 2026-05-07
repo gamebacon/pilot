@@ -1,15 +1,26 @@
 extends CanvasLayer
 class_name ShopUI
 
-@onready var panel: Panel           = $Panel
+@onready var panel: Panel             = $Panel
 @onready var item_list: VBoxContainer = $Panel/VBox/Scroll/ItemList
-@onready var currency_label: Label  = $Panel/VBox/Header/CurrencyLabel
-@onready var close_button: Button   = $Panel/VBox/Footer/CloseButton
+@onready var currency_label: Label    = $Panel/VBox/Header/CurrencyLabel
+@onready var close_button: Button     = $Panel/VBox/Footer/CloseButton
 
 var _current_shop: Node = null
 
 const COL_DIM  := Color(0.60, 0.60, 0.60)
-const COL_HEAD := Color(0.50, 0.50, 0.50)
+const COL_HEAD := Color(0.72, 0.72, 0.72)
+
+# Ordered list of material categories — sections appear in this order.
+const CATEGORY_ORDER: Array[String] = [
+	"Timber & Framing",
+	"Boarding & Cladding",
+	"Roofing",
+	"Masonry",
+	"Insulation",
+	"Glazing",
+	"Sauna",
+]
 
 func _ready() -> void:
 	add_to_group("shop_ui")
@@ -27,32 +38,54 @@ func open(stock: Array[ItemData], shop: Node) -> void:
 func _on_close() -> void:
 	panel.hide()
 	_current_shop = null
-	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
+	if get_viewport().gui_get_focus_owner():
+		get_viewport().gui_get_focus_owner().release_focus()
+
+	call_deferred("_capture_mouse")
+
+func _capture_mouse() -> void:
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 # ── Population ────────────────────────────────────────────────────────────────
 
 func _populate(stock: Array[ItemData]) -> void:
 	for child in item_list.get_children():
 		child.queue_free()
 
+	# Split blueprints from material items
 	var blueprints: Array[ItemData] = []
-	var materials:  Array[ItemData] = []
+	var by_category: Dictionary = {}   # category -> Array[ItemData]
+
 	for item in stock:
 		if item.is_blueprint:
 			blueprints.append(item)
 		else:
-			materials.append(item)
+			var cat := item.category if item.category != "" else "General"
+			if not by_category.has(cat):
+				by_category[cat] = []
+			by_category[cat].append(item)
 
 	blueprints.sort_custom(func(a, b): return a.display_name < b.display_name)
-	materials.sort_custom(func(a, b): return a.display_name < b.display_name)
 
 	if blueprints.size() > 0:
 		_add_section("BLUEPRINTS")
 		for item in blueprints:
 			_add_row(item)
-	if materials.size() > 0:
-		_add_section("MATERIALS")
-		for item in materials:
+
+	# Emit categories in predefined order, then any unexpected ones alphabetically
+	var ordered: Array[String] = []
+	for cat in CATEGORY_ORDER:
+		if by_category.has(cat):
+			ordered.append(cat)
+	for cat in by_category.keys():
+		if not ordered.has(cat):
+			ordered.append(cat)
+
+	for cat in ordered:
+		var items: Array = by_category[cat]
+		items.sort_custom(func(a, b): return a.display_name < b.display_name)
+		_add_section(cat.to_upper())
+		for item in items:
 			_add_row(item)
 
 func _add_section(title: String) -> void:
@@ -118,7 +151,7 @@ func _add_row(item: ItemData) -> void:
 func _subtitle(item: ItemData) -> String:
 	if item.is_blueprint and item.blueprint_data:
 		var n := item.blueprint_data.phase_names.size()
-		return "%d-phase build guide" % n
+		return "%d-phase build" % n
 	return _fmt_dims(item.size)
 
 func _fmt_dims(s: Vector3) -> String:

@@ -1,6 +1,7 @@
 extends CanvasLayer
 
 @onready var hint_label: Label = $HintLabel
+@onready var crosshair: Label = $Crosshair
 
 var _player: Node = null
 
@@ -14,6 +15,7 @@ func _process(_delta: float) -> void:
 
 	if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 		hint_label.hide()
+		crosshair.hide()
 		return
 
 	var target: Node = _player.interact_target
@@ -24,5 +26,6 @@ func _process(_delta: float) -> void:
 		else:
 			hint_label.text = hint
 			hint_label.show()
+			crosshair.show()
 	else:
 		hint_label.hide()

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://item_blueprint_woodshed"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+[ext_resource type="Resource" uid="uid://bp_woodshed" path="res://build/blueprints/woodshed.tres" id="2_bpdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "blueprint_woodshed"
+display_name = "Firewood Shed Blueprint"
+price = 35
+description = "2-phase plan for a 2.4×3 m open firewood shed — four corner posts and a tarred roof."
+color = Color(0.82, 0.92, 0.72, 1.0)
+size = Vector3(0.30, 0.02, 0.22)
+mass = 0.08
+carry_stack = 1
+is_blueprint = true
+blueprint_data = ExtResource("2_bpdata")

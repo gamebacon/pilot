@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://item_timber_post"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "timber_post"
+display_name = "90×90 Post"
+price = 28
+description = "90×90 mm solid pine post, 3 m long. Corner posts and structural uprights."
+category = "Timber & Framing"
+color = Color(0.82, 0.67, 0.44, 1.0)
+size = Vector3(0.09, 3.0, 0.09)
+mass = 10.0
+carry_stack = 1

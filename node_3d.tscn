@@ -26,7 +26,7 @@ albedo_color = Color(0.3, 0.55, 0.2, 1)
 shape = SubResource("BoxShape3D_ground")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Ground" unique_id=78236794]
-transform = Transform3D(0.99999535, 0.0022070757, 0.002082082, -0.0022112378, 0.9999955, 0.0019908499, -0.002077661, -0.0019954632, 0.9999958, 0.00057029724, 0, 0.012843609)
+transform = Transform3D(0.99999535, 0.0022070757, 0.002082082, -0.0022112378, 0.9999955, 0.0019908499, -0.002077661, -0.0019954632, 0.9999958, 0.0047478676, -0.009831905, -0.00045490265)
 mesh = SubResource("BoxMesh_ground")
 surface_material_override/0 = SubResource("Mat_ground")
 

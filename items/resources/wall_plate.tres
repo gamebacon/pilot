@@ -5,9 +5,10 @@
 [resource]
 script = ExtResource("1_itemdata")
 id = "wall_plate"
-display_name = "Wall Plate"
+display_name = "38×38 Plate"
 price = 5
-description = "1 m 2x4 plate. Used as bottom and top plates in wall framing."
+description = "38×38 mm (2×4) plate, 1.0 m long. Bottom and top plates in wall framing."
+category = "Timber & Framing"
 color = Color(0.82, 0.68, 0.44, 1.0)
 size = Vector3(0.038, 0.038, 1.0)
 mass = 1.5

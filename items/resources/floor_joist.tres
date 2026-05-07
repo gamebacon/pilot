@@ -5,9 +5,10 @@
 [resource]
 script = ExtResource("1_itemdata")
 id = "floor_joist"
-display_name = "Floor Joist"
+display_name = "38×235 Floor Joist"
 price = 22
-description = "2x10 floor joist, 4 m span. Structural support running across the house width."
+description = "38×235 mm (2×10) structural joist, 4.0 m span. Floor and flat-roof framing."
+category = "Timber & Framing"
 color = Color(0.80, 0.65, 0.42, 1.0)
 size = Vector3(0.038, 0.235, 4.0)
 mass = 8.0

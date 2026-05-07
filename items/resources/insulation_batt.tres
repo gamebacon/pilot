@@ -5,9 +5,10 @@
 [resource]
 script = ExtResource("1_itemdata")
 id = "insulation_batt"
-display_name = "Insulation Batt"
+display_name = "Mineral Wool Batt"
 price = 15
-description = "140 mm mineral-wool batt, 400 mm wide × 2.4 m tall. Fills one stud bay."
+description = "140 mm mineral-wool batt, 400 mm wide × 2.4 m tall. Friction-fits one 400 mm stud bay."
+category = "Insulation"
 color = Color(0.90, 0.84, 0.14, 1.0)
 size = Vector3(0.4, 0.14, 2.4)
 mass = 1.2

@@ -23,21 +23,22 @@ albedo_color = Color(0.7, 0.5, 0.25, 1)
 [node name="Shop" type="StaticBody3D"]
 script = ExtResource("1_shop")
 stock_ids = [
-	"blueprint_micro_sauna",
-	"blueprint_starter",
-	"blueprint_traditional_sauna",
+	"blueprint_terrace",
+	"blueprint_woodshed",
+	"blueprint_sauna",
 	"blueprint_house",
-	"concrete_slab",
-	"floor_joist",
-	"wall_plate",
 	"wall_stud",
-	"wood_plank",
-	"wood_board",
+	"wall_plate",
+	"floor_joist",
+	"timber_post",
+	"pine_board",
+	"pine_decking",
 	"roofing_panel",
-	"sauna_panel",
-	"sauna_stone",
-	"glass_window",
+	"concrete_slab",
 	"insulation_batt",
+	"glass_window",
+	"aspen_cladding",
+	"sauna_stone",
 ]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]

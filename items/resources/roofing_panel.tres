@@ -5,9 +5,10 @@
 [resource]
 script = ExtResource("1_itemdata")
 id = "roofing_panel"
-display_name = "Roofing Panel"
+display_name = "Tarred Roof Panel"
 price = 40
-description = "Tarred timber panel for the roof."
+description = "1.0×0.5 m pine panel, tar-coated for weatherproofing. Standard flat and low-pitch roofing."
+category = "Roofing"
 color = Color(0.22, 0.16, 0.10, 1.0)
 size = Vector3(1.0, 0.04, 0.5)
 mass = 3.0

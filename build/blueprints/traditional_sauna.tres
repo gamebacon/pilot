@@ -1,6 +1,0 @@
-[gd_resource type="Resource" script_class="TraditionalSaunaBlueprint" format=3 uid="uid://bp_traditional_sauna"]
-
-[ext_resource type="Script" path="res://build/blueprints/traditional_sauna.gd" id="1_bpscript"]
-
-[resource]
-script = ExtResource("1_bpscript")

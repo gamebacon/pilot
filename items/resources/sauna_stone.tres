@@ -5,9 +5,10 @@
 [resource]
 script = ExtResource("1_itemdata")
 id = "sauna_stone"
-display_name = "Sauna Stone"
-price = 15
-description = "Heat-retaining stones for the kiuas (sauna stove)."
+display_name = "Kiuas Stone"
+price = 12
+description = "Olivine diabase heat stone for the kiuas. Absorbs heat slowly and radiates steam evenly — never use granite."
+category = "Sauna"
 color = Color(0.28, 0.26, 0.24, 1.0)
 size = Vector3(0.28, 0.22, 0.3)
 mass = 5.0

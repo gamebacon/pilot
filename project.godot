@@ -13,7 +13,11 @@ config_version=5
 config/name="Pilot"
 run/main_scene="res://node_3d.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
+boot_splash/bg_color=Color(1, 1, 1, 1)
+boot_splash/stretch_mode=2
+boot_splash/image="uid://cktbam0vo41cn"
 config/icon="res://icon.svg"
+boot_splash/minimum_display_time=1000
 
 [audio]
 
@@ -26,6 +30,7 @@ AudioManager="*uid://cch00ygm1pukj"
 
 [display]
 
+window/size/mode=3
 window/stretch/mode="canvas_items"
 
 [global]
