@@ -122,10 +122,9 @@ func _held_blueprint() -> PhysicalItem:
 func _unhandled_input(event: InputEvent) -> void:
 	if not (_ghost_root and _ghost_root.visible):
 		return
-	if event is InputEventKey and not event.echo:
-		if event.is_action_pressed("rotate_y"):
-			var sign := -1.0 if event.shift_pressed else 1.0
-			_ghost_yrot += 90.0 * sign
+	if event.is_action_pressed("rotate_y") and not event.is_echo():
+		var sign := -1.0 if (event is InputEventKey and event.shift_pressed) else 1.0
+		_ghost_yrot += 90.0 * sign
 
 # ── Interaction ───────────────────────────────────────────────────────────────
 

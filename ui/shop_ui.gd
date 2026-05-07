@@ -1,12 +1,22 @@
 extends CanvasLayer
 class_name ShopUI
 
-@onready var panel: Panel             = $Panel
-@onready var item_list: VBoxContainer = $Panel/VBox/Scroll/ItemList
-@onready var currency_label: Label    = $Panel/VBox/Header/CurrencyLabel
-@onready var close_button: Button     = $Panel/VBox/Footer/CloseButton
+@onready var panel: Panel                   = $Panel
+@onready var scroll: ScrollContainer        = $Panel/VBox/Scroll
+@onready var item_list: VBoxContainer       = $Panel/VBox/Scroll/ItemList
+@onready var currency_label: Label          = $Panel/VBox/Header/CurrencyLabel
+@onready var close_button: Button           = $Panel/VBox/Footer/CloseButton
 
 var _current_shop: Node = null
+var _first_button: Button = null
+
+# Controller navigation — ordered list of every focusable button in the panel.
+# Buy buttons are added in _add_row; close button is appended in open().
+var _focusable: Array[Button] = []
+var _sel: int = 0
+
+const NAV_REPEAT := 0.15   # seconds between repeated scroll steps
+var   _nav_timer := 0.0
 
 const COL_DIM  := Color(0.60, 0.60, 0.60)
 const COL_HEAD := Color(0.72, 0.72, 0.72)
@@ -14,6 +24,7 @@ const COL_HEAD := Color(0.72, 0.72, 0.72)
 func _ready() -> void:
 	add_to_group("shop_ui")
 	panel.hide()
+	scroll.follow_focus = true
 	close_button.pressed.connect(_on_close)
 	GameState.currency_changed.connect(_update_currency)
 
@@ -21,12 +32,21 @@ func open(stock: Array[ItemData], shop: Node) -> void:
 	_current_shop = shop
 	_populate(stock)
 	_update_currency(GameState.currency)
+	close_button.text = "Close  %s" % InputHelper.action_label("ui_cancel")
+	# Close button is always last in the navigation ring.
+	_focusable.append(close_button)
+	_sel = 0
+	_nav_timer = 0.0
 	panel.show()
+	GameState.push_ui()
 	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	if not _focusable.is_empty():
+		_focusable[0].call_deferred("grab_focus")
 
 func _on_close() -> void:
 	panel.hide()
 	_current_shop = null
+	GameState.pop_ui()
 
 	if get_viewport().gui_get_focus_owner():
 		get_viewport().gui_get_focus_owner().release_focus()
@@ -39,6 +59,8 @@ func _capture_mouse() -> void:
 # ── Population ────────────────────────────────────────────────────────────────
 
 func _populate(stock: Array[ItemData]) -> void:
+	_first_button = null
+	_focusable.clear()
 	for child in item_list.get_children():
 		child.queue_free()
 
@@ -130,7 +152,10 @@ func _add_row(item: ItemData) -> void:
 	btn.text = "Buy"
 	btn.custom_minimum_size = Vector2(58, 0)
 	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	btn.pressed.connect(_buy_item.bind(item))
+	btn.pressed.connect(func() -> void: _buy_item(item))
+	if _first_button == null:
+		_first_button = btn
+	_focusable.append(btn)
 	row.add_child(btn)
 
 	item_list.add_child(row)
@@ -154,6 +179,7 @@ func _fmt_val(v: float) -> String:
 # ── Buying ────────────────────────────────────────────────────────────────────
 
 func _buy_item(item: ItemData) -> void:
+	print("Buy")
 	if not GameState.spend_currency(item.price):
 		push_warning("Not enough money for %s ($%d)" % [item.display_name, item.price])
 		return
@@ -163,6 +189,47 @@ func _buy_item(item: ItemData) -> void:
 func _update_currency(amount: int) -> void:
 	currency_label.text = "$%d" % amount
 
+# ── Controller navigation ─────────────────────────────────────────────────────
+
+func _process(delta: float) -> void:
+	if not panel.visible:
+		return
+	_nav_timer = max(0.0, _nav_timer - delta)
+	if _nav_timer > 0.0:
+		return
+	# Left stick Y — same axis as player movement, safe because GameState.ui_open
+	# blocks the player from consuming it.
+	var stick_y := Input.get_axis("move_forward", "move_back")
+	if abs(stick_y) > 0.5:
+		_nav_timer = NAV_REPEAT
+		_move_sel(1 if stick_y > 0 else -1)
+
+func _move_sel(dir: int) -> void:
+	if _focusable.is_empty():
+		return
+	_sel = (_sel + dir + _focusable.size()) % _focusable.size()
+	_focusable[_sel].grab_focus()
+	scroll.ensure_control_visible(_focusable[_sel])
+
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel") and panel.visible:
+	if not panel.visible:
+		return
+	# D-pad up / down — take over so we drive _sel ourselves.
+	if event.is_action_pressed("ui_up", true):
+		_move_sel(-1)
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("ui_down", true):
+		_move_sel(1)
+		get_viewport().set_input_as_handled()
+		return
+	# A  — confirm whatever is selected.
+	if event.is_action_pressed("ui_accept"):
+		if not _focusable.is_empty():
+			_focusable[_sel].pressed.emit()
+		get_viewport().set_input_as_handled()
+		return
+	# B  — always close.
+	if event.is_action_pressed("ui_cancel"):
 		_on_close()
+		get_viewport().set_input_as_handled()

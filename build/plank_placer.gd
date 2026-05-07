@@ -47,18 +47,17 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not _active:
 		return
 
-	if event is InputEventKey and not event.echo:
-		if event.is_action_pressed("rotate_y"):
-			var sign := -1.0 if event.shift_pressed else 1.0
-			_ghost.global_rotate(Vector3.UP, deg_to_rad(ROT_STEP) * sign)
-		elif event.is_action_pressed("rotate_x"):
-			_ghost.global_rotate(Vector3.RIGHT, deg_to_rad(ROT_STEP))
-		elif event.is_action_pressed("rotate_z"):
-			_ghost.global_rotate(Vector3.FORWARD, deg_to_rad(ROT_STEP))
-		elif event.is_action_pressed("reset_rotation"):
-			_ghost.rotation_degrees = Vector3.ZERO
-		elif event.is_action_pressed("remove_piece"):
-			_remove_piece()
+	if event.is_action_pressed("rotate_y") and not event.is_echo():
+		var sign := -1.0 if (event is InputEventKey and event.shift_pressed) else 1.0
+		_ghost.global_rotate(Vector3.UP, deg_to_rad(ROT_STEP) * sign)
+	elif event.is_action_pressed("rotate_x") and not event.is_echo():
+		_ghost.global_rotate(Vector3.RIGHT, deg_to_rad(ROT_STEP))
+	elif event.is_action_pressed("rotate_z") and not event.is_echo():
+		_ghost.global_rotate(Vector3.FORWARD, deg_to_rad(ROT_STEP))
+	elif event.is_action_pressed("reset_rotation") and not event.is_echo():
+		_ghost.rotation_degrees = Vector3.ZERO
+	elif event.is_action_pressed("remove_piece") and not event.is_echo():
+		_remove_piece()
 
 	if event.is_action_pressed("place"):
 		_place()
@@ -70,6 +69,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(_delta: float) -> void:
 	if _active:
 		_update_ghost()
+		_label.text = _hint_text()
 
 func _update_ghost() -> void:
 	var cam  := player.camera

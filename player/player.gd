@@ -8,6 +8,7 @@ const MOUSE_SENS     = 0.002
 
 const WALK_STEP_INTERVAL   = 0.45
 const SPRINT_STEP_INTERVAL = 0.28
+const GAMEPAD_LOOK_SENS    = 2.5
 var _step_timer := 0.0
 
 @onready var head:       Node3D   = $Head
@@ -33,12 +34,15 @@ func _ready() -> void:
 	add_to_group("player")
 
 func _unhandled_input(event: InputEvent) -> void:
+	if GameState.ui_open:
+		return
+
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		rotate_y(-event.relative.x * MOUSE_SENS)
 		head.rotate_x(-event.relative.y * MOUSE_SENS)
 		head.rotation.x = clamp(head.rotation.x, -PI / 2.0, PI / 2.0)
 
-	if event.is_action_pressed("ui_cancel"):
+	if event.is_action_pressed("ui_cancel") and event is InputEventKey:
 		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 
 	if event is InputEventMouseButton and event.pressed:
@@ -52,8 +56,16 @@ func _unhandled_input(event: InputEvent) -> void:
 		drop_last()
 
 func _physics_process(delta: float) -> void:
+	# Always apply gravity so the player doesn't float when UI opens mid-air.
 	if not is_on_floor():
 		velocity += get_gravity() * delta
+
+	if GameState.ui_open:
+		# Bleed off movement so the player stops while UI is open.
+		velocity.x = move_toward(velocity.x, 0, SPRINT_SPEED)
+		velocity.z = move_toward(velocity.z, 0, SPRINT_SPEED)
+		move_and_slide()
+		return
 
 	if Input.is_action_just_pressed("jump") and is_on_floor():
 		velocity.y = JUMP_VELOCITY
@@ -69,9 +81,18 @@ func _physics_process(delta: float) -> void:
 		velocity.x = move_toward(velocity.x, 0, speed)
 		velocity.z = move_toward(velocity.z, 0, speed)
 
+	_apply_gamepad_look(delta)
 	move_and_slide()
 	_tick_footsteps(delta)
 	_update_interact_target()
+
+func _apply_gamepad_look(delta: float) -> void:
+	var look := Input.get_vector("look_left", "look_right", "look_up", "look_down")
+	if look.length_squared() < 0.01:
+		return
+	rotate_y(-look.x * GAMEPAD_LOOK_SENS * delta)
+	head.rotate_x(-look.y * GAMEPAD_LOOK_SENS * delta)
+	head.rotation.x = clamp(head.rotation.x, -PI / 2.0, PI / 2.0)
 
 func _update_interact_target() -> void:
 	if interact_ray.is_colliding():
