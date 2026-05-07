@@ -46,11 +46,12 @@ func stop_music():
 	music_player.stop()
 
 # --- SFX ---
-func play_sfx(stream: AudioStream):
+func play_sfx(stream: AudioStream, pitch: float = 1.0):
 	var player = _get_free_sfx_player()
 	if player:
 		player.stream = stream
 		player.volume_db = linear_to_db(sfx_volume)
+		player.pitch_scale = pitch
 		player.play()
 
 func _get_free_sfx_player() -> AudioStreamPlayer:
