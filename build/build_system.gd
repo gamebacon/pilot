@@ -9,6 +9,7 @@ var _active             := false
 var _current_bp:    BlueprintInstance = null
 var _current_slot_index := -1
 var _placement_valid    := false
+var _place_held         := false  # hysteresis gate: arm ≥ 0.9, disarm ≤ 0.1
 
 @onready var plot:   Plot   = get_tree().get_first_node_in_group("plot")
 @onready var player: Player = get_tree().get_first_node_in_group("player")
@@ -43,15 +44,17 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not _active:
 		return
 
-	if event.is_action_pressed("place"):
-		_try_place()
 
 # ── Per-frame ────────────────────────────────────────────────────────────────
 
 func _process(_delta: float) -> void:
 	if not _active:
 		return
-
+	if Input.is_action_just_pressed("place") and not _place_held:
+		_place_held = true
+		_try_place()
+	elif _place_held and Input.get_action_raw_strength("place") <= 0.1:
+		_place_held = false
 	_update_build_label()
 
 	var result := _nearest_slot_on_ray()
@@ -148,6 +151,7 @@ func _try_place() -> void:
 		return
 
 	carried_item.play_place_sound()
+	_rumble(0.0, 0.7, 0.12)
 	_consume_item_by_id(slot.required_item_id)
 
 	var piece := PlacedPlank.build(carried_item.item_data.size, carried_item.item_data.color)
@@ -165,6 +169,12 @@ func _try_place() -> void:
 	_current_bp         = null
 	_current_slot_index = -1
 	_placement_valid    = false
+
+func _rumble(weak: float, strong: float, duration: float) -> void:
+	var pads := Input.get_connected_joypads()
+	if pads.is_empty():
+		return
+	Input.start_joy_vibration(pads[0], weak, strong, duration)
 
 func _consume_item_by_id(item_id: String) -> void:
 	return;

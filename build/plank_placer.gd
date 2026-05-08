@@ -4,8 +4,9 @@ const SNAP_DIST := 0.3
 const ROT_STEP  := 90.0
 const MAX_REACH := 15.0
 
-var _active   := false
-var _snapping := false
+var _active      := false
+var _snapping    := false
+var _place_held  := false  # hysteresis gate: arm ≥ 0.9, disarm ≤ 0.1
 var _planks_root: Node3D
 
 var _held_item: PhysicalItem = null
@@ -59,17 +60,21 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("remove_piece") and not event.is_echo():
 		_remove_piece()
 
-	if event.is_action_pressed("place"):
-		_place()
-	elif event.is_action_pressed("exit_build"):
+	if event.is_action_pressed("exit_build"):
 		_exit()
 
 # ── Per-frame ────────────────────────────────────────────────────────────────
 
 func _process(_delta: float) -> void:
-	if _active:
-		_update_ghost()
-		_label.text = _hint_text()
+	if not _active:
+		return
+	if Input.is_action_just_pressed("place") and not _place_held:
+		_place_held = true
+		_place()
+	elif _place_held and Input.get_action_raw_strength("place") <= 0.1:
+		_place_held = false
+	_update_ghost()
+	_label.text = _hint_text()
 
 func _update_ghost() -> void:
 	var cam  := player.camera
@@ -155,6 +160,7 @@ func _place() -> void:
 	piece.set_deferred("global_transform", _ghost.global_transform)
 
 	_held_item.play_place_sound()
+	_rumble(0.0, 0.7, 0.12)
 	_consume_held()
 
 func _consume_held() -> void:
@@ -247,6 +253,12 @@ func _exit() -> void:
 	_label.hide()
 
 # ── Ghost material ────────────────────────────────────────────────────────────
+
+func _rumble(weak: float, strong: float, duration: float) -> void:
+	var pads := Input.get_connected_joypads()
+	if pads.is_empty():
+		return
+	Input.start_joy_vibration(pads[0], weak, strong, duration)
 
 func _ghost_mat(color: Color) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
