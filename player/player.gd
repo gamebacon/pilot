@@ -9,7 +9,8 @@ const MAX_CARRY_MASS = 30.0  # kg at which slowdown is maximal
 
 const WALK_STEP_INTERVAL   = 0.45
 const SPRINT_STEP_INTERVAL = 0.28
-const GAMEPAD_LOOK_SENS    = 2.5
+const GAMEPAD_LOOK_SENS       = 2.5
+const GAMEPAD_PRECISION_SCALE = 0.35
 var _step_timer := 0.0
 
 @onready var head:       Node3D   = $Head
@@ -97,8 +98,9 @@ func _apply_gamepad_look(delta: float) -> void:
 	var look := Input.get_vector("look_left", "look_right", "look_up", "look_down")
 	if look.length_squared() < 0.01:
 		return
-	rotate_y(-look.x * GAMEPAD_LOOK_SENS * delta)
-	head.rotate_x(-look.y * GAMEPAD_LOOK_SENS * delta)
+	var scale := GAMEPAD_PRECISION_SCALE if Input.is_action_pressed("precision_look") else 1.0
+	rotate_y(-look.x * GAMEPAD_LOOK_SENS * scale * delta)
+	head.rotate_x(-look.y * GAMEPAD_LOOK_SENS * scale * delta)
 	head.rotation.x = clamp(head.rotation.x, -PI / 2.0, PI / 2.0)
 
 func _update_interact_target() -> void:

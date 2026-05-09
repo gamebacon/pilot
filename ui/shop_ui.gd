@@ -222,12 +222,6 @@ func _unhandled_input(event: InputEvent) -> void:
 		_move_sel(1)
 		get_viewport().set_input_as_handled()
 		return
-	# A  — confirm whatever is selected.
-	if event.is_action_pressed("ui_accept"):
-		if not _focusable.is_empty():
-			_focusable[_sel].pressed.emit()
-		get_viewport().set_input_as_handled()
-		return
 	# B  — always close.
 	if event.is_action_pressed("ui_cancel"):
 		_on_close()
