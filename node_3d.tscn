@@ -40,11 +40,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, -8)
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.1, -4)
 
 [node name="PlankPlacer" parent="." unique_id=2119495639 instance=ExtResource("6_build")]
-player_path = NodePath("../Player")
 
 [node name="BuildSystem" parent="." unique_id=18539979 instance=ExtResource("9_buildsys")]
-plot_path = NodePath("../Plot")
-player_path = NodePath("../Player")
 
 [node name="ShopUI" parent="." unique_id=359418072 instance=ExtResource("3_shopui")]
 

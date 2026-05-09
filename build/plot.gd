@@ -1,6 +1,8 @@
 extends StaticBody3D
 class_name Plot
 
+signal blueprint_added(instance: BlueprintInstance)
+
 var blueprint_instances: Array[BlueprintInstance] = []
 
 var _player:    Player   = null
@@ -153,3 +155,4 @@ func _place_blueprint(data: BlueprintData, world_pos: Vector3, y_rot: float) -> 
 	instance.rotation_degrees.y = y_rot
 	instance.activate(data)
 	blueprint_instances.append(instance)
+	blueprint_added.emit(instance)

@@ -68,6 +68,11 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(_delta: float) -> void:
 	if not _active:
 		return
+	# Keep held item in sync with whatever the player cycles to.
+	var active := player.inventory.active()
+	if active != null and active != _held_item:
+		_hold(active)
+		_refresh_ghost_for_held()
 	if Input.is_action_just_pressed("place") and not _place_held:
 		_place_held = true
 		_place()
@@ -164,6 +169,8 @@ func _place() -> void:
 	_consume_held()
 
 func _consume_held() -> void:
+	if GameState.debug_mode:
+		return  # keep item, keep placing indefinitely
 	player.inventory.remove(_held_item)
 	_held_item.queue_free()
 	_held_item = null
@@ -171,7 +178,7 @@ func _consume_held() -> void:
 	if player.inventory.is_empty():
 		_exit()
 	else:
-		_hold(player.inventory.last())
+		_hold(player.inventory.active())
 		_refresh_ghost_for_held()
 
 # ── Remove placed piece ───────────────────────────────────────────────────────
@@ -237,7 +244,7 @@ func _enter() -> void:
 		return
 	GameState.active_build_mode = GameConstants.BUILD_FREEPLACE
 
-	_hold(player.inventory.last())
+	_hold(player.inventory.active())
 	_refresh_ghost_for_held()
 
 	_active = true

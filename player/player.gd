@@ -5,6 +5,7 @@ const SPEED          = 5.0
 const SPRINT_SPEED   = 9.0
 const JUMP_VELOCITY  = 4.5
 const MOUSE_SENS     = 0.002
+const MAX_CARRY_MASS = 30.0  # kg at which slowdown is maximal
 
 const WALK_STEP_INTERVAL   = 0.45
 const SPRINT_STEP_INTERVAL = 0.28
@@ -53,15 +54,20 @@ func _unhandled_input(event: InputEvent) -> void:
 		_try_interact()
 
 	if event.is_action_pressed("drop"):
-		drop_last()
+		drop_active()
+
+	if event.is_action_pressed("inventory_next") and not interact_target:
+		inventory.cycle_next()
+		_reposition_carried()
+
+	if event.is_action_pressed("debug_toggle"):
+		GameState.debug_mode = !GameState.debug_mode
 
 func _physics_process(delta: float) -> void:
-	# Always apply gravity so the player doesn't float when UI opens mid-air.
 	if not is_on_floor():
 		velocity += get_gravity() * delta
 
 	if GameState.ui_open:
-		# Bleed off movement so the player stops while UI is open.
 		velocity.x = move_toward(velocity.x, 0, SPRINT_SPEED)
 		velocity.z = move_toward(velocity.z, 0, SPRINT_SPEED)
 		move_and_slide()
@@ -72,7 +78,8 @@ func _physics_process(delta: float) -> void:
 
 	var input_dir := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var direction := (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
-	var speed     := SPRINT_SPEED if Input.is_action_pressed("sprint") else SPEED
+	var base_speed := SPRINT_SPEED if Input.is_action_pressed("sprint") else SPEED
+	var speed := base_speed * _carry_weight_multiplier()
 
 	if direction:
 		velocity.x = direction.x * speed
@@ -109,21 +116,38 @@ func pick_up(item: PhysicalItem) -> bool:
 	item.freeze          = true
 	item.collision_layer = 0
 	item.collision_mask  = 0
-	item.position = Vector3(0.25 * inventory.size(), -0.3, -0.6)
 	item.rotation = Vector3(-0.3, 0.0, 0.1)
 	inventory.add(item)
+	_reposition_carried()
 	return true
 
-func drop_last() -> void:
-	var item := inventory.last()
+func drop_active() -> void:
+	var item := inventory.active()
 	if not item:
 		return
 	inventory.remove(item)
+	_reposition_carried()
 	item.reparent(get_tree().current_scene, true)
 	item.collision_layer = 1
 	item.collision_mask  = 1
 	item.freeze          = false
 	item.linear_velocity = -transform.basis.z * 3.0 + Vector3(0, 1, 0)
+
+# Positions all carried items so same-type items stack visually.
+func _reposition_carried() -> void:
+	for item in inventory.items:
+		item.position = Vector3(0.25 * inventory.slot_for(item), -0.3, -0.6)
+		item.rotation = Vector3(-0.3, 0.0, 0.1)
+
+# Returns 1.0 when hands are empty, down to 0.45 at MAX_CARRY_MASS. Bypassed in debug mode.
+func _carry_weight_multiplier() -> float:
+	if GameState.debug_mode:
+		return 1.0
+	var total_mass := 0.0
+	for item in inventory.items:
+		if item.item_data:
+			total_mass += item.item_data.mass
+	return clamp(1.0 - total_mass / MAX_CARRY_MASS, 0.45, 1.0)
 
 func _tick_footsteps(delta: float) -> void:
 	var moving := Vector2(velocity.x, velocity.z).length() > 0.5
@@ -137,7 +161,7 @@ func _tick_footsteps(delta: float) -> void:
 		_play_footstep()
 
 func _play_footstep() -> void:
-	var held := inventory.last()
+	var held := inventory.active()
 	var stream: AudioStream = held.get_walk_sound() if held else preload("res://audio/sfx/footstep_default.mp3")
 	walk_audio.stream      = stream
 	walk_audio.pitch_scale = randf_range(0.9, 1.1)

@@ -1,6 +1,9 @@
 extends Node3D
 class_name BlueprintInstance
 
+signal phase_completed(phase_idx: int)
+signal build_completed()
+
 const SNAP_RADIUS := 0.5  # max XZ distance to snap to a slot
 
 var blueprint_data: BlueprintData = null
@@ -82,10 +85,15 @@ func _check_phase_advance() -> void:
 		var slot: BlueprintSlot = blueprint_data.slots[i]
 		if int(slot.phase) == current_phase and not filled.get(i, false):
 			return
+	var completed_phase := current_phase
 	current_phase += 1
 	for i in slot_zones:
 		if zone_phases[i] == current_phase:
 			slot_zones[i].show()
+	if is_complete():
+		build_completed.emit()
+	else:
+		phase_completed.emit(completed_phase)
 
 func is_complete() -> bool:
 	return filled.size() == blueprint_data.slots.size()

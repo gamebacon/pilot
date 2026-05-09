@@ -177,7 +177,8 @@ func _rumble(weak: float, strong: float, duration: float) -> void:
 	Input.start_joy_vibration(pads[0], weak, strong, duration)
 
 func _consume_item_by_id(item_id: String) -> void:
-	return;
+	if GameState.debug_mode:
+		return
 	var item := player.inventory.remove_by_id(item_id)
 	if item:
 		item.queue_free()

@@ -179,7 +179,6 @@ func _fmt_val(v: float) -> String:
 # ── Buying ────────────────────────────────────────────────────────────────────
 
 func _buy_item(item: ItemData) -> void:
-	print("Buy")
 	if not GameState.spend_currency(item.price):
 		push_warning("Not enough money for %s ($%d)" % [item.display_name, item.price])
 		return
