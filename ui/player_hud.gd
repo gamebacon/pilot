@@ -6,9 +6,12 @@ extends CanvasLayer
 @onready var notification_label:Label = $NotificationLabel
 @onready var blueprint_list:    Label = $BlueprintList
 @onready var debug_badge:       Label = $DebugBadge
+@onready var shift_label:       Label = $ShiftLabel
+@onready var objective_label:   Label = $ObjectiveLabel
 
 var _player: Node = null
 var _plot:   Node = null
+var _day_manager: DayManager = null
 var _connected_instances: Array = []
 var _notify_tween: Tween = null
 
@@ -18,6 +21,8 @@ func _ready() -> void:
 	blueprint_list.hide()
 	debug_badge.hide()
 	GameState.debug_mode_changed.connect(_on_debug_mode_changed)
+	GameState.shift_ended.connect(_on_shift_ended)
+	_update_shift_label(0.0)
 
 func _process(_delta: float) -> void:
 	if not _player:
@@ -25,6 +30,8 @@ func _process(_delta: float) -> void:
 		return
 
 	_try_connect_plot()
+	_try_connect_day_manager()
+	_update_objective()
 
 	if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 		hint_label.hide()
@@ -126,6 +133,14 @@ func _try_connect_plot() -> void:
 	if _plot:
 		_plot.blueprint_added.connect(_on_blueprint_added)
 
+func _try_connect_day_manager() -> void:
+	if _day_manager:
+		return
+	_day_manager = get_tree().get_first_node_in_group("day_manager") as DayManager
+	if _day_manager:
+		_day_manager.timer_updated.connect(_update_shift_label)
+		_update_shift_label(0.0)
+
 func _on_blueprint_added(instance: BlueprintInstance) -> void:
 	if instance in _connected_instances:
 		return
@@ -154,3 +169,40 @@ func _show_notification(text: String) -> void:
 	_notify_tween.tween_property(notification_label, "modulate:a", 1.0, 0.25)
 	_notify_tween.tween_interval(2.5)
 	_notify_tween.tween_property(notification_label, "modulate:a", 0.0, 0.6)
+
+# ── Shift timer ────────────────────────────────────────────────────────────────
+
+func _update_shift_label(seconds: float) -> void:
+	var mins := int(seconds) / 60
+	var secs := int(seconds) % 60
+	if GameState.shift_active:
+		shift_label.text = "DAY %d  |  %02d:%02d" % [GameState.day, mins, secs]
+		var urgency := seconds / 480.0
+		shift_label.add_theme_color_override("font_color",
+			Color(1.0, urgency, urgency * 0.6, 0.9) if urgency < 0.3 else Color(0.9, 0.92, 0.95, 0.85))
+	else:
+		shift_label.text = "DAY %d" % GameState.day
+		shift_label.add_theme_color_override("font_color", Color(0.9, 0.92, 0.95, 0.85))
+
+func _on_shift_ended(pay: int) -> void:
+	_update_shift_label(0.0)
+	_show_notification("SHIFT OVER\n+%d SEK" % pay)
+
+# ── Objective ──────────────────────────────────────────────────────────────────
+
+func _update_objective() -> void:
+	var bp_name: String = _day_manager.get_target_blueprint_name() if _day_manager else "Blueprint"
+	var bp_id:   String = _day_manager.get_target_blueprint_id()   if _day_manager else ""
+
+	var text := ""
+	if GameState.shift_active:
+		text = "▶  Build the %s before time runs out" % bp_name
+	elif GameState.shift_done:
+		text = "▶  Go home and sleep"
+	elif _player and _player.inventory.has_id(bp_id):
+		text = "▶  Go to the factory and clock in"
+	elif _player and not _player.inventory.is_empty():
+		text = "▶  Buy the %s blueprint from the store" % bp_name
+	else:
+		text = "▶  Buy the %s blueprint from the store" % bp_name
+	objective_label.text = text

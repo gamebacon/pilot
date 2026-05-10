@@ -25,7 +25,7 @@ func interact(_player: Node) -> void:
 		ui.open(_stock, self)
 
 func get_interact_hint(_player: Node) -> String:
-	return "%s  Browse Shop" % InputHelper.action_label("interact")
+	return "%s  Browse hardware store" % InputHelper.action_label("interact")
 
 func spawn_item(item_data: ItemData) -> void:
 	var item_scene: PackedScene = preload("res://items/physical_item.tscn")

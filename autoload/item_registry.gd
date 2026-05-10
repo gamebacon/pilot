@@ -12,17 +12,34 @@ func _scan() -> void:
 	if not dir:
 		push_error("ItemRegistry: cannot open " + GameConstants.ITEM_RES_DIR)
 		return
+
+	var all_files: Array[String] = []
 	dir.list_dir_begin()
 	var file := dir.get_next()
 	while file != "":
 		if file.ends_with(".tres"):
-			var res := load(GameConstants.ITEM_RES_DIR + file)
-			if res is ItemData:
-				if _items.has(res.id):
-					push_warning("ItemRegistry: duplicate id '%s' in %s" % [res.id, file])
-				else:
-					_items[res.id] = res
+			all_files.append(file)
 		file = dir.get_next()
+
+	# Pass 1 — materials: load everything except blueprints so that
+	# ItemData is fully populated before blueprint _init() runs.
+	for f in all_files:
+		if not f.begins_with("blueprint_"):
+			_load_tres(f)
+
+	# Pass 2 — blueprints: _init() can now call ItemRegistry.get_item()
+	# and find all materials already registered.
+	for f in all_files:
+		if f.begins_with("blueprint_"):
+			_load_tres(f)
+
+func _load_tres(file: String) -> void:
+	var res := load(GameConstants.ITEM_RES_DIR + file)
+	if res is ItemData:
+		if _items.has(res.id):
+			push_warning("ItemRegistry: duplicate id '%s' in %s" % [res.id, file])
+		else:
+			_items[res.id] = res
 
 # ── Lookups ───────────────────────────────────────────────────────────────────
 

@@ -13,7 +13,7 @@ var _held_item: PhysicalItem = null
 var _held_data: ItemData     = null
 var _held_size: Vector3      = Vector3.ONE
 
-@onready var player: Player = get_tree().get_first_node_in_group("player")
+var player: Player = null
 @onready var _ghost: MeshInstance3D  = $Ghost
 @onready var _label: Label           = $UI/Label
 
@@ -66,6 +66,9 @@ func _unhandled_input(event: InputEvent) -> void:
 # ── Per-frame ────────────────────────────────────────────────────────────────
 
 func _process(_delta: float) -> void:
+	if not player:
+		player = get_tree().get_first_node_in_group("player")
+		return
 	if not _active:
 		return
 	# Keep held item in sync with whatever the player cycles to.

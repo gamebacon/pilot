@@ -166,7 +166,7 @@ func _play_footstep() -> void:
 	var held := inventory.active()
 	var stream: AudioStream = held.get_walk_sound() if held else preload("res://audio/sfx/footstep_default.mp3")
 	walk_audio.stream      = stream
-	walk_audio.pitch_scale = randf_range(0.9, 1.1)
+	walk_audio.pitch_scale = randf_range(1, 1.4)
 	walk_audio.play()
 
 func _try_interact() -> void:

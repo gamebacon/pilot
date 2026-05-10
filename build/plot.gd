@@ -66,6 +66,8 @@ func _rebuild_ghost(data: BlueprintData) -> void:
 	mat.shading_mode  = BaseMaterial3D.SHADING_MODE_UNSHADED
 
 	for slot: BlueprintSlot in data.slots:
+		if int(slot.phase) != 0:
+			continue
 		var item := ItemRegistry.get_item(slot.required_item_id)
 		var size := item.size if item else Vector3.ONE
 		var box  := BoxMesh.new()

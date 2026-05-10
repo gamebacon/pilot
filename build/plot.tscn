@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://build/plot.gd" id="1_plot"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
-size = Vector3(6.0, 0.05, 8.0)
+size = Vector3(6.0, 0.6, 8.0)
 
 [sub_resource type="BoxMesh" id="BoxMesh_floor"]
 size = Vector3(6.0, 0.05, 8.0)

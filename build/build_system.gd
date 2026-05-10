@@ -11,8 +11,8 @@ var _current_slot_index := -1
 var _placement_valid    := false
 var _place_held         := false  # hysteresis gate: arm ≥ 0.9, disarm ≤ 0.1
 
-@onready var plot:   Plot   = get_tree().get_first_node_in_group("plot")
-@onready var player: Player = get_tree().get_first_node_in_group("player")
+var plot:   Plot   = null
+var player: Player = null
 @onready var _ghost:       MeshInstance3D = $Ghost
 @onready var _build_label: Label          = $BuildUI/BuildLabel
 
@@ -48,6 +48,11 @@ func _unhandled_input(event: InputEvent) -> void:
 # ── Per-frame ────────────────────────────────────────────────────────────────
 
 func _process(_delta: float) -> void:
+	if not player:
+		player = get_tree().get_first_node_in_group("player")
+		return
+	if not plot:
+		plot = get_tree().get_first_node_in_group("plot")
 	if not _active:
 		return
 	if Input.is_action_just_pressed("place") and not _place_held:
@@ -121,13 +126,39 @@ func _update_build_label() -> void:
 		_build_label.text = "ALL BUILDS COMPLETE!    %s Exit" % b_key
 		return
 
+	# Find any active (incomplete) blueprint to show phase context
+	var active_bp: BlueprintInstance = null
+	for bp: BlueprintInstance in plot.blueprint_instances:
+		if not bp.is_complete():
+			active_bp = bp
+			break
+
 	if _current_bp == null or _current_slot_index < 0:
-		_build_label.text = "%s Exit" % b_key
+		if active_bp:
+			var p  := active_bp.current_phase
+			var d  := active_bp.blueprint_data
+			var pn := d.phase_names[p] if p < d.phase_names.size() else "Phase %d" % p
+			var pt := 0; var pd := 0
+			for i in range(d.slots.size()):
+				if int(d.slots[i].phase) == p:
+					pt += 1
+					if active_bp.filled.get(i, false): pd += 1
+			_build_label.text = "%s  %d/%d — aim at a glowing slot    %s Exit" % [pn, pd, pt, b_key]
+		else:
+			_build_label.text = "%s Exit" % b_key
 		return
 
 	var idx        := _current_bp.current_phase
 	var data       := _current_bp.blueprint_data
 	var phase_name := data.phase_names[idx] if idx < data.phase_names.size() else "Phase %d" % idx
+
+	var phase_total := 0
+	var phase_done  := 0
+	for i in range(data.slots.size()):
+		var s: BlueprintSlot = data.slots[i]
+		if int(s.phase) == idx:
+			phase_total += 1
+			if _current_bp.filled.get(i, false): phase_done += 1
 
 	var slot: BlueprintSlot = data.slots[_current_slot_index]
 	var item_res    := ItemRegistry.get_item(slot.required_item_id)
@@ -135,7 +166,7 @@ func _update_build_label() -> void:
 	var has         := player.inventory.has_id(slot.required_item_id)
 	var item_hint   := "  →  %s%s" % [item_name, "" if has else " (not carrying)"]
 
-	_build_label.text = "%s%s    %s Place    %s Exit" % [phase_name, item_hint, lmb, b_key]
+	_build_label.text = "%s  %d/%d%s    %s Place    %s Exit" % [phase_name, phase_done, phase_total, item_hint, lmb, b_key]
 
 # ── Placement ────────────────────────────────────────────────────────────────
 
@@ -191,7 +222,7 @@ func _nearest_slot_on_ray() -> Array:
 	var ray_origin := player.camera.global_position
 	var ray_dir    := -player.camera.global_transform.basis.z.normalized()
 
-	const SNAP_DIST := 1.2
+	const SNAP_DIST := 2.0
 
 	var best_dist  := SNAP_DIST
 	var best_bp:     BlueprintInstance = null
