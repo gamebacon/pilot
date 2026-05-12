@@ -1,4 +1,4 @@
-[gd_scene format=3 uid="uid://world_c7bm8xn1p2"]
+[gd_scene format=3 uid="uid://bwbm5ju1n8482"]
 
 [ext_resource type="PackedScene" uid="uid://dv4tifvdnmq6d" path="res://player/player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://shop/shop.tscn" id="2_shop"]
@@ -8,101 +8,17 @@
 [ext_resource type="PackedScene" path="res://build/plank_placer.tscn" id="6_build"]
 [ext_resource type="PackedScene" path="res://ui/player_hud.tscn" id="7_phud"]
 [ext_resource type="PackedScene" path="res://build/build_system.tscn" id="9_buildsys"]
-[ext_resource type="Script" path="res://world/day_manager.gd" id="10_daymgr"]
-[ext_resource type="Script" path="res://world/clock_in.gd" id="11_clockin"]
-[ext_resource type="Script" path="res://world/bed.gd" id="12_bed"]
-[ext_resource type="Script" path="res://world/zone_audio.gd" id="13_zoneaudio"]
-
-; ── Materials ────────────────────────────────────────────────────────────────
-
-[sub_resource type="StandardMaterial3D" id="Mat_snow"]
-albedo_color = Color(0.82, 0.84, 0.87, 1)
-
-[sub_resource type="StandardMaterial3D" id="Mat_road"]
-albedo_color = Color(0.18, 0.18, 0.20, 1)
-
-[sub_resource type="StandardMaterial3D" id="Mat_home"]
-albedo_color = Color(0.50, 0.34, 0.20, 1)
-
-[sub_resource type="StandardMaterial3D" id="Mat_store"]
-albedo_color = Color(0.36, 0.42, 0.52, 1)
-
-[sub_resource type="StandardMaterial3D" id="Mat_factory"]
-albedo_color = Color(0.26, 0.28, 0.32, 1)
-
-[sub_resource type="StandardMaterial3D" id="Mat_pine"]
-albedo_color = Color(0.16, 0.26, 0.18, 1)
-
-[sub_resource type="StandardMaterial3D" id="Mat_trunk"]
-albedo_color = Color(0.22, 0.16, 0.10, 1)
-
-[sub_resource type="StandardMaterial3D" id="Mat_clockin"]
-albedo_color = Color(0.80, 0.72, 0.20, 1)
-
-[sub_resource type="StandardMaterial3D" id="Mat_bed"]
-albedo_color = Color(0.45, 0.38, 0.60, 1)
-
-; ── Meshes ────────────────────────────────────────────────────────────────────
-
-[sub_resource type="BoxMesh" id="Mesh_ground"]
-size = Vector3(300, 0.2, 320)
-
-[sub_resource type="BoxMesh" id="Mesh_road"]
-size = Vector3(8, 0.12, 195)
-
-; Buildings are flat floor plates for now
-[sub_resource type="BoxMesh" id="Mesh_home"]
-size = Vector3(10, 0.3, 8)
-
-[sub_resource type="BoxMesh" id="Mesh_store"]
-size = Vector3(14, 0.3, 10)
-
-[sub_resource type="BoxMesh" id="Mesh_factory"]
-size = Vector3(30, 0.3, 24)
-
-[sub_resource type="BoxMesh" id="Mesh_trunk"]
-size = Vector3(0.4, 2.2, 0.4)
-
-[sub_resource type="BoxMesh" id="Mesh_canopy_low"]
-size = Vector3(2.8, 2.2, 2.8)
-
-[sub_resource type="BoxMesh" id="Mesh_canopy_high"]
-size = Vector3(1.8, 2.0, 1.8)
-
-; Interact props
-[sub_resource type="BoxMesh" id="Mesh_clockin"]
-size = Vector3(0.5, 1.4, 0.5)
-
-[sub_resource type="BoxMesh" id="Mesh_bed"]
-size = Vector3(1.6, 0.45, 0.9)
-
-; ── Collision shapes ──────────────────────────────────────────────────────────
-
-[sub_resource type="BoxShape3D" id="Shape_ground"]
-size = Vector3(300, 0.2, 320)
-
-[sub_resource type="BoxShape3D" id="Shape_home"]
-size = Vector3(10, 0.3, 8)
-
-[sub_resource type="BoxShape3D" id="Shape_store"]
-size = Vector3(14, 0.3, 10)
-
-[sub_resource type="BoxShape3D" id="Shape_factory"]
-size = Vector3(30, 0.3, 24)
-
-[sub_resource type="BoxShape3D" id="Shape_clockin"]
-size = Vector3(0.5, 1.4, 0.5)
-
-[sub_resource type="BoxShape3D" id="Shape_bed"]
-size = Vector3(1.6, 0.45, 0.9)
-
-; ── Sky / Environment ─────────────────────────────────────────────────────────
+[ext_resource type="Script" uid="uid://cdoun5ond01yl" path="res://world/day_manager.gd" id="10_daymgr"]
+[ext_resource type="Script" uid="uid://bc5exddnwdlbj" path="res://world/clock_in.gd" id="11_clockin"]
+[ext_resource type="Script" uid="uid://f6h0qqwohm1e" path="res://world/bed.gd" id="12_bed"]
+[ext_resource type="Script" uid="uid://cugx0hbwkotjh" path="res://world/zone_audio.gd" id="13_zoneaudio"]
+[ext_resource type="Script" uid="uid://dkie6dij4dj3r" path="res://world/world_generator.gd" id="14_worldgen"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
-sky_top_color = Color(0.40, 0.46, 0.54, 1)
-sky_horizon_color = Color(0.60, 0.63, 0.67, 1)
-ground_bottom_color = Color(0.68, 0.70, 0.72, 1)
-ground_horizon_color = Color(0.60, 0.63, 0.67, 1)
+sky_top_color = Color(0.4, 0.46, 0.54, 1)
+sky_horizon_color = Color(0.6, 0.63, 0.67, 1)
+ground_bottom_color = Color(0.68, 0.7, 0.72, 1)
+ground_horizon_color = Color(0.6, 0.63, 0.67, 1)
 sun_angle_max = 25.0
 
 [sub_resource type="Sky" id="Sky_world"]
@@ -115,284 +31,147 @@ ambient_light_source = 2
 ambient_light_color = Color(0.72, 0.78, 0.86, 1)
 ambient_light_energy = 0.55
 
-; ══════════════════════════════════════════════════════════════════════════════
-; NODES
-; ══════════════════════════════════════════════════════════════════════════════
+[sub_resource type="BoxShape3D" id="Shape_home"]
+size = Vector3(10, 0.3, 8)
 
-[node name="World" type="Node3D"]
+[sub_resource type="BoxMesh" id="Mesh_home"]
+size = Vector3(10, 0.3, 8)
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[sub_resource type="StandardMaterial3D" id="Mat_home"]
+albedo_color = Color(0.5, 0.34, 0.2, 1)
+
+[sub_resource type="BoxShape3D" id="Shape_bed"]
+size = Vector3(1.6, 0.45, 0.9)
+
+[sub_resource type="BoxMesh" id="Mesh_bed"]
+size = Vector3(1.6, 0.45, 0.9)
+
+[sub_resource type="StandardMaterial3D" id="Mat_bed"]
+albedo_color = Color(0.45, 0.38, 0.6, 1)
+
+[sub_resource type="BoxShape3D" id="Shape_store"]
+size = Vector3(14, 0.3, 10)
+
+[sub_resource type="BoxMesh" id="Mesh_store"]
+size = Vector3(14, 0.3, 10)
+
+[sub_resource type="StandardMaterial3D" id="Mat_store"]
+albedo_color = Color(0.36, 0.42, 0.52, 1)
+
+[sub_resource type="BoxShape3D" id="Shape_factory"]
+size = Vector3(30, 0.3, 24)
+
+[sub_resource type="BoxMesh" id="Mesh_factory"]
+size = Vector3(30, 0.3, 24)
+
+[sub_resource type="StandardMaterial3D" id="Mat_factory"]
+albedo_color = Color(0.26, 0.28, 0.32, 1)
+
+[sub_resource type="BoxShape3D" id="Shape_clockin"]
+size = Vector3(0.5, 1.4, 0.5)
+
+[sub_resource type="BoxMesh" id="Mesh_clockin"]
+size = Vector3(0.5, 1.4, 0.5)
+
+[sub_resource type="StandardMaterial3D" id="Mat_clockin"]
+albedo_color = Color(0.8, 0.72, 0.2, 1)
+
+[node name="World" type="Node3D" unique_id=1715617911]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=16331963]
 environment = SubResource("Env_world")
 
-[node name="Sun" type="DirectionalLight3D" parent="."]
+[node name="Sun" type="DirectionalLight3D" parent="." unique_id=133769065]
 transform = Transform3D(0.866, -0.354, 0.354, 0, 0.707, 0.707, -0.5, -0.612, 0.612, 0, 20, 0)
-light_color = Color(0.94, 0.88, 0.80, 1)
+light_color = Color(0.94, 0.88, 0.8, 1)
 light_energy = 0.65
 shadow_enabled = true
 
-[node name="DayManager" type="Node" parent="."]
+[node name="DayManager" type="Node" parent="." unique_id=1840698874]
 script = ExtResource("10_daymgr")
 
-; ── Terrain ───────────────────────────────────────────────────────────────────
+[node name="WorldGenerator" type="Node3D" parent="." unique_id=969902809]
+script = ExtResource("14_worldgen")
 
-[node name="Ground" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -100)
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground"]
-shape = SubResource("Shape_ground")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Ground"]
-mesh = SubResource("Mesh_ground")
-surface_material_override/0 = SubResource("Mat_snow")
-
-[node name="Road" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, -93)
-mesh = SubResource("Mesh_road")
-surface_material_override/0 = SubResource("Mat_road")
-
-; ── Home ─────────────────────────────────────────────────────────────────────
-
-[node name="Home" type="Node3D" parent="."]
+[node name="Home" type="Node3D" parent="." unique_id=1558466991]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, -8)
 
-[node name="Building" type="StaticBody3D" parent="Home"]
+[node name="Building" type="StaticBody3D" parent="Home" unique_id=219608121]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Home/Building"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Home/Building" unique_id=1233863746]
 shape = SubResource("Shape_home")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Home/Building"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Home/Building" unique_id=1312619798]
 mesh = SubResource("Mesh_home")
 surface_material_override/0 = SubResource("Mat_home")
 
-; Bed — sleep here to end the day
-[node name="Bed" type="StaticBody3D" parent="Home"]
+[node name="Bed" type="StaticBody3D" parent="Home" unique_id=1227518482]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.23, 4)
 script = ExtResource("12_bed")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Home/Bed"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Home/Bed" unique_id=1577193974]
 shape = SubResource("Shape_bed")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Home/Bed"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Home/Bed" unique_id=1949782682]
 mesh = SubResource("Mesh_bed")
 surface_material_override/0 = SubResource("Mat_bed")
 
-; ── Hardware Store ────────────────────────────────────────────────────────────
-
-[node name="HardwareStore" type="Node3D" parent="."]
+[node name="HardwareStore" type="Node3D" parent="." unique_id=353383794]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 0, -85)
 
-[node name="Building" type="StaticBody3D" parent="HardwareStore"]
+[node name="Building" type="StaticBody3D" parent="HardwareStore" unique_id=160233529]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="HardwareStore/Building"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="HardwareStore/Building" unique_id=354978419]
 shape = SubResource("Shape_store")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="HardwareStore/Building"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="HardwareStore/Building" unique_id=1371832566]
 mesh = SubResource("Mesh_store")
 surface_material_override/0 = SubResource("Mat_store")
 
-[node name="Shop" parent="HardwareStore" instance=ExtResource("2_shop")]
+[node name="Shop" parent="HardwareStore" unique_id=151961027 instance=ExtResource("2_shop")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 6)
 
-; ── Factory ───────────────────────────────────────────────────────────────────
-
-[node name="Factory" type="Node3D" parent="."]
+[node name="Factory" type="Node3D" parent="." unique_id=220394738]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -175)
 
-[node name="Building" type="StaticBody3D" parent="Factory"]
+[node name="Building" type="StaticBody3D" parent="Factory" unique_id=719183457]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Factory/Building"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Factory/Building" unique_id=1248589898]
 shape = SubResource("Shape_factory")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Factory/Building"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Factory/Building" unique_id=2108044591]
 mesh = SubResource("Mesh_factory")
 surface_material_override/0 = SubResource("Mat_factory")
 
-; Clock-in post — interact to start the shift
-[node name="ClockIn" type="StaticBody3D" parent="Factory"]
+[node name="ClockIn" type="StaticBody3D" parent="Factory" unique_id=1846453688]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0.7, 13)
 script = ExtResource("11_clockin")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Factory/ClockIn"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Factory/ClockIn" unique_id=1709736429]
 shape = SubResource("Shape_clockin")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Factory/ClockIn"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Factory/ClockIn" unique_id=374724263]
 mesh = SubResource("Mesh_clockin")
 surface_material_override/0 = SubResource("Mat_clockin")
 
-[node name="Plot" parent="Factory" instance=ExtResource("5_plot")]
+[node name="Plot" parent="Factory" unique_id=1459419196 instance=ExtResource("5_plot")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.35, -6)
 
-[node name="PlankPlacer" parent="Factory" instance=ExtResource("6_build")]
+[node name="PlankPlacer" parent="Factory" unique_id=545762094 instance=ExtResource("6_build")]
 
-[node name="BuildSystem" parent="Factory" instance=ExtResource("9_buildsys")]
+[node name="BuildSystem" parent="Factory" unique_id=1867202592 instance=ExtResource("9_buildsys")]
 
-; ── Trees ─────────────────────────────────────────────────────────────────────
-
-[node name="Trees" type="Node3D" parent="."]
-
-[node name="Tree_R1" type="Node3D" parent="Trees"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 12, 0, -22)
-[node name="Trunk" type="MeshInstance3D" parent="Trees/Tree_R1"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
-mesh = SubResource("Mesh_trunk")
-surface_material_override/0 = SubResource("Mat_trunk")
-[node name="CanopyLow" type="MeshInstance3D" parent="Trees/Tree_R1"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.8, 0)
-mesh = SubResource("Mesh_canopy_low")
-surface_material_override/0 = SubResource("Mat_pine")
-[node name="CanopyHigh" type="MeshInstance3D" parent="Trees/Tree_R1"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.5, 0)
-mesh = SubResource("Mesh_canopy_high")
-surface_material_override/0 = SubResource("Mat_pine")
-
-[node name="Tree_R2" type="Node3D" parent="Trees"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 20, 0, -44)
-[node name="Trunk" type="MeshInstance3D" parent="Trees/Tree_R2"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
-mesh = SubResource("Mesh_trunk")
-surface_material_override/0 = SubResource("Mat_trunk")
-[node name="CanopyLow" type="MeshInstance3D" parent="Trees/Tree_R2"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.8, 0)
-mesh = SubResource("Mesh_canopy_low")
-surface_material_override/0 = SubResource("Mat_pine")
-[node name="CanopyHigh" type="MeshInstance3D" parent="Trees/Tree_R2"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.5, 0)
-mesh = SubResource("Mesh_canopy_high")
-surface_material_override/0 = SubResource("Mat_pine")
-
-[node name="Tree_R3" type="Node3D" parent="Trees"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 15, 0, -68)
-[node name="Trunk" type="MeshInstance3D" parent="Trees/Tree_R3"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
-mesh = SubResource("Mesh_trunk")
-surface_material_override/0 = SubResource("Mat_trunk")
-[node name="CanopyLow" type="MeshInstance3D" parent="Trees/Tree_R3"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.8, 0)
-mesh = SubResource("Mesh_canopy_low")
-surface_material_override/0 = SubResource("Mat_pine")
-[node name="CanopyHigh" type="MeshInstance3D" parent="Trees/Tree_R3"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.5, 0)
-mesh = SubResource("Mesh_canopy_high")
-surface_material_override/0 = SubResource("Mat_pine")
-
-[node name="Tree_R4" type="Node3D" parent="Trees"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 22, 0, -108)
-[node name="Trunk" type="MeshInstance3D" parent="Trees/Tree_R4"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
-mesh = SubResource("Mesh_trunk")
-surface_material_override/0 = SubResource("Mat_trunk")
-[node name="CanopyLow" type="MeshInstance3D" parent="Trees/Tree_R4"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.8, 0)
-mesh = SubResource("Mesh_canopy_low")
-surface_material_override/0 = SubResource("Mat_pine")
-[node name="CanopyHigh" type="MeshInstance3D" parent="Trees/Tree_R4"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.5, 0)
-mesh = SubResource("Mesh_canopy_high")
-surface_material_override/0 = SubResource("Mat_pine")
-
-[node name="Tree_R5" type="Node3D" parent="Trees"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 17, 0, -140)
-[node name="Trunk" type="MeshInstance3D" parent="Trees/Tree_R5"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
-mesh = SubResource("Mesh_trunk")
-surface_material_override/0 = SubResource("Mat_trunk")
-[node name="CanopyLow" type="MeshInstance3D" parent="Trees/Tree_R5"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.8, 0)
-mesh = SubResource("Mesh_canopy_low")
-surface_material_override/0 = SubResource("Mat_pine")
-[node name="CanopyHigh" type="MeshInstance3D" parent="Trees/Tree_R5"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.5, 0)
-mesh = SubResource("Mesh_canopy_high")
-surface_material_override/0 = SubResource("Mat_pine")
-
-[node name="Tree_R6" type="Node3D" parent="Trees"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 0, -160)
-[node name="Trunk" type="MeshInstance3D" parent="Trees/Tree_R6"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
-mesh = SubResource("Mesh_trunk")
-surface_material_override/0 = SubResource("Mat_trunk")
-[node name="CanopyLow" type="MeshInstance3D" parent="Trees/Tree_R6"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.8, 0)
-mesh = SubResource("Mesh_canopy_low")
-surface_material_override/0 = SubResource("Mat_pine")
-[node name="CanopyHigh" type="MeshInstance3D" parent="Trees/Tree_R6"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.5, 0)
-mesh = SubResource("Mesh_canopy_high")
-surface_material_override/0 = SubResource("Mat_pine")
-
-[node name="Tree_L1" type="Node3D" parent="Trees"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 0, -18)
-[node name="Trunk" type="MeshInstance3D" parent="Trees/Tree_L1"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
-mesh = SubResource("Mesh_trunk")
-surface_material_override/0 = SubResource("Mat_trunk")
-[node name="CanopyLow" type="MeshInstance3D" parent="Trees/Tree_L1"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.8, 0)
-mesh = SubResource("Mesh_canopy_low")
-surface_material_override/0 = SubResource("Mat_pine")
-[node name="CanopyHigh" type="MeshInstance3D" parent="Trees/Tree_L1"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.5, 0)
-mesh = SubResource("Mesh_canopy_high")
-surface_material_override/0 = SubResource("Mat_pine")
-
-[node name="Tree_L2" type="Node3D" parent="Trees"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -20, 0, -55)
-[node name="Trunk" type="MeshInstance3D" parent="Trees/Tree_L2"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
-mesh = SubResource("Mesh_trunk")
-surface_material_override/0 = SubResource("Mat_trunk")
-[node name="CanopyLow" type="MeshInstance3D" parent="Trees/Tree_L2"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.8, 0)
-mesh = SubResource("Mesh_canopy_low")
-surface_material_override/0 = SubResource("Mat_pine")
-[node name="CanopyHigh" type="MeshInstance3D" parent="Trees/Tree_L2"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.5, 0)
-mesh = SubResource("Mesh_canopy_high")
-surface_material_override/0 = SubResource("Mat_pine")
-
-[node name="Tree_L3" type="Node3D" parent="Trees"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -14, 0, -115)
-[node name="Trunk" type="MeshInstance3D" parent="Trees/Tree_L3"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
-mesh = SubResource("Mesh_trunk")
-surface_material_override/0 = SubResource("Mat_trunk")
-[node name="CanopyLow" type="MeshInstance3D" parent="Trees/Tree_L3"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.8, 0)
-mesh = SubResource("Mesh_canopy_low")
-surface_material_override/0 = SubResource("Mat_pine")
-[node name="CanopyHigh" type="MeshInstance3D" parent="Trees/Tree_L3"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.5, 0)
-mesh = SubResource("Mesh_canopy_high")
-surface_material_override/0 = SubResource("Mat_pine")
-
-[node name="Tree_L4" type="Node3D" parent="Trees"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 0, -152)
-[node name="Trunk" type="MeshInstance3D" parent="Trees/Tree_L4"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
-mesh = SubResource("Mesh_trunk")
-surface_material_override/0 = SubResource("Mat_trunk")
-[node name="CanopyLow" type="MeshInstance3D" parent="Trees/Tree_L4"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.8, 0)
-mesh = SubResource("Mesh_canopy_low")
-surface_material_override/0 = SubResource("Mat_pine")
-[node name="CanopyHigh" type="MeshInstance3D" parent="Trees/Tree_L4"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.5, 0)
-mesh = SubResource("Mesh_canopy_high")
-surface_material_override/0 = SubResource("Mat_pine")
-
-; ── Player & UI ───────────────────────────────────────────────────────────────
-
-[node name="Player" parent="." instance=ExtResource("1_player")]
+[node name="Player" parent="." unique_id=1464333537 instance=ExtResource("1_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 2)
 
-[node name="ShopUI" parent="." instance=ExtResource("3_shopui")]
+[node name="ShopUI" parent="." unique_id=736422229 instance=ExtResource("3_shopui")]
 
-[node name="InventoryHUD" parent="." instance=ExtResource("4_invhud")]
+[node name="InventoryHUD" parent="." unique_id=366594673 instance=ExtResource("4_invhud")]
 
-[node name="PlayerHUD" parent="." instance=ExtResource("7_phud")]
+[node name="PlayerHUD" parent="." unique_id=1596256977 instance=ExtResource("7_phud")]
 
-[node name="ZoneAudio" type="Node" parent="."]
+[node name="ZoneAudio" type="Node" parent="." unique_id=1486196137]
 script = ExtResource("13_zoneaudio")
