@@ -1,0 +1,162 @@
+[gd_scene format=3 uid="uid://hardware_store"]
+
+[ext_resource type="Script" path="res://shop/shop_building.gd" id="1_building"]
+[ext_resource type="Script" path="res://shop/shop_room.gd" id="2_room"]
+[ext_resource type="Script" path="res://shop/shop_shelf.gd" id="3_shelf"]
+[ext_resource type="PackedScene" path="res://shop/shop_shelf_slot.tscn" id="4_slot"]
+
+[node name="HardwareStore" type="Node3D"]
+script = ExtResource("1_building")
+shop_label = "Rautakauppa"
+shop_type = "hardware"
+stock_ids = [
+	"timber_stud",   "timber_post",   "floor_joist",   "wall_stud",
+	"pine_board",    "pine_decking",  "aspen_cladding","roofing_panel",
+	"concrete_slab", "insulation_batt","glass_window",  "wall_plate",
+	"drywall",       "sauna_panel",   "sauna_stone",   "wood_plank",
+]
+
+[node name="Room" type="Node3D" parent="."]
+script = ExtResource("2_room")
+width = 10.0
+depth = 16.0
+height = 3.2
+door_width = 4.0
+floor_color = Color(0.45, 0.42, 0.38, 1)
+wall_color = Color(0.80, 0.78, 0.73, 1)
+
+[node name="Light" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.8, -8)
+omni_range = 14.0
+light_energy = 1.5
+
+[node name="Sign" type="Label3D" parent="."]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 2.7, -0.14)
+text = "RAUTAKAUPPA"
+font_size = 64
+pixel_size = 0.0018
+billboard = 0
+modulate = Color(0.06, 0.04, 0.02, 1)
+outline_size = 6
+outline_modulate = Color(0.95, 0.65, 0.10, 0.95)
+double_sided = true
+
+[node name="ShelfA" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -3.5)
+script = ExtResource("3_shelf")
+shelf_width = 7.0
+shelf_color = Color(0.55, 0.40, 0.22, 1)
+
+[node name="SlotA_F1" parent="ShelfA" instance=ExtResource("4_slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.625, 0.82, 0.44)
+
+[node name="SlotA_F2" parent="ShelfA" instance=ExtResource("4_slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.875, 0.82, 0.44)
+
+[node name="SlotA_F3" parent="ShelfA" instance=ExtResource("4_slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.875, 0.82, 0.44)
+
+[node name="SlotA_F4" parent="ShelfA" instance=ExtResource("4_slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.625, 0.82, 0.44)
+
+[node name="SlotA_B1" parent="ShelfA" instance=ExtResource("4_slot")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -2.625, 0.82, -0.44)
+
+[node name="SlotA_B2" parent="ShelfA" instance=ExtResource("4_slot")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -0.875, 0.82, -0.44)
+
+[node name="SlotA_B3" parent="ShelfA" instance=ExtResource("4_slot")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0.875, 0.82, -0.44)
+
+[node name="SlotA_B4" parent="ShelfA" instance=ExtResource("4_slot")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 2.625, 0.82, -0.44)
+
+[node name="ShelfB" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -7.5)
+script = ExtResource("3_shelf")
+shelf_width = 7.0
+shelf_color = Color(0.55, 0.40, 0.22, 1)
+
+[node name="SlotB_F1" parent="ShelfB" instance=ExtResource("4_slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.625, 0.82, 0.44)
+
+[node name="SlotB_F2" parent="ShelfB" instance=ExtResource("4_slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.875, 0.82, 0.44)
+
+[node name="SlotB_F3" parent="ShelfB" instance=ExtResource("4_slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.875, 0.82, 0.44)
+
+[node name="SlotB_F4" parent="ShelfB" instance=ExtResource("4_slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.625, 0.82, 0.44)
+
+[node name="SlotB_B1" parent="ShelfB" instance=ExtResource("4_slot")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -2.625, 0.82, -0.44)
+
+[node name="SlotB_B2" parent="ShelfB" instance=ExtResource("4_slot")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -0.875, 0.82, -0.44)
+
+[node name="SlotB_B3" parent="ShelfB" instance=ExtResource("4_slot")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0.875, 0.82, -0.44)
+
+[node name="SlotB_B4" parent="ShelfB" instance=ExtResource("4_slot")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 2.625, 0.82, -0.44)
+
+[node name="ShelfC" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -11.5)
+script = ExtResource("3_shelf")
+shelf_width = 7.0
+shelf_color = Color(0.55, 0.40, 0.22, 1)
+
+[node name="SlotC_F1" parent="ShelfC" instance=ExtResource("4_slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.625, 0.82, 0.44)
+
+[node name="SlotC_F2" parent="ShelfC" instance=ExtResource("4_slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.875, 0.82, 0.44)
+
+[node name="SlotC_F3" parent="ShelfC" instance=ExtResource("4_slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.875, 0.82, 0.44)
+
+[node name="SlotC_F4" parent="ShelfC" instance=ExtResource("4_slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.625, 0.82, 0.44)
+
+[node name="SlotC_B1" parent="ShelfC" instance=ExtResource("4_slot")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -2.625, 0.82, -0.44)
+
+[node name="SlotC_B2" parent="ShelfC" instance=ExtResource("4_slot")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -0.875, 0.82, -0.44)
+
+[node name="SlotC_B3" parent="ShelfC" instance=ExtResource("4_slot")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0.875, 0.82, -0.44)
+
+[node name="SlotC_B4" parent="ShelfC" instance=ExtResource("4_slot")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 2.625, 0.82, -0.44)
+
+[node name="ShelfD" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -14.5)
+script = ExtResource("3_shelf")
+shelf_width = 7.0
+shelf_color = Color(0.55, 0.40, 0.22, 1)
+
+[node name="SlotD_F1" parent="ShelfD" instance=ExtResource("4_slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.625, 0.82, 0.44)
+
+[node name="SlotD_F2" parent="ShelfD" instance=ExtResource("4_slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.875, 0.82, 0.44)
+
+[node name="SlotD_F3" parent="ShelfD" instance=ExtResource("4_slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.875, 0.82, 0.44)
+
+[node name="SlotD_F4" parent="ShelfD" instance=ExtResource("4_slot")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.625, 0.82, 0.44)
+
+[node name="SlotD_B1" parent="ShelfD" instance=ExtResource("4_slot")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -2.625, 0.82, -0.44)
+
+[node name="SlotD_B2" parent="ShelfD" instance=ExtResource("4_slot")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -0.875, 0.82, -0.44)
+
+[node name="SlotD_B3" parent="ShelfD" instance=ExtResource("4_slot")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0.875, 0.82, -0.44)
+
+[node name="SlotD_B4" parent="ShelfD" instance=ExtResource("4_slot")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 2.625, 0.82, -0.44)

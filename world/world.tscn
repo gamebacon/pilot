@@ -3,6 +3,7 @@
 [ext_resource type="PackedScene" uid="uid://dv4tifvdnmq6d" path="res://player/player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://shop/shop.tscn" id="2_shop"]
 [ext_resource type="PackedScene" path="res://shop/grocery_store.tscn" id="15_grocery"]
+[ext_resource type="PackedScene" path="res://shop/hardware_store.tscn" id="16_hardware"]
 [ext_resource type="PackedScene" path="res://ui/shop_ui.tscn" id="3_shopui"]
 [ext_resource type="PackedScene" path="res://ui/inventory_hud.tscn" id="4_invhud"]
 [ext_resource type="PackedScene" path="res://build/plot.tscn" id="5_plot"]
@@ -122,18 +123,8 @@ surface_material_override/0 = SubResource("Mat_bed")
 [node name="HardwareStore" type="Node3D" parent="." unique_id=353383794]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 0, -85)
 
-[node name="Building" type="StaticBody3D" parent="HardwareStore" unique_id=160233529]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="HardwareStore/Building" unique_id=354978419]
-shape = SubResource("Shape_store")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="HardwareStore/Building" unique_id=1371832566]
-mesh = SubResource("Mesh_store")
-surface_material_override/0 = SubResource("Mat_store")
-
-[node name="Shop" parent="HardwareStore" unique_id=151961027 instance=ExtResource("2_shop")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 6)
+[node name="HardwareStoreScene" parent="HardwareStore" unique_id=353383795 instance=ExtResource("16_hardware")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
 
 [node name="GroceryStore" type="Node3D" parent="." unique_id=338812045]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 0, -44)
