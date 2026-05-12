@@ -277,14 +277,12 @@ func _sample_height(wx: float, wz: float) -> float:
 
 # ── Place buildings at terrain height ─────────────────────────────────────────
 func _place_buildings() -> void:
-	print("WorldGenerator seed: %d" % _rng.seed)
 	for bname: String in _bldg_xz:
 		var bxz: Vector2 = _bldg_xz[bname]
 		var h := _sample_height(bxz.x, bxz.y)
 		var node := get_parent().get_node_or_null(bname)
 		if node:
 			node.position = Vector3(bxz.x, h, bxz.y)
-			print("  %s → (%.1f, %.2f, %.1f)" % [bname, bxz.x, h, bxz.y])
 		else:
 			push_warning("WorldGenerator: node '%s' not found — check name matches world.tscn" % bname)
 

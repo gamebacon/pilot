@@ -4,6 +4,8 @@ extends CanvasLayer
 @onready var currency_label: Label = $Panel/VBox/CurrencyLabel
 
 func _ready() -> void:
+	for lbl: Label in [carry_label, currency_label]:
+		lbl.add_theme_font_override("font", UIStyle.FONT)
 	GameState.currency_changed.connect(func(v): currency_label.text = "$%d" % v)
 	currency_label.text = "$%d" % GameState.currency
 

@@ -15,7 +15,7 @@ var _held_size: Vector3      = Vector3.ONE
 
 var player: Player = null
 @onready var _ghost: MeshInstance3D  = $Ghost
-@onready var _label: Label           = $UI/Label
+@onready var _label: VBoxContainer   = $UI/Label
 
 var _mat_free:    StandardMaterial3D
 var _mat_snap:    StandardMaterial3D
@@ -82,7 +82,7 @@ func _process(_delta: float) -> void:
 	elif _place_held and Input.get_action_raw_strength("place") <= 0.1:
 		_place_held = false
 	_update_ghost()
-	_label.text = _hint_text()
+	_update_hint()
 
 func _update_ghost() -> void:
 	var cam  := player.camera
@@ -222,21 +222,15 @@ func _refresh_ghost_for_held() -> void:
 	_mat_free = _ghost_mat(Color(c.r, c.g, c.b, 0.5))
 	_ghost.material_override = _mat_free
 
-	_label.text = _hint_text()
+	_update_hint()
 
-func _hint_text() -> String:
+func _update_hint() -> void:
 	var item_name := _held_data.display_name if _held_data else "Item"
-	var ry  := InputHelper.action_label("rotate_y")
-	var rx  := InputHelper.action_label("rotate_x")
-	var rz  := InputHelper.action_label("rotate_z")
-	var rst := InputHelper.action_label("reset_rotation")
-	var rem := InputHelper.action_label("remove_piece")
-	var plc := InputHelper.action_label("place")
-	var ext := InputHelper.action_label("exit_build")
-	return (
-		"FREEPLACE: %s    %s Place    %s Exit\n" % [item_name, plc, ext]
-		+ "%s/%s/%s Rotate    %s Reset    %s Remove" % [ry, rx, rz, rst, rem]
-	)
+	UIStyle.set_hint(_label, [
+		["FREEPLACE: %s  " % item_name, "@place", " Place  ", "@exit_build", " Exit"],
+		["@rotate_y", " / ", "@rotate_x", " / ", "@rotate_z", " Rotate  ",
+		 "@reset_rotation", " Reset  ", "@remove_piece", " Remove"],
+	])
 
 # ── Mode enter / exit ─────────────────────────────────────────────────────────
 

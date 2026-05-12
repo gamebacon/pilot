@@ -14,7 +14,7 @@ var _place_held         := false  # hysteresis gate: arm ≥ 0.9, disarm ≤ 0.1
 var plot:   Plot   = null
 var player: Player = null
 @onready var _ghost:       MeshInstance3D = $Ghost
-@onready var _build_label: Label          = $BuildUI/BuildLabel
+@onready var _build_label: HBoxContainer  = $BuildUI/BuildLabel
 
 var _mat_valid: StandardMaterial3D
 var _mat_wrong: StandardMaterial3D
@@ -113,20 +113,17 @@ func _exit_build() -> void:
 	_build_label.hide()
 
 func _update_build_label() -> void:
-	var b_key := InputHelper.action_label("build_mode")
-	var lmb   := InputHelper.action_label("place")
-	var e_key := InputHelper.action_label("interact")
-
 	if plot.blueprint_instances.is_empty():
-		_build_label.text = "Aim at the plot and press %s to place a blueprint    %s Exit" % [e_key, b_key]
+		UIStyle.set_hint(_build_label, [[
+			"Aim at the plot and press ", "@interact", " to place a blueprint  ", "@build_mode", " Exit"
+		]])
 		return
 
 	var all_done := plot.blueprint_instances.all(func(bp): return bp.is_complete())
 	if all_done:
-		_build_label.text = "ALL BUILDS COMPLETE!    %s Exit" % b_key
+		UIStyle.set_hint(_build_label, [["ALL BUILDS COMPLETE!  ", "@build_mode", " Exit"]])
 		return
 
-	# Find any active (incomplete) blueprint to show phase context
 	var active_bp: BlueprintInstance = null
 	for bp: BlueprintInstance in plot.blueprint_instances:
 		if not bp.is_complete():
@@ -143,9 +140,11 @@ func _update_build_label() -> void:
 				if int(d.slots[i].phase) == p:
 					pt += 1
 					if active_bp.filled.get(i, false): pd += 1
-			_build_label.text = "%s  %d/%d — aim at a glowing slot    %s Exit" % [pn, pd, pt, b_key]
+			UIStyle.set_hint(_build_label, [[
+				"%s  %d/%d — aim at a glowing slot  " % [pn, pd, pt], "@build_mode", " Exit"
+			]])
 		else:
-			_build_label.text = "%s Exit" % b_key
+			UIStyle.set_hint(_build_label, [["@build_mode", " Exit"]])
 		return
 
 	var idx        := _current_bp.current_phase
@@ -161,12 +160,15 @@ func _update_build_label() -> void:
 			if _current_bp.filled.get(i, false): phase_done += 1
 
 	var slot: BlueprintSlot = data.slots[_current_slot_index]
-	var item_res    := ItemRegistry.get_item(slot.required_item_id)
-	var item_name   := item_res.display_name if item_res else slot.required_item_id
-	var has         := player.inventory.has_id(slot.required_item_id)
-	var item_hint   := "  →  %s%s" % [item_name, "" if has else " (not carrying)"]
+	var item_res  := ItemRegistry.get_item(slot.required_item_id)
+	var item_name := item_res.display_name if item_res else slot.required_item_id
+	var has       := player.inventory.has_id(slot.required_item_id)
+	var item_hint := "  →  %s%s" % [item_name, "" if has else " (not carrying)"]
 
-	_build_label.text = "%s  %d/%d%s    %s Place    %s Exit" % [phase_name, phase_done, phase_total, item_hint, lmb, b_key]
+	UIStyle.set_hint(_build_label, [[
+		"%s  %d/%d%s  " % [phase_name, phase_done, phase_total, item_hint],
+		"@place", " Place  ", "@build_mode", " Exit"
+	]])
 
 # ── Placement ────────────────────────────────────────────────────────────────
 

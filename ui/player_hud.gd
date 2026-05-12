@@ -1,13 +1,13 @@
 extends CanvasLayer
 
-@onready var hint_label:        Label = $HintLabel
-@onready var crosshair:         Label = $Crosshair
-@onready var context_hints:     Label = $ContextHints
-@onready var notification_label:Label = $NotificationLabel
-@onready var blueprint_list:    Label = $BlueprintList
-@onready var debug_badge:       Label = $DebugBadge
-@onready var shift_label:       Label = $ShiftLabel
-@onready var objective_label:   Label = $ObjectiveLabel
+@onready var hint_label:         VBoxContainer = $HintLabel
+@onready var crosshair:          Label         = $Crosshair
+@onready var context_hints:      VBoxContainer = $ContextHints
+@onready var notification_label: Label         = $NotificationLabel
+@onready var blueprint_list:     Label         = $BlueprintList
+@onready var debug_badge:        Label         = $DebugBadge
+@onready var shift_label:        Label         = $ShiftLabel
+@onready var objective_label:    Label         = $ObjectiveLabel
 
 var _player: Node = null
 var _plot:   Node = null
@@ -15,11 +15,17 @@ var _day_manager: DayManager = null
 var _connected_instances: Array = []
 var _notify_tween: Tween = null
 
+# Dirty-check cache so we don't rebuild prompt nodes every frame
+var _last_hint := ""
+var _last_context_key := ""
+
 func _ready() -> void:
 	hint_label.hide()
 	context_hints.hide()
 	blueprint_list.hide()
 	debug_badge.hide()
+	for lbl: Label in [crosshair, notification_label, blueprint_list, debug_badge, shift_label, objective_label]:
+		lbl.add_theme_font_override("font", UIStyle.FONT)
 	GameState.debug_mode_changed.connect(_on_debug_mode_changed)
 	GameState.shift_ended.connect(_on_shift_ended)
 	_update_shift_label(0.0)
@@ -40,18 +46,22 @@ func _process(_delta: float) -> void:
 		blueprint_list.hide()
 		return
 
-	# Interact hint
 	var target: Node = _player.interact_target
 	if target and target.has_method("get_interact_hint"):
 		var hint: String = target.get_interact_hint(_player)
 		if hint.is_empty():
 			hint_label.hide()
+			_last_hint = ""
 		else:
-			hint_label.text = hint
+			if hint != _last_hint:
+				_last_hint = hint
+				var hint_rows: Array[Control] = [UIStyle.make_hint(hint)]
+				_rebuild_children(hint_label, hint_rows, true)
 			hint_label.show()
 			crosshair.show()
 	else:
 		hint_label.hide()
+		_last_hint = ""
 
 	_update_context_hints()
 	_update_blueprint_checklist()
@@ -66,24 +76,34 @@ func _on_debug_mode_changed(enabled: bool) -> void:
 func _update_context_hints() -> void:
 	if GameState.active_build_mode != GameConstants.BUILD_NONE:
 		context_hints.hide()
+		_last_context_key = ""
 		return
 	if _player.inventory.is_empty():
 		context_hints.hide()
+		_last_context_key = ""
 		return
 
-	var b := InputHelper.action_label("build_mode")
-	var v := InputHelper.action_label("plank_mode")
-	var y := InputHelper.action_label("drop")
-	var parts := PackedStringArray([
-		"%s Blueprint" % b,
-		"%s Freeplace" % v,
-		"%s Drop" % y,
-	])
-	if _player.inventory.has_multiple_types():
-		var t := InputHelper.action_label("inventory_next")
-		parts.append("%s Cycle" % t)
+	var has_multi: bool = _player.inventory.has_multiple_types()
+	var key := "%s|%s|%s|%d" % [
+		InputHelper.action_label("build_mode"),
+		InputHelper.action_label("plank_mode"),
+		InputHelper.action_label("drop"),
+		int(has_multi),
+	]
+	if key != _last_context_key:
+		_last_context_key = key
+		var actions := PackedStringArray(["build_mode", "plank_mode", "drop"])
+		var labels  := PackedStringArray(["Blueprint",  "Freeplace",  "Drop"])
+		if has_multi:
+			actions.append("inventory_next")
+			labels.append("Cycle")
+		var rows: Array[Control] = []
+		for i in actions.size():
+			var row: Control = UIStyle.make_prompt(actions[i], labels[i])
+			row.size_flags_horizontal = Control.SIZE_SHRINK_END
+			rows.append(row)
+		_rebuild_children(context_hints, rows, false)
 
-	context_hints.text = "\n".join(parts)
 	context_hints.show()
 
 # ── Blueprint shopping checklist ───────────────────────────────────────────────
@@ -179,10 +199,10 @@ func _update_shift_label(seconds: float) -> void:
 		shift_label.text = "DAY %d  |  %02d:%02d" % [GameState.day, mins, secs]
 		var urgency := seconds / 480.0
 		shift_label.add_theme_color_override("font_color",
-			Color(1.0, urgency, urgency * 0.6, 0.9) if urgency < 0.3 else Color(0.9, 0.92, 0.95, 0.85))
+			Color(1.0, urgency, urgency * 0.6, 0.9) if urgency < 0.3 else UIStyle.COL_TEXT)
 	else:
 		shift_label.text = "DAY %d" % GameState.day
-		shift_label.add_theme_color_override("font_color", Color(0.9, 0.92, 0.95, 0.85))
+		shift_label.add_theme_color_override("font_color", UIStyle.COL_TEXT)
 
 func _on_shift_ended(pay: int) -> void:
 	_update_shift_label(0.0)
@@ -201,8 +221,16 @@ func _update_objective() -> void:
 		text = "▶  Go home and sleep"
 	elif _player and _player.inventory.has_id(bp_id):
 		text = "▶  Go to the factory and clock in"
-	elif _player and not _player.inventory.is_empty():
-		text = "▶  Buy the %s blueprint from the store" % bp_name
 	else:
 		text = "▶  Buy the %s blueprint from the store" % bp_name
 	objective_label.text = text
+
+# ── Utility ────────────────────────────────────────────────────────────────────
+
+func _rebuild_children(container: Control, rows: Array[Control], center: bool) -> void:
+	for child in container.get_children():
+		child.queue_free()
+	for row in rows:
+		if center:
+			row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		container.add_child(row)

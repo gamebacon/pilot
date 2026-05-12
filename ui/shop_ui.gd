@@ -18,8 +18,6 @@ var _sel: int = 0
 const NAV_REPEAT := 0.15   # seconds between repeated scroll steps
 var   _nav_timer := 0.0
 
-const COL_DIM  := Color(0.60, 0.60, 0.60)
-const COL_HEAD := Color(0.72, 0.72, 0.72)
 
 func _ready() -> void:
 	add_to_group("shop_ui")
@@ -27,12 +25,14 @@ func _ready() -> void:
 	scroll.follow_focus = true
 	close_button.pressed.connect(_on_close)
 	GameState.currency_changed.connect(_update_currency)
+	for node in panel.find_children("*", "Label", true, false):
+		(node as Label).add_theme_font_override("font", UIStyle.FONT)
 
 func open(stock: Array[ItemData], shop: Node) -> void:
 	_current_shop = shop
 	_populate(stock)
 	_update_currency(GameState.currency)
-	close_button.text = "Close  %s" % InputHelper.action_label("ui_cancel")
+	_badge_button(close_button, "ui_cancel", "Close")
 	# Close button is always last in the navigation ring.
 	_focusable.append(close_button)
 	_sel = 0
@@ -104,8 +104,9 @@ func _add_section(title: String) -> void:
 	item_list.add_child(sep)
 	var lbl := Label.new()
 	lbl.text = title
+	lbl.add_theme_font_override("font", UIStyle.FONT)
 	lbl.add_theme_font_size_override("font_size", 10)
-	lbl.add_theme_color_override("font_color", COL_HEAD)
+	lbl.add_theme_color_override("font_color", UIStyle.COL_TEXT_HEADING)
 	lbl.add_theme_constant_override("outline_size", 0)
 	item_list.add_child(lbl)
 
@@ -127,13 +128,15 @@ func _add_row(item: ItemData) -> void:
 
 	var name_lbl := Label.new()
 	name_lbl.text = item.display_name
+	name_lbl.add_theme_font_override("font", UIStyle.FONT)
 	name_lbl.add_theme_font_size_override("font_size", 14)
 	col.add_child(name_lbl)
 
 	var sub_lbl := Label.new()
 	sub_lbl.text = _subtitle(item)
+	sub_lbl.add_theme_font_override("font", UIStyle.FONT)
 	sub_lbl.add_theme_font_size_override("font_size", 10)
-	sub_lbl.add_theme_color_override("font_color", COL_DIM)
+	sub_lbl.add_theme_color_override("font_color", UIStyle.COL_TEXT_DIM)
 	col.add_child(sub_lbl)
 
 	row.add_child(col)
@@ -144,15 +147,15 @@ func _add_row(item: ItemData) -> void:
 	price_lbl.custom_minimum_size = Vector2(52, 0)
 	price_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	price_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	price_lbl.add_theme_font_override("font", UIStyle.FONT)
 	price_lbl.add_theme_font_size_override("font_size", 14)
 	row.add_child(price_lbl)
 
 	# ── Buy button ────────────────────────────────────────────────────────────
 	var btn := Button.new()
-	btn.text = "Buy"
-	btn.custom_minimum_size = Vector2(58, 0)
 	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	btn.pressed.connect(func() -> void: _buy_item(item))
+	_badge_button(btn, "ui_accept", "Buy")
 	if _first_button == null:
 		_first_button = btn
 	_focusable.append(btn)
@@ -226,3 +229,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		_on_close()
 		get_viewport().set_input_as_handled()
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+func _badge_button(btn: Button, action: String, label: String) -> void:
+	btn.text = ""
+	for child in btn.get_children():
+		child.queue_free()
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.add_child(UIStyle.make_prompt(action, label))
+	btn.add_child(center)
