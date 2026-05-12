@@ -5,9 +5,9 @@ var ambient_player: AudioStreamPlayer
 var sfx_pool: Array[AudioStreamPlayer] = []
 const SFX_POOL_SIZE = 8
 
-var music_volume   := 1.0
+var music_volume   := 0.1
 var sfx_volume     := 1.0
-var ambient_volume := 1.0
+var ambient_volume := 0.1
 
 func _ready() -> void:
 	music_player = AudioStreamPlayer.new()

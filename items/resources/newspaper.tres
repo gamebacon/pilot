@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://item_newspaper"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "newspaper"
+display_name = "Newspaper"
+price = 1
+description = "Helsingin Sanomat. Yesterday's news, today. Good for wrapping fish or lighting the fire."
+category = "Grocery"
+color = Color(0.88, 0.86, 0.80, 1.0)
+size = Vector3(0.3, 0.02, 0.42)
+mass = 0.18
+carry_stack = 3

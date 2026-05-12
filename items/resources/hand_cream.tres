@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://item_hand_cream"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "hand_cream"
+display_name = "Hand Cream"
+price = 4
+description = "Neutrogena Norwegian Formula. Because after splitting wood all day, your hands look like the wood."
+category = "Grocery"
+color = Color(0.94, 0.90, 0.84, 1.0)
+size = Vector3(0.04, 0.115, 0.022)
+mass = 0.055
+carry_stack = 4

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://item_chocolate_bar"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "chocolate_bar"
+display_name = "Chocolate Bar"
+price = 2
+description = "Fazer Blue. Dark blue wrapper, milk chocolate inside. The only acceptable choice."
+category = "Grocery"
+color = Color(0.08, 0.08, 0.38, 1.0)
+size = Vector3(0.1, 0.02, 0.19)
+mass = 0.1
+carry_stack = 5

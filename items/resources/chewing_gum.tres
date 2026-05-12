@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://item_chewing_gum"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "chewing_gum"
+display_name = "Chewing Gum"
+price = 1
+description = "Xylitol mint. Finnish dentists approve. Comes in a flat pack, always escapes from pockets."
+category = "Grocery"
+color = Color(0.72, 0.94, 0.82, 1.0)
+size = Vector3(0.065, 0.01, 0.09)
+mass = 0.02
+carry_stack = 6

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://item_sauna_sausage"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "sauna_sausage"
+display_name = "Grilling Sausage"
+price = 6
+description = "Nakki for the fire. Grill on a stick after the last round. A sauna without sausage is just a hot room."
+category = "Grocery"
+color = Color(0.72, 0.35, 0.22, 1.0)
+size = Vector3(0.04, 0.04, 0.22)
+mass = 0.2
+carry_stack = 4

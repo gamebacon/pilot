@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://item_energy_drink"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "energy_drink"
+display_name = "Energy Drink"
+price = 3
+description = "Battery. Tastes like dissolved candy and ambition. Essential for night shifts and long drives."
+category = "Grocery"
+color = Color(0.82, 0.95, 0.12, 1.0)
+size = Vector3(0.066, 0.16, 0.066)
+mass = 0.38
+carry_stack = 6

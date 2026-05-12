@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://item_protein_bar"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "protein_bar"
+display_name = "Protein Bar"
+price = 3
+description = "Oat and dark chocolate. 20g protein. Tastes like cardboard ambition. You'll eat it anyway."
+category = "Grocery"
+color = Color(0.44, 0.30, 0.14, 1.0)
+size = Vector3(0.06, 0.018, 0.14)
+mass = 0.065
+carry_stack = 5

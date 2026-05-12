@@ -10,6 +10,7 @@ const CAT_MASONRY    := "Masonry"
 const CAT_INSULATION := "Insulation"
 const CAT_GLAZING    := "Glazing"
 const CAT_SAUNA      := "Sauna"
+const CAT_GROCERY    := "Grocery"
 
 # Material sections displayed in this order in the shop (blueprints always first).
 const MATERIAL_CATEGORY_ORDER: Array[String] = [

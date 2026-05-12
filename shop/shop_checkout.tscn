@@ -1,0 +1,30 @@
+[gd_scene format=3 uid="uid://shop_checkout"]
+
+[ext_resource type="Script" path="res://shop/shop_checkout.gd" id="1_checkout"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_counter"]
+size = Vector3(2.0, 0.9, 0.6)
+
+[sub_resource type="BoxMesh" id="BoxMesh_counter"]
+size = Vector3(2.0, 0.9, 0.6)
+
+[sub_resource type="StandardMaterial3D" id="Mat_counter"]
+albedo_color = Color(0.82, 0.78, 0.68, 1)
+
+[node name="ShopCheckout" type="StaticBody3D"]
+script = ExtResource("1_checkout")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+shape = SubResource("BoxShape3D_counter")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.45, 0)
+mesh = SubResource("BoxMesh_counter")
+surface_material_override/0 = SubResource("Mat_counter")
+
+[node name="Label3D" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.05, 0)
+text = "Checkout"
+font_size = 48
+billboard = 1

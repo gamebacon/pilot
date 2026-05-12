@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://item_painkiller"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "painkiller"
+display_name = "Painkillers"
+price = 5
+description = "Burana 400mg ibuprofen. Post-sauna headache? Dehydration? Either way, these help."
+category = "Grocery"
+color = Color(0.94, 0.94, 0.94, 1.0)
+size = Vector3(0.07, 0.035, 0.1)
+mass = 0.06
+carry_stack = 4

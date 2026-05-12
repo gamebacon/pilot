@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://item_lighter"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "lighter"
+display_name = "Lighter"
+price = 2
+description = "BIC. For the fire. Always in someone else's pocket."
+category = "Grocery"
+color = Color(0.88, 0.18, 0.1, 1.0)
+size = Vector3(0.03, 0.065, 0.012)
+mass = 0.02
+carry_stack = 5

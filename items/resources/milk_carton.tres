@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://item_milk_carton"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "milk_carton"
+display_name = "Milk"
+price = 2
+description = "Valio whole milk, 1L. Blue carton. The reason Finnish people are tall. Allegedly."
+category = "Grocery"
+color = Color(0.22, 0.42, 0.76, 1.0)
+size = Vector3(0.072, 0.19, 0.072)
+mass = 1.03
+carry_stack = 2

@@ -16,7 +16,7 @@ const HEIGHT_AMP := 7.5
 # ── Buildings (XZ) — randomised per seed ─────────────────────────────────────
 # Home stays close to spawn; HardwareStore mid-map; Factory far south.
 const BLDG_FLAT_R := {
-	"Home": 12.0, "HardwareStore": 15.0, "Factory": 24.0,
+	"Home": 12.0, "HardwareStore": 15.0, "Factory": 24.0, "GroceryStore": 12.0,
 }
 var _bldg_xz: Dictionary = {}  # filled in _randomise_layout()
 
@@ -118,20 +118,24 @@ static func _mkmat(c: Color) -> StandardMaterial3D:
 # ── Layout randomisation ──────────────────────────────────────────────────────
 func _randomise_layout() -> void:
 	# XZ zones keep the narrative order: Home near spawn, Store mid, Factory far.
-	_bldg_xz["Home"]          = Vector2(_rng.randf_range(-18, 18), _rng.randf_range(-6, -22))
-	_bldg_xz["HardwareStore"] = Vector2(_rng.randf_range(-28, 28), _rng.randf_range(-65, -105))
-	_bldg_xz["Factory"]       = Vector2(_rng.randf_range(-18, 18), _rng.randf_range(-150, -195))
+	_bldg_xz["Home"]          = Vector2(_rng.randf_range(-18,  18), _rng.randf_range(-6,  -22))
+	_bldg_xz["GroceryStore"]  = Vector2(_rng.randf_range(-35, -12), _rng.randf_range(-38, -55))
+	_bldg_xz["HardwareStore"] = Vector2(_rng.randf_range(-28,  28), _rng.randf_range(-65, -105))
+	_bldg_xz["Factory"]       = Vector2(_rng.randf_range(-18,  18), _rng.randf_range(-150, -195))
 
-	var home: Vector2    = _bldg_xz["Home"]
-	var store: Vector2   = _bldg_xz["HardwareStore"]
+	var home:    Vector2 = _bldg_xz["Home"]
+	var grocery: Vector2 = _bldg_xz["GroceryStore"]
+	var store:   Vector2 = _bldg_xz["HardwareStore"]
 	var factory: Vector2 = _bldg_xz["Factory"]
-	var spawn  := Vector2(0.0, 5.0)
+	var spawn   := Vector2(0.0, 5.0)
 
-	# Main spine: spawn → store → factory, with random lateral bows
+	# Main spine: spawn → store → factory, with random lateral bows.
+	# Branch roads lead to Home and GroceryStore off the spine.
 	_road_segs = [
 		_curved_seg(spawn,   store,   _rng.randf_range(-20, 20), _rng.randf_range(-20, 20)),
 		_curved_seg(store,   factory, _rng.randf_range(-20, 20), _rng.randf_range(-20, 20)),
-		_curved_seg(spawn,   home,    _rng.randf_range(-8,  8),  _rng.randf_range(-8,  8)),
+		_curved_seg(spawn,   home,    _rng.randf_range(-8,   8), _rng.randf_range(-8,   8)),
+		_curved_seg(spawn,   grocery, _rng.randf_range(-10, 10), _rng.randf_range(-10, 10)),
 	]
 
 # Build a cubic bezier segment between a and b with two random lateral offsets.
@@ -273,12 +277,16 @@ func _sample_height(wx: float, wz: float) -> float:
 
 # ── Place buildings at terrain height ─────────────────────────────────────────
 func _place_buildings() -> void:
+	print("WorldGenerator seed: %d" % _rng.seed)
 	for bname: String in _bldg_xz:
 		var bxz: Vector2 = _bldg_xz[bname]
 		var h := _sample_height(bxz.x, bxz.y)
 		var node := get_parent().get_node_or_null(bname)
 		if node:
 			node.position = Vector3(bxz.x, h, bxz.y)
+			print("  %s → (%.1f, %.2f, %.1f)" % [bname, bxz.x, h, bxz.y])
+		else:
+			push_warning("WorldGenerator: node '%s' not found — check name matches world.tscn" % bname)
 
 # ── Road meshes ───────────────────────────────────────────────────────────────
 func _build_roads() -> void:
