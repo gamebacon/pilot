@@ -110,9 +110,9 @@ static func _badge(raw: String) -> Control:
 	return _controller_badge(raw) if pad else _keyboard_badge(raw)
 
 static func _controller_badge(raw: String) -> Control:
-	var is_trigger := raw in ["L2", "R2", "L1", "R1"]
-	var size       := Vector2(30, 18) if is_trigger else Vector2(22, 22)
-	var radius     := 5 if is_trigger else 11
+	var is_wide_badge := raw in ["L2", "R2", "L1", "R1", 'View', 'Menu', 'Start']
+	var size       := Vector2(30, 18) if is_wide_badge else Vector2(22, 22)
+	var radius     := 5 if is_wide_badge else 11
 	var style := StyleBoxFlat.new()
 	style.bg_color = _face_btn_color(raw)
 	style.set_corner_radius_all(radius)
@@ -143,17 +143,16 @@ static func _keyboard_badge(raw: String) -> Control:
 	var panel := Panel.new()
 	panel.custom_minimum_size = Vector2(w, 22)
 	panel.add_theme_stylebox_override("panel", style)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var lbl := Label.new()
 	lbl.text = raw
-	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-	lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	lbl.add_theme_font_override("font", FONT)
 	lbl.add_theme_font_size_override("font_size", SIZE_SM)
 	lbl.add_theme_color_override("font_color", COL_TEXT)
-	panel.add_child(lbl)
+	center.add_child(lbl)
+	panel.add_child(center)
 	return panel
-
 static func _face_btn_color(raw: String) -> Color:
 	var nintendo := InputHelper.NINTENDO_LAYOUT
 	match raw:
