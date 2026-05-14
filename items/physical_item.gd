@@ -2,6 +2,7 @@ extends RigidBody3D
 class_name PhysicalItem
 
 @export var item_data: ItemData
+var net_id: int = 0  # assigned when spawned in multiplayer
 
 @onready var mesh_instance: MeshInstance3D = $MeshInstance3D
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
@@ -19,6 +20,7 @@ const COLLIDE_THRESHOLD := 1.5
 var _collide_cooldown := 0.0
 
 func _ready() -> void:
+	add_to_group("physical_items")
 	if item_data:
 		_apply_item_data()
 	contact_monitor = true

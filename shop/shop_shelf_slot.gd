@@ -54,7 +54,13 @@ func interact(_player: Node) -> void:
 	var item := item_scene.instantiate() as PhysicalItem
 	item.item_data = item_data
 	get_tree().current_scene.add_child(item)
-	item.global_position = spawn_marker.global_position
+	var pos := spawn_marker.global_position
+	item.global_position = pos
+	if NetworkManager.is_active():
+		var world := get_tree().get_first_node_in_group("world")
+		if world:
+			item.net_id = world.assign_item_id()
+			world.sync_item_spawn(item_data.id, pos, item.net_id)
 
 func get_interact_hint(_player: Node) -> String:
 	if not item_data:

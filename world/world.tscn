@@ -1,5 +1,6 @@
 [gd_scene format=3 uid="uid://bwbm5ju1n8482"]
 
+[ext_resource type="Script" path="res://world/world.gd" id="0_worldgd"]
 [ext_resource type="PackedScene" uid="uid://dv4tifvdnmq6d" path="res://player/player.tscn" id="1_player"]
 [ext_resource type="PackedScene" path="res://shop/shop.tscn" id="2_shop"]
 [ext_resource type="PackedScene" path="res://shop/grocery_store.tscn" id="15_grocery"]
@@ -80,6 +81,7 @@ size = Vector3(0.5, 1.4, 0.5)
 albedo_color = Color(0.8, 0.72, 0.2, 1)
 
 [node name="World" type="Node3D" unique_id=1715617911]
+script = ExtResource("0_worldgd")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=16331963]
 environment = SubResource("Env_world")
@@ -174,3 +176,5 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 2)
 
 [node name="ZoneAudio" type="Node" parent="." unique_id=1486196137]
 script = ExtResource("13_zoneaudio")
+
+[node name="Players" type="Node3D" parent="."]

@@ -67,7 +67,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(_delta: float) -> void:
 	if not player:
-		player = get_tree().get_first_node_in_group("player")
+		for p in get_tree().get_nodes_in_group("player"):
+			if not NetworkManager.is_active() or p.is_multiplayer_authority():
+				player = p
+				break
 		return
 	if not _active:
 		return

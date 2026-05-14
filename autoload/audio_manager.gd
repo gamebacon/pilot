@@ -38,6 +38,7 @@ func _on_ambient_finished() -> void:
 # ── Music ─────────────────────────────────────────────────────────────────────
 
 func play_music(stream: AudioStream, fade: bool = true) -> void:
+	return;
 	if music_player.playing and fade:
 		var tween := create_tween()
 		tween.tween_property(music_player, "volume_db", -80.0, 1.5)
@@ -73,6 +74,7 @@ func _get_free_sfx_player() -> AudioStreamPlayer:
 # ── Ambient ───────────────────────────────────────────────────────────────────
 
 func play_ambient(stream: AudioStream, fade: bool = true) -> void:
+	return;
 	if ambient_player.playing and fade:
 		var tween := create_tween()
 		tween.tween_property(ambient_player, "volume_db", -80.0, 1.5)

@@ -41,9 +41,9 @@ var _mat_stump: StandardMaterial3D
 var _mat_rock:  StandardMaterial3D
 
 # ── Entry ─────────────────────────────────────────────────────────────────────
-func _ready() -> void:
-	randomize()
-	var seed_val := randi()
+
+# Called by world.gd so the seed is always controlled externally.
+func generate(seed_val: int) -> void:
 	_rng.seed   = seed_val
 	_noise.seed = seed_val
 	_noise.noise_type             = FastNoiseLite.TYPE_SIMPLEX_SMOOTH

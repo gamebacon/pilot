@@ -27,7 +27,7 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	if not _player:
-		_player = get_tree().get_first_node_in_group("player")
+		_player = _local_player()
 		return
 	_update_ghost()
 
@@ -113,6 +113,12 @@ func _snap(world_pos: Vector3) -> Vector3:
 	local.y    = 0.0
 	return to_global(local)
 
+func _local_player() -> Player:
+	for p in get_tree().get_nodes_in_group("player"):
+		if not NetworkManager.is_active() or p.is_multiplayer_authority():
+			return p
+	return null
+
 func _held_blueprint() -> PhysicalItem:
 	if not _player:
 		return null
@@ -150,6 +156,11 @@ func interact(player: Node) -> void:
 	_ghost_yrot = 0.0
 
 func _place_blueprint(data: BlueprintData, world_pos: Vector3, y_rot: float) -> void:
+	_do_place_blueprint(data, world_pos, y_rot)
+	if NetworkManager.is_active():
+		_sync_blueprint.rpc(data.resource_path, world_pos, y_rot)
+
+func _do_place_blueprint(data: BlueprintData, world_pos: Vector3, y_rot: float) -> void:
 	var scene: PackedScene = preload("res://build/blueprint_instance.tscn")
 	var instance           := scene.instantiate() as BlueprintInstance
 	add_child(instance)
@@ -158,3 +169,9 @@ func _place_blueprint(data: BlueprintData, world_pos: Vector3, y_rot: float) -> 
 	instance.activate(data)
 	blueprint_instances.append(instance)
 	blueprint_added.emit(instance)
+
+@rpc("any_peer", "reliable", "call_remote")
+func _sync_blueprint(data_path: String, world_pos: Vector3, y_rot: float) -> void:
+	var data := ResourceLoader.load(data_path) as BlueprintData
+	if data:
+		_do_place_blueprint(data, world_pos, y_rot)

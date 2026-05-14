@@ -28,14 +28,43 @@ func _ready() -> void:
 	inventory.name = "Inventory"
 	add_child(inventory)
 
+	if NetworkManager.is_active() and not is_multiplayer_authority():
+		_setup_as_remote()
+		return
+
 	walk_audio = AudioStreamPlayer.new()
 	walk_audio.bus = "Ambient"
 	add_child(walk_audio)
 
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	add_to_group("player")
+	camera.make_current()
+
+func _setup_as_remote() -> void:
+	camera.current = false
+	interact_ray.enabled = false
+
+	# Simple body mesh so remote players are visible.
+	var mi   := MeshInstance3D.new()
+	var cap  := CapsuleMesh.new()
+	cap.radius = 0.2
+	cap.height = 1.5
+	mi.mesh     = cap
+	mi.position = Vector3(0, 0.9, 0)
+	add_child(mi)
+
+	# Name label above head.
+	var lbl := Label3D.new()
+	lbl.text     = NetworkManager.players.get(int(name), {}).get("name", "?")
+	lbl.position = Vector3(0, 2.0, 0)
+	lbl.font_size = 28
+	lbl.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	add_child(lbl)
 
 func _unhandled_input(event: InputEvent) -> void:
+	if NetworkManager.is_active() and not is_multiplayer_authority():
+		return
+
 	if GameState.ui_open:
 		return
 
@@ -65,6 +94,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		GameState.debug_mode = !GameState.debug_mode
 
 func _physics_process(delta: float) -> void:
+	if NetworkManager.is_active() and not is_multiplayer_authority():
+		return  # remote player: position is written by _sync_transform RPC
+
 	if not is_on_floor():
 		velocity += get_gravity() * delta
 
@@ -94,6 +126,19 @@ func _physics_process(delta: float) -> void:
 	_tick_footsteps(delta)
 	_update_interact_target()
 
+	if NetworkManager.is_active():
+		_sync_transform.rpc(global_position, rotation.y, head.rotation.x)
+
+# ── Multiplayer position sync ─────────────────────────────────────────────────
+
+@rpc("any_peer", "unreliable_ordered")
+func _sync_transform(pos: Vector3, rot_y: float, head_x: float) -> void:
+	global_position  = pos
+	rotation.y       = rot_y
+	head.rotation.x  = head_x
+
+# ── Gamepad look ─────────────────────────────────────────────────────────────
+
 func _apply_gamepad_look(delta: float) -> void:
 	var look := Input.get_vector("look_left", "look_right", "look_up", "look_down")
 	if look.length_squared() < 0.01:
@@ -114,6 +159,12 @@ func pick_up(item: PhysicalItem) -> bool:
 	if inventory.is_full():
 		return false
 	item.play_pickup_sound()
+
+	if NetworkManager.is_active() and item.net_id != 0 and item.item_data:
+		var world := get_tree().get_first_node_in_group("world")
+		if world:
+			world.sync_item_pickup(item.net_id, item.item_data.id, multiplayer.get_unique_id())
+
 	item.reparent(carry_point, false)
 	item.freeze          = true
 	item.collision_layer = 0
@@ -134,6 +185,13 @@ func drop_active() -> void:
 	item.collision_mask  = 1
 	item.freeze          = false
 	item.linear_velocity = -transform.basis.z * 3.0 + Vector3(0, 1, 0)
+
+	if NetworkManager.is_active() and item.item_data:
+		var world := get_tree().get_first_node_in_group("world")
+		if world:
+			if item.net_id == 0:
+				item.net_id = world.assign_item_id()
+			world.sync_item_drop(item.item_data.id, item.global_position, item.net_id)
 
 # Positions all carried items so same-type items stack visually.
 func _reposition_carried() -> void:

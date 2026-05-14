@@ -34,6 +34,13 @@ func spawn_item(item_data: ItemData) -> void:
 	get_tree().current_scene.add_child(item)
 	# Spawn in front of the counter face so items can't clip inside the mesh.
 	var forward := -global_transform.basis.z
-	item.global_position = spawn_point.global_position \
+	var pos := spawn_point.global_position \
 		+ forward * 0.7 \
 		+ Vector3(randf_range(-0.2, 0.2), 0.1, 0.0)
+	item.global_position = pos
+
+	if NetworkManager.is_active():
+		var world := get_tree().get_first_node_in_group("world")
+		if world:
+			item.net_id = world.assign_item_id()
+			world.sync_item_spawn(item_data.id, pos, item.net_id)

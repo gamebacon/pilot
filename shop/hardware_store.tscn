@@ -10,6 +10,7 @@ script = ExtResource("1_building")
 shop_label = "Rautakauppa"
 shop_type = "hardware"
 stock_ids = [
+	"blueprint_sauna","blueprint_house","blueprint_woodshed","blueprint_terrace",
 	"timber_stud",   "timber_post",   "floor_joist",   "wall_stud",
 	"pine_board",    "pine_decking",  "aspen_cladding","roofing_panel",
 	"concrete_slab", "insulation_batt","glass_window",  "wall_plate",

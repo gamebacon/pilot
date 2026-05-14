@@ -49,7 +49,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(_delta: float) -> void:
 	if not player:
-		player = get_tree().get_first_node_in_group("player")
+		player = _local_player()
 		return
 	if not plot:
 		plot = get_tree().get_first_node_in_group("plot")
@@ -199,6 +199,13 @@ func _try_place() -> void:
 	piece.set_deferred("global_transform", _current_bp.global_transform * slot_t)
 
 	_current_bp.fill_slot(_current_slot_index)
+
+	if NetworkManager.is_active():
+		var bp_idx := plot.blueprint_instances.find(_current_bp)
+		if bp_idx >= 0:
+			_sync_fill.rpc(bp_idx, _current_slot_index, _current_bp.global_transform * slot_t,
+					slot.required_item_id)
+
 	_current_bp         = null
 	_current_slot_index = -1
 	_placement_valid    = false
@@ -253,6 +260,28 @@ func _nearest_slot_on_ray() -> Array:
 	if best_slot:
 		return [best_bp, best_slot, best_idx]
 	return []
+
+# ── Multiplayer ───────────────────────────────────────────────────────────────
+
+func _local_player() -> Player:
+	for p in get_tree().get_nodes_in_group("player"):
+		if not NetworkManager.is_active() or p.is_multiplayer_authority():
+			return p
+	return null
+
+@rpc("any_peer", "reliable", "call_remote")
+func _sync_fill(bp_idx: int, slot_idx: int, world_transform: Transform3D,
+		item_id: String) -> void:
+	var plot_node := get_tree().get_first_node_in_group("plot") as Plot
+	if not plot_node or bp_idx < 0 or bp_idx >= plot_node.blueprint_instances.size():
+		return
+	plot_node.blueprint_instances[bp_idx].fill_slot(slot_idx)
+	var item_data := ItemRegistry.get_item(item_id)
+	if not item_data:
+		return
+	var piece := PlacedPlank.build(item_data.size, item_data.color)
+	plot_node.get_node("PlacedPieces").add_child(piece)
+	piece.set_deferred("global_transform", world_transform)
 
 # ── Inventory helpers ─────────────────────────────────────────────────────────
 

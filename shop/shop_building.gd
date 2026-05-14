@@ -9,7 +9,7 @@ var _stock: Array[ItemData] = []
 
 func _ready() -> void:
 	_load_stock()
-	_populate_empty_slots()
+	call_deferred("_populate_empty_slots")
 
 func _load_stock() -> void:
 	if stock_ids.is_empty():
