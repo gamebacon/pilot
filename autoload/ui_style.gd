@@ -129,7 +129,7 @@ static func _controller_badge(raw: String) -> Control:
 	lbl.add_theme_font_size_override("font_size", SIZE_XS)
 	lbl.add_theme_color_override("font_color", Color.WHITE)
 	center.add_child(lbl)
-	panel.add_child(center) 
+	panel.add_child(center)
 	return panel
 
 static func _keyboard_badge(raw: String) -> Control:
@@ -146,8 +146,7 @@ static func _keyboard_badge(raw: String) -> Control:
 	var lbl := Label.new()
 	lbl.text = raw
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	# lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
-	lbl.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	lbl.vertical_alignment   = VERTICAL_ALIGNMENT_CENTER
 	lbl.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	lbl.add_theme_font_override("font", FONT)
 	lbl.add_theme_font_size_override("font_size", SIZE_SM)
