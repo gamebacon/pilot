@@ -235,9 +235,15 @@ func _add_server_ip_label() -> void:
 	lbl.text = "Hosting: %s:%d" % [ip, NetworkManager.DEFAULT_PORT]
 	lbl.add_theme_font_override("font", UIStyle.FONT)
 	lbl.add_theme_color_override("font_color", Color(0.5, 1.0, 0.6, 0.75))
-	lbl.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	lbl.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	lbl.position = Vector2(-10, 10)
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	lbl.anchor_left   = 1.0
+	lbl.anchor_right  = 1.0
+	lbl.anchor_top    = 0.0
+	lbl.anchor_bottom = 0.0
+	lbl.offset_left   = -320
+	lbl.offset_right  = -10
+	lbl.offset_top    = 10
+	lbl.offset_bottom = 36
 	add_child(lbl)
 
 func _local_ip() -> String:
