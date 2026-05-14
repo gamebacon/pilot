@@ -29,6 +29,8 @@ func _ready() -> void:
 	GameState.debug_mode_changed.connect(_on_debug_mode_changed)
 	GameState.shift_ended.connect(_on_shift_ended)
 	_update_shift_label(0.0)
+	if NetworkManager.is_server():
+		_add_server_ip_label()
 
 func _process(_delta: float) -> void:
 	if not _player:
@@ -224,6 +226,25 @@ func _update_objective() -> void:
 	else:
 		text = "▶  Buy the %s blueprint from the store" % bp_name
 	objective_label.text = text
+
+# ── Server IP display ──────────────────────────────────────────────────────────
+
+func _add_server_ip_label() -> void:
+	var ip := _local_ip()
+	var lbl := Label.new()
+	lbl.text = "Hosting: %s:%d" % [ip, NetworkManager.DEFAULT_PORT]
+	lbl.add_theme_font_override("font", UIStyle.FONT)
+	lbl.add_theme_color_override("font_color", Color(0.5, 1.0, 0.6, 0.75))
+	lbl.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	lbl.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	lbl.position = Vector2(-10, 10)
+	add_child(lbl)
+
+func _local_ip() -> String:
+	for addr in IP.get_local_addresses():
+		if not addr.begins_with("127.") and "." in addr and not addr.begins_with("169.254."):
+			return addr
+	return "127.0.0.1"
 
 # ── Utility ────────────────────────────────────────────────────────────────────
 

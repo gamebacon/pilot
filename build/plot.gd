@@ -158,7 +158,10 @@ func interact(player: Node) -> void:
 func _place_blueprint(data: BlueprintData, world_pos: Vector3, y_rot: float) -> void:
 	_do_place_blueprint(data, world_pos, y_rot)
 	if NetworkManager.is_active():
-		_sync_blueprint.rpc(data.resource_path, world_pos, y_rot)
+		if NetworkManager.is_server():
+			_sync_blueprint.rpc(data.resource_path, world_pos, y_rot)
+		else:
+			_request_blueprint.rpc_id(1, data.resource_path, world_pos, y_rot)
 
 func _do_place_blueprint(data: BlueprintData, world_pos: Vector3, y_rot: float) -> void:
 	var scene: PackedScene = preload("res://build/blueprint_instance.tscn")
@@ -170,7 +173,21 @@ func _do_place_blueprint(data: BlueprintData, world_pos: Vector3, y_rot: float) 
 	blueprint_instances.append(instance)
 	blueprint_added.emit(instance)
 
-@rpc("any_peer", "reliable", "call_remote")
+# Client → server: relay this blueprint placement to everyone else.
+@rpc("any_peer", "reliable")
+func _request_blueprint(data_path: String, world_pos: Vector3, y_rot: float) -> void:
+	if not NetworkManager.is_server():
+		return
+	var sender_id := multiplayer.get_remote_sender_id()
+	var data      := ResourceLoader.load(data_path) as BlueprintData
+	if data:
+		_do_place_blueprint(data, world_pos, y_rot)
+	for pid in NetworkManager.players.keys():
+		if pid != 1 and pid != sender_id:
+			_sync_blueprint.rpc_id(pid, data_path, world_pos, y_rot)
+
+# Server → clients: authoritative blueprint spawn.
+@rpc("authority", "reliable")
 func _sync_blueprint(data_path: String, world_pos: Vector3, y_rot: float) -> void:
 	var data := ResourceLoader.load(data_path) as BlueprintData
 	if data:

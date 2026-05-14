@@ -8,6 +8,7 @@ var _active      := false
 var _snapping    := false
 var _place_held  := false  # hysteresis gate: arm ≥ 0.9, disarm ≤ 0.1
 var _planks_root: Node3D
+var _net_counter := 0
 
 var _held_item: PhysicalItem = null
 var _held_data: ItemData     = null
@@ -166,12 +167,23 @@ func _place() -> void:
 	if not _ghost.visible or _is_blocked() or _held_item == null:
 		return
 
+	var net_id := _assign_net_id()
+	var world_t := _ghost.global_transform
+
 	var piece := PlacedPlank.build(_held_size, _held_data.color)
+	piece.net_id = net_id
 	_planks_root.add_child(piece)
-	piece.set_deferred("global_transform", _ghost.global_transform)
+	piece.set_deferred("global_transform", world_t)
 
 	_held_item.play_place_sound()
 	_rumble(0.0, 0.7, 0.12)
+
+	if NetworkManager.is_active() and _held_data:
+		if NetworkManager.is_server():
+			_sync_place.rpc(_held_data.id, world_t, net_id)
+		else:
+			_request_place.rpc_id(1, _held_data.id, world_t, net_id)
+
 	_consume_held()
 
 func _consume_held() -> void:
@@ -204,10 +216,23 @@ func _remove_piece() -> void:
 		return
 
 	var collider: Object = hit["collider"]
+	var plank: PlacedPlank = null
 	if collider is PlacedPlank:
-		collider.queue_free()
+		plank = collider
 	elif collider != null and collider.get_parent() is PlacedPlank:
-		collider.get_parent().queue_free()
+		plank = collider.get_parent()
+
+	if not plank:
+		return
+
+	var net_id := plank.net_id
+	plank.queue_free()
+
+	if NetworkManager.is_active() and net_id != 0:
+		if NetworkManager.is_server():
+			_sync_remove.rpc(net_id)
+		else:
+			_request_remove.rpc_id(1, net_id)
 
 # ── Held item management ─────────────────────────────────────────────────────
 
@@ -258,6 +283,56 @@ func _exit() -> void:
 	_held_data = null
 	_ghost.hide()
 	_label.hide()
+
+# ── Multiplayer ───────────────────────────────────────────────────────────────
+
+func _assign_net_id() -> int:
+	_net_counter += 1
+	var my_id := 1 if not NetworkManager.is_active() else multiplayer.get_unique_id()
+	return my_id * 100000 + _net_counter
+
+@rpc("any_peer", "reliable")
+func _request_place(item_id: String, world_transform: Transform3D, net_id: int) -> void:
+	if not NetworkManager.is_server():
+		return
+	var sender_id := multiplayer.get_remote_sender_id()
+	_apply_place_local(item_id, world_transform, net_id)
+	for pid in NetworkManager.players.keys():
+		if pid != 1 and pid != sender_id:
+			_sync_place.rpc_id(pid, item_id, world_transform, net_id)
+
+@rpc("authority", "reliable")
+func _sync_place(item_id: String, world_transform: Transform3D, net_id: int) -> void:
+	_apply_place_local(item_id, world_transform, net_id)
+
+func _apply_place_local(item_id: String, world_transform: Transform3D, net_id: int) -> void:
+	var data := ItemRegistry.get_item(item_id)
+	if not data:
+		return
+	var piece := PlacedPlank.build(data.size, data.color)
+	piece.net_id = net_id
+	_planks_root.add_child(piece)
+	piece.set_deferred("global_transform", world_transform)
+
+@rpc("any_peer", "reliable")
+func _request_remove(net_id: int) -> void:
+	if not NetworkManager.is_server():
+		return
+	var sender_id := multiplayer.get_remote_sender_id()
+	_apply_remove_local(net_id)
+	for pid in NetworkManager.players.keys():
+		if pid != 1 and pid != sender_id:
+			_sync_remove.rpc_id(pid, net_id)
+
+@rpc("authority", "reliable")
+func _sync_remove(net_id: int) -> void:
+	_apply_remove_local(net_id)
+
+func _apply_remove_local(net_id: int) -> void:
+	for piece in get_tree().get_nodes_in_group("placed_planks"):
+		if (piece as PlacedPlank).net_id == net_id:
+			piece.queue_free()
+			return
 
 # ── Ghost material ────────────────────────────────────────────────────────────
 

@@ -26,7 +26,8 @@ func _on_host() -> void:
 	if err != OK:
 		_set_status("Failed to start server (error %d)" % err)
 		return
-	_set_status("Hosting on port %d — waiting for players…" % NetworkManager.DEFAULT_PORT)
+	var ip := _local_ip()
+	_set_status("Hosting — LAN IP: %s   Port: %d\nShare this with friends on your network." % [ip, NetworkManager.DEFAULT_PORT])
 	_set_buttons(false)
 	get_tree().change_scene_to_file("res://world/world.tscn")
 
@@ -64,3 +65,9 @@ func _set_buttons(enabled: bool) -> void:
 	solo_btn.disabled  = not enabled
 	host_btn.disabled  = not enabled
 	join_btn.disabled  = not enabled
+
+func _local_ip() -> String:
+	for addr in IP.get_local_addresses():
+		if not addr.begins_with("127.") and "." in addr and not addr.begins_with("169.254."):
+			return addr
+	return "127.0.0.1"

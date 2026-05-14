@@ -203,8 +203,11 @@ func _try_place() -> void:
 	if NetworkManager.is_active():
 		var bp_idx := plot.blueprint_instances.find(_current_bp)
 		if bp_idx >= 0:
-			_sync_fill.rpc(bp_idx, _current_slot_index, _current_bp.global_transform * slot_t,
-					slot.required_item_id)
+			var world_t := _current_bp.global_transform * slot_t
+			if NetworkManager.is_server():
+				_sync_fill.rpc(bp_idx, _current_slot_index, world_t, slot.required_item_id)
+			else:
+				_request_fill.rpc_id(1, bp_idx, _current_slot_index, world_t, slot.required_item_id)
 
 	_current_bp         = null
 	_current_slot_index = -1
@@ -269,8 +272,25 @@ func _local_player() -> Player:
 			return p
 	return null
 
-@rpc("any_peer", "reliable", "call_remote")
+# Client → server: "I placed this, please apply and relay to everyone else."
+@rpc("any_peer", "reliable")
+func _request_fill(bp_idx: int, slot_idx: int, world_transform: Transform3D,
+		item_id: String) -> void:
+	if not NetworkManager.is_server():
+		return
+	var sender_id := multiplayer.get_remote_sender_id()
+	_apply_fill_local(bp_idx, slot_idx, world_transform, item_id)
+	for pid in NetworkManager.players.keys():
+		if pid != 1 and pid != sender_id:
+			_sync_fill.rpc_id(pid, bp_idx, slot_idx, world_transform, item_id)
+
+# Server → clients: authoritative broadcast of a confirmed placement.
+@rpc("authority", "reliable")
 func _sync_fill(bp_idx: int, slot_idx: int, world_transform: Transform3D,
+		item_id: String) -> void:
+	_apply_fill_local(bp_idx, slot_idx, world_transform, item_id)
+
+func _apply_fill_local(bp_idx: int, slot_idx: int, world_transform: Transform3D,
 		item_id: String) -> void:
 	var plot_node := get_tree().get_first_node_in_group("plot") as Plot
 	if not plot_node or bp_idx < 0 or bp_idx >= plot_node.blueprint_instances.size():
