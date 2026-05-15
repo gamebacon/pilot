@@ -15,8 +15,10 @@ var players:    Dictionary = {}
 var local_name: String     = "Player"
 var world_seed: int        = 0
 
-var _lobby_id: int  = 0
-var _steam_ok: bool = false
+var _lobby_id:     int  = 0
+var _steam_ok:     bool = false
+var _relay_ready:  bool = false
+var _pending_host: bool = false
 
 # ── Init ──────────────────────────────────────────────────────────────────────
 
@@ -33,9 +35,10 @@ func _ready() -> void:
 	local_name = Steam.getFriendPersonaName(Steam.getSteamID())
 
 	# SteamMultiplayerPeer requires the relay network to be available.
-	# Calling this at startup gives it time to warm up before the user hosts.
+	# We call this immediately and wait for the ready signal before allowing hosting.
 	Steam.initRelayNetworkAccess()
 
+	Steam.relay_network_status.connect(_on_relay_network_status)
 	Steam.lobby_created.connect(_on_lobby_created)
 	Steam.lobby_joined.connect(_on_lobby_joined)
 	Steam.join_requested.connect(_on_join_requested)
@@ -49,7 +52,11 @@ func _process(_delta: float) -> void:
 func host() -> void:
 	assert(_steam_ok, "Steam is not running")
 	world_seed = randi()
-	Steam.createLobby(Steam.LOBBY_TYPE_FRIENDS_ONLY, MAX_CLIENTS)
+	if _relay_ready:
+		Steam.createLobby(Steam.LOBBY_TYPE_FRIENDS_ONLY, MAX_CLIENTS)
+	else:
+		print("[NET] Relay not ready yet — queuing lobby creation")
+		_pending_host = true
 
 func join_lobby(lobby_id: int) -> void:
 	assert(_steam_ok, "Steam is not running")
@@ -77,7 +84,17 @@ func steam_ready() -> bool:
 func current_lobby() -> int:
 	return _lobby_id
 
-# ── Steam lobby callbacks ─────────────────────────────────────────────────────
+# ── Steam relay / lobby callbacks ────────────────────────────────────────────
+
+func _on_relay_network_status(available: int, _available_any: int, _config: int, _relay: int, _debug: String) -> void:
+	print("[NET] Relay network status: %d" % available)
+	# 3 = k_ESteamNetworkingAvailability_Current (fully ready)
+	if available == 3 and not _relay_ready:
+		_relay_ready = true
+		print("[NET] Relay ready.")
+		if _pending_host:
+			_pending_host = false
+			Steam.createLobby(Steam.LOBBY_TYPE_FRIENDS_ONLY, MAX_CLIENTS)
 
 func _on_lobby_created(result: int, lobby_id: int) -> void:
 	if result != 1:
