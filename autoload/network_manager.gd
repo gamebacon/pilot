@@ -89,7 +89,7 @@ func _on_lobby_created(result: int, lobby_id: int) -> void:
 	Steam.setLobbyJoinable(lobby_id, true)
 
 	var peer := SteamMultiplayerPeer.new()
-	var err  := peer.create_host(MAX_CLIENTS)
+	var err  := peer.create_host(lobby_id)
 	if err != OK:
 		push_error("SteamMultiplayerPeer.create_host failed: %d" % err)
 		connect_failed.emit()
@@ -118,7 +118,7 @@ func _on_lobby_joined(lobby_id: int, _perms: int, _locked: bool, response: int) 
 	var host_id := Steam.getLobbyOwner(lobby_id)
 	print("[NET] Connecting to host Steam ID: %d" % host_id)
 	var peer    := SteamMultiplayerPeer.new()
-	var err     := peer.create_client(host_id)
+	var err     := peer.create_client(host_id, lobby_id)
 	print("[NET] create_client returned: %d" % err)
 	if err != OK:
 		push_error("SteamMultiplayerPeer.create_client failed: %d" % err)
