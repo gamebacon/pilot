@@ -1,40 +1,64 @@
 extends Node
 
-const DEFAULT_PORT := 7777
-const MAX_CLIENTS  := 7
+const APP_ID     := 480  # Replace with your real Steam App ID before shipping
+const MAX_CLIENTS := 7
 
 signal player_connected(id: int)
 signal player_disconnected(id: int)
 signal connected_ok()
 signal connect_failed()
 signal server_disconnected()
+signal lobby_ready(lobby_id: int)
 
 # id -> {name: String}
-var players: Dictionary = {}
-var local_name  := "Player"
-var world_seed  := 0  # server picks, broadcast to all clients before world loads
+var players:    Dictionary = {}
+var local_name: String     = "Player"
+var world_seed: int        = 0
 
-func host(port := DEFAULT_PORT) -> Error:
-	var peer := ENetMultiplayerPeer.new()
-	var err := peer.create_server(port, MAX_CLIENTS)
-	if err != OK:
-		return err
-	multiplayer.multiplayer_peer = peer
-	_bind_signals()
-	world_seed = randi()  # generate once; all clients will receive this
-	players[1] = {name = local_name}
-	return OK
+var _lobby_id: int  = 0
+var _steam_ok: bool = false
 
-func join(ip: String, port := DEFAULT_PORT) -> Error:
-	var peer := ENetMultiplayerPeer.new()
-	var err := peer.create_client(ip, port)
-	if err != OK:
-		return err
-	multiplayer.multiplayer_peer = peer
-	_bind_signals()
-	return OK
+# ── Init ──────────────────────────────────────────────────────────────────────
+
+func _ready() -> void:
+	OS.set_environment("SteamAppId", str(APP_ID))
+	OS.set_environment("SteamGameId", str(APP_ID))
+
+	var init := Steam.steamInit()
+	if not init:
+		push_warning("Steam unavailable — is Steam running? Multiplayer disabled.")
+		return
+
+	_steam_ok  = true
+	local_name = Steam.getFriendPersonaName(Steam.getSteamID())
+
+	# SteamMultiplayerPeer requires the relay network to be available.
+	# Calling this at startup gives it time to warm up before the user hosts.
+	Steam.initRelayNetworkAccess()
+
+	Steam.lobby_created.connect(_on_lobby_created)
+	Steam.lobby_joined.connect(_on_lobby_joined)
+	Steam.join_requested.connect(_on_join_requested)
+
+func _process(_delta: float) -> void:
+	if _steam_ok:
+		Steam.run_callbacks()
+
+# ── Public API ────────────────────────────────────────────────────────────────
+
+func host() -> void:
+	assert(_steam_ok, "Steam is not running")
+	world_seed = randi()
+	Steam.createLobby(Steam.LOBBY_TYPE_FRIENDS_ONLY, MAX_CLIENTS)
+
+func join_lobby(lobby_id: int) -> void:
+	assert(_steam_ok, "Steam is not running")
+	Steam.joinLobby(lobby_id)
 
 func close() -> void:
+	if _lobby_id != 0:
+		Steam.leaveLobby(_lobby_id)
+		_lobby_id = 0
 	if multiplayer.has_multiplayer_peer():
 		multiplayer.multiplayer_peer.close()
 	multiplayer.multiplayer_peer = null
@@ -46,6 +70,63 @@ func is_active() -> bool:
 
 func is_server() -> bool:
 	return is_active() and multiplayer.is_server()
+
+func steam_ready() -> bool:
+	return _steam_ok
+
+func current_lobby() -> int:
+	return _lobby_id
+
+# ── Steam lobby callbacks ─────────────────────────────────────────────────────
+
+func _on_lobby_created(result: int, lobby_id: int) -> void:
+	if result != 1:
+		push_error("Lobby creation failed: %d" % result)
+		connect_failed.emit()
+		return
+	_lobby_id = lobby_id
+	Steam.setLobbyData(lobby_id, "world_seed", str(world_seed))
+	Steam.setLobbyJoinable(lobby_id, true)
+
+	var peer := SteamMultiplayerPeer.new()
+	var err  := peer.create_host(MAX_CLIENTS)
+	if err != OK:
+		push_error("SteamMultiplayerPeer.create_host failed: %d" % err)
+		connect_failed.emit()
+		return
+
+	multiplayer.multiplayer_peer = peer
+	_bind_signals()
+	players[1] = {name = local_name}
+	lobby_ready.emit(lobby_id)
+
+func _on_lobby_joined(lobby_id: int, _perms: int, _locked: bool, response: int) -> void:
+	if response != 1:
+		push_error("Join lobby failed: response %d" % response)
+		connect_failed.emit()
+		return
+	# Steam fires lobby_joined for the host too — ignore it, we're already set up.
+	if Steam.getSteamID() == Steam.getLobbyOwner(lobby_id):
+		return
+	_lobby_id = lobby_id
+	var seed_s := Steam.getLobbyData(lobby_id, "world_seed")
+	if not seed_s.is_empty():
+		world_seed = int(seed_s)
+
+	var host_id := Steam.getLobbyOwner(lobby_id)
+	var peer    := SteamMultiplayerPeer.new()
+	var err     := peer.create_client(host_id)
+	if err != OK:
+		push_error("SteamMultiplayerPeer.create_client failed: %d" % err)
+		connect_failed.emit()
+		return
+
+	multiplayer.multiplayer_peer = peer
+	_bind_signals()
+
+# Fired when the user accepts a Steam invite or clicks "Join Game" on a friend.
+func _on_join_requested(lobby_id: int, _friend_id: int) -> void:
+	join_lobby(lobby_id)
 
 # ── Internal ──────────────────────────────────────────────────────────────────
 
@@ -69,7 +150,6 @@ func _on_peer_disconnected(id: int) -> void:
 	player_disconnected.emit(id)
 
 func _on_connected_to_server() -> void:
-	# Don't emit connected_ok yet — wait for the server's welcome (which carries the seed).
 	var my_id := multiplayer.get_unique_id()
 	players[my_id] = {name = local_name}
 	_hello.rpc_id(1, local_name)
@@ -85,24 +165,24 @@ func _on_server_disconnected() -> void:
 	server_disconnected.emit()
 
 # ── Handshake ─────────────────────────────────────────────────────────────────
+# world_seed comes from Steam lobby metadata — _welcome just signals "you're in".
 
-# Client → server: "here is my name"
+# Client → server: register name
 @rpc("any_peer", "reliable")
 func _hello(name_str: String) -> void:
 	if not is_server():
 		return
 	var id := multiplayer.get_remote_sender_id()
 	players[id] = {name = name_str}
-	_announce.rpc(id, name_str)      # tell everyone about this player
-	_welcome.rpc_id(id, world_seed)  # send the world seed back to the new client
+	_announce.rpc(id, name_str)
+	_welcome.rpc_id(id)
 
-# Server → new client: world seed delivered, safe to load the world now
+# Server → new client: you are registered, load the world
 @rpc("authority", "reliable")
-func _welcome(seed: int) -> void:
-	world_seed = seed
+func _welcome() -> void:
 	connected_ok.emit()
 
-# Server → all: someone's name was registered (call_local so server also updates its dict)
+# Server → all: someone joined (call_local so host updates its dict too)
 @rpc("authority", "reliable", "call_local")
 func _announce(id: int, name_str: String) -> void:
 	players[id] = {name = name_str}

@@ -230,9 +230,8 @@ func _update_objective() -> void:
 # ── Server IP display ──────────────────────────────────────────────────────────
 
 func _add_server_ip_label() -> void:
-	var ip := _local_ip()
 	var lbl := Label.new()
-	lbl.text = "Hosting: %s:%d" % [ip, NetworkManager.DEFAULT_PORT]
+	lbl.text = "Lobby ID: %d" % NetworkManager.current_lobby()
 	lbl.add_theme_font_override("font", UIStyle.FONT)
 	lbl.add_theme_color_override("font_color", Color(0.5, 1.0, 0.6, 0.75))
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -240,17 +239,11 @@ func _add_server_ip_label() -> void:
 	lbl.anchor_right  = 1.0
 	lbl.anchor_top    = 0.0
 	lbl.anchor_bottom = 0.0
-	lbl.offset_left   = -320
+	lbl.offset_left   = -420
 	lbl.offset_right  = -10
 	lbl.offset_top    = 10
 	lbl.offset_bottom = 36
 	add_child(lbl)
-
-func _local_ip() -> String:
-	for addr in IP.get_local_addresses():
-		if not addr.begins_with("127.") and "." in addr and not addr.begins_with("169.254."):
-			return addr
-	return "127.0.0.1"
 
 # ── Utility ────────────────────────────────────────────────────────────────────
 

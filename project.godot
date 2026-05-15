@@ -35,6 +35,10 @@ NetworkManager="*res://autoload/network_manager.gd"
 window/size/mode=2
 window/stretch/mode="canvas_items"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/godotsteam/plugin.cfg")
+
 [global]
 
 Master=false
@@ -204,3 +208,10 @@ precision_look={
 
 rendering_device/driver.windows="d3d12"
 textures/vram_compression/import_etc2_astc=true
+
+[steam]
+
+initialization/app_id=0
+initialization/initialize_on_startup=false
+initialization/embed_callbacks=false
+multiplayer_peer/max_channels=4
