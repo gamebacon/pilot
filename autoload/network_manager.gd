@@ -209,12 +209,13 @@ func _hello(name_str: String) -> void:
 		return
 	var id := multiplayer.get_remote_sender_id()
 	players[id] = {name = name_str}
-	_announce.rpc(id, name_str)
-	_welcome.rpc_id(id)
+	_announce.rpc(id, name_str)          # tell everyone else about this client
+	_welcome.rpc_id(id, players.duplicate())  # send full player list to new client
 
-# Server → new client: you are registered, load the world
+# Server → new client: here is everyone currently in the session, load the world
 @rpc("authority", "reliable")
-func _welcome() -> void:
+func _welcome(current_players: Dictionary) -> void:
+	players.merge(current_players, true)  # true = overwrite existing keys
 	connected_ok.emit()
 
 # Server → all: someone joined (call_local so host updates its dict too)
