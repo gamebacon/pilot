@@ -92,14 +92,14 @@ func _on_lobby_created(result: int, lobby_id: int) -> void:
 # Retries create_host every 0.5 s until the relay network is ready (up to 10 attempts).
 func _create_host_with_retry(lobby_id: int, attempt: int = 0) -> void:
 	var peer := SteamMultiplayerPeer.new()
-	var err  := peer.create_host(lobby_id)
+	var err  := peer.create_host(0)  # 0 = virtual port; client connects to same port
 	if err != OK:
-		if attempt < 10:
+		if attempt < 20:
 			print("[NET] Relay not ready yet, retrying in 0.5 s… (attempt %d)" % (attempt + 1))
 			await get_tree().create_timer(0.5).timeout
 			_create_host_with_retry(lobby_id, attempt + 1)
 		else:
-			push_error("create_host failed after 10 attempts — relay never became ready")
+			push_error("create_host failed after 20 attempts — relay never became ready")
 			connect_failed.emit()
 		return
 
@@ -127,7 +127,7 @@ func _on_lobby_joined(lobby_id: int, _perms: int, _locked: bool, response: int) 
 	var host_id := Steam.getLobbyOwner(lobby_id)
 	print("[NET] Connecting to host Steam ID: %d" % host_id)
 	var peer    := SteamMultiplayerPeer.new()
-	var err     := peer.create_client(host_id, lobby_id)
+	var err     := peer.create_client(host_id, 0)  # 0 = virtual port, must match host
 	print("[NET] create_client returned: %d" % err)
 	if err != OK:
 		push_error("SteamMultiplayerPeer.create_client failed: %d" % err)
