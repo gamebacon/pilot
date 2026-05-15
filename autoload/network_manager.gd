@@ -101,12 +101,14 @@ func _on_lobby_created(result: int, lobby_id: int) -> void:
 	lobby_ready.emit(lobby_id)
 
 func _on_lobby_joined(lobby_id: int, _perms: int, _locked: bool, response: int) -> void:
+	print("[NET] lobby_joined fired — lobby: %d  response: %d" % [lobby_id, response])
 	if response != 1:
 		push_error("Join lobby failed: response %d" % response)
 		connect_failed.emit()
 		return
 	# Steam fires lobby_joined for the host too — ignore it, we're already set up.
 	if Steam.getSteamID() == Steam.getLobbyOwner(lobby_id):
+		print("[NET] We are the host, ignoring lobby_joined.")
 		return
 	_lobby_id = lobby_id
 	var seed_s := Steam.getLobbyData(lobby_id, "world_seed")
@@ -114,8 +116,10 @@ func _on_lobby_joined(lobby_id: int, _perms: int, _locked: bool, response: int) 
 		world_seed = int(seed_s)
 
 	var host_id := Steam.getLobbyOwner(lobby_id)
+	print("[NET] Connecting to host Steam ID: %d" % host_id)
 	var peer    := SteamMultiplayerPeer.new()
 	var err     := peer.create_client(host_id)
+	print("[NET] create_client returned: %d" % err)
 	if err != OK:
 		push_error("SteamMultiplayerPeer.create_client failed: %d" % err)
 		connect_failed.emit()
@@ -123,6 +127,24 @@ func _on_lobby_joined(lobby_id: int, _perms: int, _locked: bool, response: int) 
 
 	multiplayer.multiplayer_peer = peer
 	_bind_signals()
+	print("[NET] Peer assigned, waiting for connected_to_server...")
+	_watch_connection(peer)
+
+# Polls the peer connection status every second for up to 10s, then times out.
+func _watch_connection(peer: SteamMultiplayerPeer) -> void:
+	for i in range(10):
+		await get_tree().create_timer(1.0).timeout
+		if not multiplayer.has_multiplayer_peer():
+			return  # already disconnected
+		var status := peer.get_connection_status()
+		print("[NET] connection status after %ds: %d" % [i + 1, status])
+		# STATUS_CONNECTED = 2
+		if status == MultiplayerPeer.CONNECTION_CONNECTED:
+			return
+	# Still not connected after 10s — give up
+	print("[NET] connection timed out")
+	multiplayer.multiplayer_peer = null
+	connect_failed.emit()
 
 # Fired when the user accepts a Steam invite or clicks "Join Game" on a friend.
 func _on_join_requested(lobby_id: int, _friend_id: int) -> void:
@@ -143,18 +165,22 @@ func _bind_signals() -> void:
 		multiplayer.server_disconnected.connect(_on_server_disconnected)
 
 func _on_peer_connected(id: int) -> void:
+	print("[NET] peer_connected: %d" % id)
 	player_connected.emit(id)
 
 func _on_peer_disconnected(id: int) -> void:
+	print("[NET] peer_disconnected: %d" % id)
 	players.erase(id)
 	player_disconnected.emit(id)
 
 func _on_connected_to_server() -> void:
+	print("[NET] connected_to_server fired — we are peer %d" % multiplayer.get_unique_id())
 	var my_id := multiplayer.get_unique_id()
 	players[my_id] = {name = local_name}
 	_hello.rpc_id(1, local_name)
 
 func _on_connection_failed() -> void:
+	print("[NET] connection_failed fired")
 	multiplayer.multiplayer_peer = null
 	connect_failed.emit()
 

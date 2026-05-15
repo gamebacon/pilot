@@ -230,8 +230,11 @@ func _update_objective() -> void:
 # ── Server IP display ──────────────────────────────────────────────────────────
 
 func _add_server_ip_label() -> void:
+	var lobby_id := NetworkManager.current_lobby()
+
+	# Lobby ID label
 	var lbl := Label.new()
-	lbl.text = "Lobby ID: %d" % NetworkManager.current_lobby()
+	lbl.text = "Lobby: %d" % lobby_id
 	lbl.add_theme_font_override("font", UIStyle.FONT)
 	lbl.add_theme_color_override("font_color", Color(0.5, 1.0, 0.6, 0.75))
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -242,8 +245,45 @@ func _add_server_ip_label() -> void:
 	lbl.offset_left   = -420
 	lbl.offset_right  = -10
 	lbl.offset_top    = 10
-	lbl.offset_bottom = 36
+	lbl.offset_bottom = 34
 	add_child(lbl)
+
+	# Copy ID button — pastes lobby ID to clipboard so you can share it in Discord etc.
+	var copy_btn := Button.new()
+	copy_btn.text = "Copy ID"
+	copy_btn.add_theme_font_override("font", UIStyle.FONT)
+	copy_btn.anchor_left   = 1.0
+	copy_btn.anchor_right  = 1.0
+	copy_btn.anchor_top    = 0.0
+	copy_btn.anchor_bottom = 0.0
+	copy_btn.offset_left   = -210
+	copy_btn.offset_right  = -10
+	copy_btn.offset_top    = 38
+	copy_btn.offset_bottom = 62
+	copy_btn.pressed.connect(func():
+		DisplayServer.clipboard_set(str(lobby_id))
+		copy_btn.text = "Copied!"
+		await get_tree().create_timer(1.5).timeout
+		copy_btn.text = "Copy ID"
+	)
+	add_child(copy_btn)
+
+	# Invite Friends button — opens the Steam overlay friend picker directly
+	var invite_btn := Button.new()
+	invite_btn.text = "Invite Friends"
+	invite_btn.add_theme_font_override("font", UIStyle.FONT)
+	invite_btn.anchor_left   = 1.0
+	invite_btn.anchor_right  = 1.0
+	invite_btn.anchor_top    = 0.0
+	invite_btn.anchor_bottom = 0.0
+	invite_btn.offset_left   = -420
+	invite_btn.offset_right  = -214
+	invite_btn.offset_top    = 38
+	invite_btn.offset_bottom = 62
+	invite_btn.pressed.connect(func():
+		Steam.activateGameOverlayInviteDialog(lobby_id)
+	)
+	add_child(invite_btn)
 
 # ── Utility ────────────────────────────────────────────────────────────────────
 
