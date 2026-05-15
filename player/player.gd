@@ -11,7 +11,8 @@ const WALK_STEP_INTERVAL   = 0.45
 const SPRINT_STEP_INTERVAL = 0.28
 const GAMEPAD_LOOK_SENS       = 2.5
 const GAMEPAD_PRECISION_SCALE = 0.35
-var _step_timer := 0.0
+var _step_timer  := 0.0
+var _sprinting   := false
 
 @onready var head:       Node3D   = $Head
 @onready var camera:     Camera3D = $Head/Camera3D
@@ -80,6 +81,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		if Input.mouse_mode == Input.MOUSE_MODE_VISIBLE:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
+	if event.is_action_pressed("sprint"):
+		_sprinting = not _sprinting
+
 	if event.is_action_pressed("interact"):
 		_try_interact()
 
@@ -111,7 +115,7 @@ func _physics_process(delta: float) -> void:
 
 	var input_dir := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var direction := (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
-	var base_speed := SPRINT_SPEED if Input.is_action_pressed("sprint") else SPEED
+	var base_speed := SPRINT_SPEED if _sprinting else SPEED
 	var speed := base_speed * _carry_weight_multiplier()
 
 	if direction:
@@ -214,7 +218,7 @@ func _tick_footsteps(delta: float) -> void:
 	if not is_on_floor() or not moving:
 		_step_timer = 0.0
 		return
-	var interval := SPRINT_STEP_INTERVAL if Input.is_action_pressed("sprint") else WALK_STEP_INTERVAL
+	var interval := SPRINT_STEP_INTERVAL if _sprinting else WALK_STEP_INTERVAL
 	_step_timer += delta
 	if _step_timer >= interval:
 		_step_timer = 0.0

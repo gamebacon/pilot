@@ -148,6 +148,18 @@ func _rpc_drop_item(item_id: String, world_pos: Vector3, net_id: int) -> void:
 		get_tree().current_scene.add_child(new_item)
 		new_item.global_position = world_pos
 
+# Broadcast that an item was consumed (placed into a build slot or freeplace).
+# Other peers still have a carried copy in the player's CarryPoint — remove it.
+func sync_item_consume(net_id: int) -> void:
+	if NetworkManager.is_active():
+		_rpc_consume_item.rpc(net_id)
+
+@rpc("any_peer", "reliable", "call_remote")
+func _rpc_consume_item(net_id: int) -> void:
+	var item := _find_item(net_id)
+	if item:
+		item.queue_free()
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 func _find_item(net_id: int) -> PhysicalItem:

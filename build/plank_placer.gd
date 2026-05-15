@@ -190,6 +190,10 @@ func _consume_held() -> void:
 	if GameState.debug_mode:
 		return  # keep item, keep placing indefinitely
 	player.inventory.remove(_held_item)
+	if NetworkManager.is_active() and _held_item.net_id != 0:
+		var world := get_tree().get_first_node_in_group("world")
+		if world:
+			world.sync_item_consume(_held_item.net_id)
 	_held_item.queue_free()
 	_held_item = null
 

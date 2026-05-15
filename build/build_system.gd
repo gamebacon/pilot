@@ -55,6 +55,10 @@ func _process(_delta: float) -> void:
 		plot = get_tree().get_first_node_in_group("plot")
 	if not _active:
 		return
+	# Auto-exit if the player dropped or consumed every item outside of build mode.
+	if not GameState.debug_mode and player.inventory.is_empty():
+		_exit_build()
+		return
 	if Input.is_action_just_pressed("place") and not _place_held:
 		_place_held = true
 		_try_place()
@@ -212,6 +216,11 @@ func _try_place() -> void:
 	_current_bp         = null
 	_current_slot_index = -1
 	_placement_valid    = false
+	_ghost.hide()  # always hide immediately; next frame will reshow if still valid
+
+	# Auto-exit build mode when the last item has been consumed.
+	if not GameState.debug_mode and player.inventory.is_empty():
+		_exit_build()
 
 func _rumble(weak: float, strong: float, duration: float) -> void:
 	var pads := Input.get_connected_joypads()
@@ -223,8 +232,13 @@ func _consume_item_by_id(item_id: String) -> void:
 	if GameState.debug_mode:
 		return
 	var item := player.inventory.remove_by_id(item_id)
-	if item:
-		item.queue_free()
+	if not item:
+		return
+	if NetworkManager.is_active() and item.net_id != 0:
+		var world := get_tree().get_first_node_in_group("world")
+		if world:
+			world.sync_item_consume(item.net_id)
+	item.queue_free()
 
 # ── Slot picking via camera ray ───────────────────────────────────────────────
 
