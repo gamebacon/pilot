@@ -108,7 +108,7 @@ func _on_debug_mode_changed(enabled: bool) -> void:
 
 func _update_context_hints() -> void:
 	# ── Build-place mode hints ─────────────────────────────────────────────────
-	if GameState.active_build_mode == GameConstants.BUILD_PLACE:
+	if GameState.is_building:
 		var key := "build"
 		if key != _last_context_key:
 			_last_context_key = key
@@ -124,12 +124,6 @@ func _update_context_hints() -> void:
 				rows.append(row)
 			_rebuild_children(context_hints, rows, false)
 		context_hints.show()
-		return
-
-	# ── Any other old build mode (blueprint / freeplace) ─────────────────────
-	if GameState.active_build_mode != GameConstants.BUILD_NONE:
-		context_hints.hide()
-		_last_context_key = ""
 		return
 
 	# ── Normal gameplay hints ─────────────────────────────────────────────────
@@ -167,7 +161,7 @@ func _update_context_hints() -> void:
 # ── Blueprint shopping checklist ───────────────────────────────────────────────
 
 func _update_blueprint_checklist() -> void:
-	if GameState.active_build_mode != GameConstants.BUILD_NONE:
+	if !GameState.is_building:
 		blueprint_list.hide()
 		return
 

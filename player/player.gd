@@ -12,16 +12,9 @@ const SPRINT_STEP_INTERVAL = 0.28
 const GAMEPAD_LOOK_SENS       = 2.5
 const GAMEPAD_PRECISION_SCALE = 0.35
 
-const PLACED_SCRIPT := preload("res://world/placed_object.gd")
-const BUILD_GRID    := 2.0    # world-space grid size for snapping placed objects
-const BUILD_REACH   := 8.0    # max raycast distance for placement
-
 var _step_timer         := 0.0
 var _sprinting          := false
 var _just_recaptured    := false   # suppress attack on the same click that recaptures the mouse
-
-var _build_ghost:  MeshInstance3D = null   # semi-transparent preview
-var _build_rot_y:  float          = 0.0    # current ghost rotation (snapped 90°)
 
 @onready var head:       Node3D   = $Head
 @onready var camera:     Camera3D = $Head/Camera3D
@@ -100,24 +93,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("interact"):
 		_try_interact()
 
-	if event.is_action_pressed("drop"):
-		if _build_active():
-			_build_exit()
-		else:
-			drop_active()
+	if event.is_action_pressed("drop") and not GameState.is_building:
+		drop_active()
 
 	if event.is_action_pressed("inventory_next") and not interact_target:
 		inventory.cycle_next()
 		_reposition_carried()
-
-	if event.is_action_pressed("build_mode"):
-		_toggle_build_mode()
-
-	if _build_active() and event.is_action_pressed("rotate_y"):
-		_build_rot_y += PI * 0.5
-
-	if event.is_action_pressed("exit_build") and _build_active():
-		_build_exit()
 
 	if event.is_action_pressed("debug_toggle"):
 		GameState.debug_mode = !GameState.debug_mode
@@ -156,15 +137,9 @@ func _physics_process(delta: float) -> void:
 
 	_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
 
-	# Attack / place — checked here so analog triggers (R2) are reliable.
-	if not recaptured and Input.is_action_just_pressed("attack"):
-		if _build_active():
-			_build_place()
-		else:
-			_try_attack()
-
-	if _build_active():
-		_build_ghost_update()
+	# Attack — suppressed while in build/place mode.
+	if not recaptured and Input.is_action_just_pressed("attack") and not GameState.is_building:
+		_try_attack()
 
 	_apply_gamepad_look(delta)
 	move_and_slide()
@@ -311,99 +286,3 @@ func _try_attack() -> void:
 		target.take_damage(25.0)
 	elif target.is_in_group("harvestable"):
 		target.interact(self)
-
-# ── Build mode ────────────────────────────────────────────────────────────────
-
-func _build_active() -> bool:
-	return GameState.active_build_mode == GameConstants.BUILD_PLACE
-
-func _get_build_data() -> ItemData:
-	var item := inventory.active()
-	if item and item.item_data and item.item_data.is_placeable:
-		return item.item_data
-	return null
-
-func _toggle_build_mode() -> void:
-	if _build_active():
-		_build_exit()
-		return
-	var data := _get_build_data()
-	if not data:
-		return
-	GameState.active_build_mode = GameConstants.BUILD_PLACE
-	_build_rot_y = snappedf(rotation.y, PI * 0.5)
-	_build_ghost = _make_ghost(data)
-	get_tree().current_scene.add_child(_build_ghost)
-
-func _make_ghost(data: ItemData) -> MeshInstance3D:
-	var mi   := MeshInstance3D.new()
-	var mesh := BoxMesh.new()
-	mesh.size = data.size
-	mi.mesh   = mesh
-	var mat   := StandardMaterial3D.new()
-	mat.albedo_color  = Color(data.color.r, data.color.g, data.color.b, 0.45)
-	mat.transparency  = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.shading_mode  = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mi.set_surface_override_material(0, mat)
-	return mi
-
-func _build_ghost_update() -> void:
-	if not _build_ghost:
-		return
-	var data := _get_build_data()
-	if not data:
-		_build_exit()
-		return
-
-	# Raycast from camera to find a surface to place on.
-	var space     := get_world_3d().direct_space_state
-	var ray_from  := camera.global_position
-	var ray_to    := ray_from + (-camera.global_transform.basis.z) * BUILD_REACH
-	var params    := PhysicsRayQueryParameters3D.create(ray_from, ray_to)
-	params.exclude = [get_rid()]
-	var hit := space.intersect_ray(params)
-
-	var place_pos: Vector3
-	if hit:
-		place_pos = hit.position
-	else:
-		# No surface hit — project forward at player waist height.
-		place_pos = global_position + (-transform.basis.z) * (BUILD_REACH * 0.6)
-		place_pos.y = global_position.y
-
-	# Snap X/Z to grid; lift Y so the bottom of the object sits on the surface.
-	place_pos = Vector3(
-		snappedf(place_pos.x, BUILD_GRID),
-		place_pos.y + data.size.y * 0.5,
-		snappedf(place_pos.z, BUILD_GRID))
-
-	_build_ghost.global_position = place_pos
-	_build_ghost.rotation.y      = _build_rot_y
-
-func _build_place() -> void:
-	var data := _get_build_data()
-	if not data or not _build_ghost:
-		return
-
-	# Spawn real object at ghost transform.
-	var obj := PLACED_SCRIPT.make(data) as StaticBody3D
-	get_tree().current_scene.add_child(obj)
-	obj.global_position = _build_ghost.global_position
-	obj.rotation.y      = _build_rot_y
-
-	# Consume one item from inventory.
-	var item := inventory.active()
-	if item:
-		inventory.remove(item)
-		item.queue_free()
-		_reposition_carried()
-
-	# Exit build mode if no more of this item.
-	if not _get_build_data():
-		_build_exit()
-
-func _build_exit() -> void:
-	if _build_ghost and is_instance_valid(_build_ghost):
-		_build_ghost.queue_free()
-	_build_ghost = null
-	GameState.active_build_mode = GameConstants.BUILD_NONE

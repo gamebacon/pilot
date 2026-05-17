@@ -35,14 +35,8 @@ func _make_overlay_mat(color: Color) -> StandardMaterial3D:
 
 # ── Input ────────────────────────────────────────────────────────────────────
 
-func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("build_mode"):
-		if _active: _exit_build()
-		else:       _enter_build()
-		return
-
-	if not _active:
-		return
+func _unhandled_input(_event: InputEvent) -> void:
+	pass  # PlankPlacer handles build_mode input now
 
 
 # ── Per-frame ────────────────────────────────────────────────────────────────
@@ -101,14 +95,14 @@ func _show_ghost(slot: BlueprintSlot, item_data: ItemData, mat: StandardMaterial
 # ── Build mode ────────────────────────────────────────────────────────────────
 
 func _enter_build() -> void:
-	if GameState.active_build_mode != GameConstants.BUILD_NONE:
+	if GameState.is_building:
 		return
-	GameState.active_build_mode = GameConstants.BUILD_BLUEPRINT
+	GameState.is_building = true
 	_active = true
 	_build_label.show()
 
 func _exit_build() -> void:
-	GameState.active_build_mode = GameConstants.BUILD_NONE
+	GameState.is_building = false
 	_active             = false
 	_current_bp         = null
 	_current_slot_index = -1
@@ -171,7 +165,7 @@ func _update_build_label() -> void:
 
 	UIStyle.set_hint(_build_label, [[
 		"%s  %d/%d%s  " % [phase_name, phase_done, phase_total, item_hint],
-		"@place", " Place  ", "@build_mode", " Exit"
+		"@place", " Place", "@build_mode", " Exit"
 	]])
 
 # ── Placement ────────────────────────────────────────────────────────────────

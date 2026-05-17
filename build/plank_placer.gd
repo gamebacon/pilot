@@ -41,11 +41,6 @@ func _ready() -> void:
 # ── Input ────────────────────────────────────────────────────────────────────
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("plank_mode"):
-		if _active: _exit()
-		else:       _enter()
-		return
-
 	if not _active:
 		return
 
@@ -73,6 +68,11 @@ func _process(_delta: float) -> void:
 				player = p
 				break
 		return
+
+	if Input.is_action_just_pressed("build_mode"):
+		if _active: _exit()
+		else:       _enter()
+
 	if not _active:
 		return
 	# Keep held item in sync with whatever the player cycles to.
@@ -269,13 +269,14 @@ func _update_hint() -> void:
 # ── Mode enter / exit ─────────────────────────────────────────────────────────
 
 func _enter() -> void:
-	if GameState.active_build_mode != GameConstants.BUILD_NONE:
+	if not player or GameState.is_building:
 		return
-	if player.inventory.is_empty():
+	var active_item := player.inventory.active()
+	if not active_item:
 		return
-	GameState.active_build_mode = GameConstants.BUILD_FREEPLACE
+	GameState.is_building = true
 
-	_hold(player.inventory.active())
+	_hold(active_item)
 	_refresh_ghost_for_held()
 
 	_active = true
@@ -283,7 +284,7 @@ func _enter() -> void:
 	_label.show()
 
 func _exit() -> void:
-	GameState.active_build_mode = GameConstants.BUILD_NONE
+	GameState.is_building = false
 	_active    = false
 	_held_item = null
 	_held_data = null
