@@ -79,6 +79,17 @@ static func make_hint(hint: String) -> Control:
 	lbl.add_theme_font_size_override("font_size", SIZE_BODY)
 	return lbl
 
+## Returns a focus StyleBox that draws a bright outline *outside* the button rect
+## so it's never clipped by the button's own background or a parent container.
+static func make_focus_style(color: Color = COL_ACCENT) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.draw_center      = false
+	s.border_color     = color
+	s.set_border_width_all(2)
+	s.set_corner_radius_all(5)
+	s.set_expand_margin_all(2)   # bleeds 2 px outside — nothing can clip it
+	return s
+
 ## Apply standard world-space label styling to a Label3D.
 static func style_world_label(lbl: Label3D, size: int = SIZE_BODY * 4) -> void:
 	lbl.font_size = size
@@ -154,10 +165,11 @@ static func _keyboard_badge(raw: String) -> Control:
 	panel.add_child(center)
 	return panel
 static func _face_btn_color(raw: String) -> Color:
-	var nintendo := InputHelper.NINTENDO_LAYOUT
+	# Color follows the label that's shown — no extra swap needed here because
+	# InputHelper already remaps the letter for the controller layout.
 	match raw:
-		"A": return COL_BTN_B if nintendo else COL_BTN_A
-		"B": return COL_BTN_A if nintendo else COL_BTN_B
-		"X": return COL_BTN_Y if nintendo else COL_BTN_X
-		"Y": return COL_BTN_X if nintendo else COL_BTN_Y
+		"A": return COL_BTN_A   # always green
+		"B": return COL_BTN_B   # always red
+		"X": return COL_BTN_X   # always yellow
+		"Y": return COL_BTN_Y   # always blue
 		_:   return COL_BTN_SHOULDER

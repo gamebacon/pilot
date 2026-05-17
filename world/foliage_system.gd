@@ -20,6 +20,8 @@ extends Node3D
 #                    [3] Pine upland     [4] Open / cleared
 #   p              Dictionary  forwarded verbatim to the builder
 # ─────────────────────────────────────────────────────────────────────────────
+const HarvestableTree = preload("res://world/harvestable_tree.gd")
+
 const TYPES: Array = [
 	# zones: [spruce-forest, conifer-mix, birch-grove, pine-upland, open/cleared]
 	# density: true = apply density-noise modulation (good for grass/flowers/shrubs)
@@ -248,6 +250,7 @@ func _build_spruce(pos: Vector3, p: Dictionary, rng: RandomNumberGenerator) -> N
 		cmi.mesh = cm;  cmi.position = Vector3(0, (ld[2] as float) * s, 0)
 		cmi.set_surface_override_material(0, mat_f)
 		root.add_child(cmi)
+	_add_harvest_trunk(root, 0.18 * s, 2.2 * s, 1.1 * s)
 	return root
 
 
@@ -277,6 +280,7 @@ func _build_pine(pos: Vector3, p: Dictionary, rng: RandomNumberGenerator) -> Nod
 		cmi.mesh = cm;  cmi.position = Vector3(0, (ld[2] as float) * s, 0)
 		cmi.set_surface_override_material(0, mat_f)
 		root.add_child(cmi)
+	_add_harvest_trunk(root, 0.12 * s, 3.5 * s, 1.75 * s)
 	return root
 
 
@@ -309,6 +313,7 @@ func _build_birch(pos: Vector3, p: Dictionary, rng: RandomNumberGenerator) -> No
 			rng.randf_range(-0.5, 0.5) * s)
 		smi.set_surface_override_material(0, _mat(p["col_c"] as Color))
 		root.add_child(smi)
+	_add_harvest_trunk(root, 0.12 * s, 5.5 * s, 2.75 * s)
 	return root
 
 
@@ -514,6 +519,20 @@ func _build_flower(pos: Vector3, p: Dictionary, rng: RandomNumberGenerator) -> N
 	hmi.set_surface_override_material(0, _mat(col))
 	root.add_child(hmi)
 	return root
+
+# ─── Harvestable trunk ────────────────────────────────────────────────────────
+
+func _add_harvest_trunk(root: Node3D, radius: float, height: float, cy: float) -> void:
+	var body  := StaticBody3D.new()
+	body.set_script(HarvestableTree)
+	var col   := CollisionShape3D.new()
+	var shape := CapsuleShape3D.new()
+	shape.radius    = radius
+	shape.height    = height
+	col.shape       = shape
+	col.position    = Vector3(0.0, cy, 0.0)
+	body.add_child(col)
+	root.add_child(body)
 
 # ─── Material helpers ─────────────────────────────────────────────────────────
 

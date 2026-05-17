@@ -26,6 +26,7 @@ const MATERIAL_CATEGORY_ORDER: Array[String] = [
 # ── Build mode identifiers ────────────────────────────────────────────────────
 const BUILD_BLUEPRINT := "blueprint"
 const BUILD_FREEPLACE := "freeplace"
+const BUILD_PLACE     := "place"     # survival building — crafted items placed freely
 const BUILD_NONE      := ""
 
 # ── Item resources ────────────────────────────────────────────────────────────

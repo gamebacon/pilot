@@ -11,8 +11,17 @@ const WALK_STEP_INTERVAL   = 0.45
 const SPRINT_STEP_INTERVAL = 0.28
 const GAMEPAD_LOOK_SENS       = 2.5
 const GAMEPAD_PRECISION_SCALE = 0.35
-var _step_timer  := 0.0
-var _sprinting   := false
+
+const PLACED_SCRIPT := preload("res://world/placed_object.gd")
+const BUILD_GRID    := 2.0    # world-space grid size for snapping placed objects
+const BUILD_REACH   := 8.0    # max raycast distance for placement
+
+var _step_timer         := 0.0
+var _sprinting          := false
+var _just_recaptured    := false   # suppress attack on the same click that recaptures the mouse
+
+var _build_ghost:  MeshInstance3D = null   # semi-transparent preview
+var _build_rot_y:  float          = 0.0    # current ghost rotation (snapped 90°)
 
 @onready var head:       Node3D   = $Head
 @onready var camera:     Camera3D = $Head/Camera3D
@@ -21,6 +30,8 @@ var _sprinting   := false
 
 var inventory: Inventory
 var interact_target: Node = null
+var _attack_cooldown := 0.0
+
 
 var walk_audio: AudioStreamPlayer
 
@@ -80,6 +91,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed:
 		if Input.mouse_mode == Input.MOUSE_MODE_VISIBLE:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+			_just_recaptured = true
+			return   # don't also attack on the recapture click
 
 	if event.is_action_pressed("sprint"):
 		_sprinting = not _sprinting
@@ -88,11 +101,23 @@ func _unhandled_input(event: InputEvent) -> void:
 		_try_interact()
 
 	if event.is_action_pressed("drop"):
-		drop_active()
+		if _build_active():
+			_build_exit()
+		else:
+			drop_active()
 
 	if event.is_action_pressed("inventory_next") and not interact_target:
 		inventory.cycle_next()
 		_reposition_carried()
+
+	if event.is_action_pressed("build_mode"):
+		_toggle_build_mode()
+
+	if _build_active() and event.is_action_pressed("rotate_y"):
+		_build_rot_y += PI * 0.5
+
+	if event.is_action_pressed("exit_build") and _build_active():
+		_build_exit()
 
 	if event.is_action_pressed("debug_toggle"):
 		GameState.debug_mode = !GameState.debug_mode
@@ -100,6 +125,10 @@ func _unhandled_input(event: InputEvent) -> void:
 func _physics_process(delta: float) -> void:
 	if NetworkManager.is_active() and not is_multiplayer_authority():
 		return  # remote player: position is written by _sync_transform RPC
+
+	# Consume the recapture flag — must be first so it covers the whole frame.
+	var recaptured := _just_recaptured
+	_just_recaptured = false
 
 	if not is_on_floor():
 		velocity += get_gravity() * delta
@@ -124,6 +153,18 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity.x = move_toward(velocity.x, 0, speed)
 		velocity.z = move_toward(velocity.z, 0, speed)
+
+	_attack_cooldown = maxf(0.0, _attack_cooldown - delta)
+
+	# Attack / place — checked here so analog triggers (R2) are reliable.
+	if not recaptured and Input.is_action_just_pressed("attack"):
+		if _build_active():
+			_build_place()
+		else:
+			_try_attack()
+
+	if _build_active():
+		_build_ghost_update()
 
 	_apply_gamepad_look(delta)
 	move_and_slide()
@@ -153,9 +194,16 @@ func _apply_gamepad_look(delta: float) -> void:
 	head.rotation.x = clamp(head.rotation.x, -PI / 2.0, PI / 2.0)
 
 func _update_interact_target() -> void:
+	# Proactively clear any stale reference from a node freed last frame.
+	if not is_instance_valid(interact_target):
+		interact_target = null
 	if interact_ray.is_colliding():
 		var t := interact_ray.get_collider()
-		interact_target = t if t != null and t.has_method("interact") else null
+		# Accept anything interactable OR any enemy (enemies don't need interact()).
+		if is_instance_valid(t) and (t.has_method("interact") or t.is_in_group("enemies")):
+			interact_target = t
+		else:
+			interact_target = null
 	else:
 		interact_target = null
 
@@ -174,6 +222,7 @@ func pick_up(item: PhysicalItem) -> bool:
 	item.collision_layer = 0
 	item.collision_mask  = 0
 	item.rotation = Vector3(-0.3, 0.0, 0.1)
+	item.scale    = Vector3.ONE * _held_scale(item)
 	inventory.add(item)
 	_reposition_carried()
 	return true
@@ -185,6 +234,7 @@ func drop_active() -> void:
 	inventory.remove(item)
 	_reposition_carried()
 	item.reparent(get_tree().current_scene, true)
+	item.scale           = Vector3.ONE
 	item.collision_layer = 1
 	item.collision_mask  = 1
 	item.freeze          = false
@@ -202,6 +252,19 @@ func _reposition_carried() -> void:
 	for item in inventory.items:
 		item.position = Vector3(0.25 * inventory.slot_for(item), -0.3, -0.6)
 		item.rotation = Vector3(-0.3, 0.0, 0.1)
+		item.scale    = Vector3.ONE * _held_scale(item)
+
+## Returns the uniform scale to use while an item is carried.
+## Normalises the largest dimension to 0.40 m so nothing blocks the view,
+## but never scales items UP (cap at 1.0).
+func _held_scale(item: PhysicalItem) -> float:
+	if not item.item_data:
+		return 1.0
+	if item.item_data.held_scale > 0.0:
+		return item.item_data.held_scale
+	var s    := item.item_data.size
+	var max_dim := maxf(s.x, maxf(s.y, s.z))
+	return minf(1.0, 0.40 / max_dim)
 
 # Returns 1.0 when hands are empty, down to 0.45 at MAX_CARRY_MASS. Bypassed in debug mode.
 func _carry_weight_multiplier() -> float:
@@ -236,3 +299,111 @@ func _try_interact() -> void:
 		var target := interact_ray.get_collider()
 		if target.has_method("interact"):
 			target.interact(self)
+
+func _try_attack() -> void:
+	if _attack_cooldown > 0.0:
+		return
+	_attack_cooldown = 0.55   # ~1.8 hits/sec — fast enough to feel good, slow enough to read
+	var target := interact_target
+	if not is_instance_valid(target):
+		return
+	if target.is_in_group("enemies"):
+		target.take_damage(25.0)
+	elif target.is_in_group("harvestable"):
+		target.interact(self)
+
+# ── Build mode ────────────────────────────────────────────────────────────────
+
+func _build_active() -> bool:
+	return GameState.active_build_mode == GameConstants.BUILD_PLACE
+
+func _get_build_data() -> ItemData:
+	var item := inventory.active()
+	if item and item.item_data and item.item_data.is_placeable:
+		return item.item_data
+	return null
+
+func _toggle_build_mode() -> void:
+	if _build_active():
+		_build_exit()
+		return
+	var data := _get_build_data()
+	if not data:
+		return
+	GameState.active_build_mode = GameConstants.BUILD_PLACE
+	_build_rot_y = snappedf(rotation.y, PI * 0.5)
+	_build_ghost = _make_ghost(data)
+	get_tree().current_scene.add_child(_build_ghost)
+
+func _make_ghost(data: ItemData) -> MeshInstance3D:
+	var mi   := MeshInstance3D.new()
+	var mesh := BoxMesh.new()
+	mesh.size = data.size
+	mi.mesh   = mesh
+	var mat   := StandardMaterial3D.new()
+	mat.albedo_color  = Color(data.color.r, data.color.g, data.color.b, 0.45)
+	mat.transparency  = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode  = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mi.set_surface_override_material(0, mat)
+	return mi
+
+func _build_ghost_update() -> void:
+	if not _build_ghost:
+		return
+	var data := _get_build_data()
+	if not data:
+		_build_exit()
+		return
+
+	# Raycast from camera to find a surface to place on.
+	var space     := get_world_3d().direct_space_state
+	var ray_from  := camera.global_position
+	var ray_to    := ray_from + (-camera.global_transform.basis.z) * BUILD_REACH
+	var params    := PhysicsRayQueryParameters3D.create(ray_from, ray_to)
+	params.exclude = [get_rid()]
+	var hit := space.intersect_ray(params)
+
+	var place_pos: Vector3
+	if hit:
+		place_pos = hit.position
+	else:
+		# No surface hit — project forward at player waist height.
+		place_pos = global_position + (-transform.basis.z) * (BUILD_REACH * 0.6)
+		place_pos.y = global_position.y
+
+	# Snap X/Z to grid; lift Y so the bottom of the object sits on the surface.
+	place_pos = Vector3(
+		snappedf(place_pos.x, BUILD_GRID),
+		place_pos.y + data.size.y * 0.5,
+		snappedf(place_pos.z, BUILD_GRID))
+
+	_build_ghost.global_position = place_pos
+	_build_ghost.rotation.y      = _build_rot_y
+
+func _build_place() -> void:
+	var data := _get_build_data()
+	if not data or not _build_ghost:
+		return
+
+	# Spawn real object at ghost transform.
+	var obj := PLACED_SCRIPT.make(data) as StaticBody3D
+	get_tree().current_scene.add_child(obj)
+	obj.global_position = _build_ghost.global_position
+	obj.rotation.y      = _build_rot_y
+
+	# Consume one item from inventory.
+	var item := inventory.active()
+	if item:
+		inventory.remove(item)
+		item.queue_free()
+		_reposition_carried()
+
+	# Exit build mode if no more of this item.
+	if not _get_build_data():
+		_build_exit()
+
+func _build_exit() -> void:
+	if _build_ghost and is_instance_valid(_build_ghost):
+		_build_ghost.queue_free()
+	_build_ghost = null
+	GameState.active_build_mode = GameConstants.BUILD_NONE

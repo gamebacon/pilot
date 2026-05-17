@@ -154,6 +154,7 @@ func _add_row(item: ItemData) -> void:
 	# ── Buy button ────────────────────────────────────────────────────────────
 	var btn := Button.new()
 	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	btn.add_theme_stylebox_override("focus", UIStyle.make_focus_style())
 	btn.pressed.connect(func() -> void: _buy_item(item))
 	_badge_button(btn, "ui_accept", "Buy")
 	if _first_button == null:
@@ -238,5 +239,7 @@ func _badge_button(btn: Button, action: String, label: String) -> void:
 		child.queue_free()
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+	center.clip_contents = false
 	center.add_child(UIStyle.make_prompt(action, label))
 	btn.add_child(center)

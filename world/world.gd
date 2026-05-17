@@ -17,8 +17,19 @@ func _ready() -> void:
 		seed_val = randi()
 	$WorldGenerator.generate(seed_val)
 
-	# ── Multiplayer player spawning ───────────────────────────────────────────
+	# ── Hide old sauna-game nodes ─────────────────────────────────────────────
+	for n in ["Home", "HardwareStore", "GroceryStore", "Factory", "ShopUI", "DayManager"]:
+		var node := get_node_or_null(n)
+		if node:
+			node.process_mode = Node.PROCESS_MODE_DISABLED
+			if node is Node3D:
+				(node as Node3D).visible = false
+
+	# ── Solo: reposition the scene-embedded Player near the core ─────────────
 	if not NetworkManager.is_active():
+		var solo := get_node_or_null("Player")
+		if solo:
+			solo.global_position = _core_spawn_pos()
 		return
 
 	var solo := get_node_or_null("Player")
@@ -53,7 +64,7 @@ func _do_spawn(id: int) -> void:
 	player.name = str(id)
 	player.set_multiplayer_authority(id)
 	$Players.add_child(player)
-	player.global_position = Vector3(0, 1, 2)
+	player.global_position = _core_spawn_pos()
 
 @rpc("authority", "reliable", "call_local")
 func _do_remove(id: int) -> void:
@@ -161,6 +172,11 @@ func _rpc_consume_item(net_id: int) -> void:
 		item.queue_free()
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+func _core_spawn_pos() -> Vector3:
+	var wgen := $WorldGenerator
+	var base: Vector3 = wgen.core_position if wgen else Vector3.ZERO
+	return base + Vector3(4.0, 1.5, 0.0)
 
 func _find_item(net_id: int) -> PhysicalItem:
 	for node in get_tree().get_nodes_in_group("physical_items"):

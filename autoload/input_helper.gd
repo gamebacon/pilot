@@ -1,7 +1,7 @@
 class_name InputHelper
 
-# Switch to false for Xbox / PlayStation layout (A=bottom, B=right, X=left, Y=top).
-# Nintendo layout swaps the face-button labels: A↔B and X↔Y.
+# Switch to true for Nintendo Switch Pro controller (A↔B and X↔Y are swapped).
+# false = Xbox / PlayStation layout: A = bottom (confirm), B = right (cancel).
 const NINTENDO_LAYOUT := true
 
 # Reads from the InputMap so labels always match what is actually bound.

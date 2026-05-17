@@ -33,8 +33,14 @@ var _heights: PackedFloat32Array          # [i + j*VERT_W], j=0 → z=T_ORIGIN_Z
 var _all_road_pts := PackedVector2Array() # flattened for fast iteration
 var _road_segs_pts: Array = []            # per-segment, used for road mesh
 
-const FoliageSystem   = preload("res://world/foliage_system.gd")
-const DayNightCycle   = preload("res://world/day_night_cycle.gd")
+const FoliageSystem     = preload("res://world/foliage_system.gd")
+const DayNightCycle     = preload("res://world/day_night_cycle.gd")
+const CoreScript        = preload("res://world/core.gd")
+const WaveSpawnerScript = preload("res://world/wave_spawner.gd")
+const ITEM_SCENE        = preload("res://items/physical_item.tscn")
+
+## Set by _spawn_core() so world.gd can read it for player spawn positioning.
+var core_position := Vector3.ZERO
 
 var _mat_snow:  StandardMaterial3D
 var _mat_road:  StandardMaterial3D
@@ -73,14 +79,16 @@ func generate(seed_val: int) -> void:
 
 	_init_mats()
 	_setup_environment()
-	_randomise_layout()
-	_sample_road_pts()
+	#_randomise_layout()   # old sauna-game concept — buildings/layout disabled
+	#_sample_road_pts()    # no roads in new game
 	_build_heightmap()
 	_build_terrain()
-	_place_buildings()
-	_build_roads()
+	#_place_buildings()    # no shop/home/factory placement
+	#_build_roads()        # no roads
 	_spawn_foliage()
 	_spawn_day_night_cycle()
+	_spawn_core()
+	_spawn_stones()
 
 # ── Environment / sky ─────────────────────────────────────────────────────────
 func _setup_environment() -> void:
@@ -421,6 +429,78 @@ func _spawn_foliage() -> void:
 	add_child(fs)
 	fs.populate(_rng, _biome_noise, _sample_height, _valid_pos,
 		T_ORIGIN_X, T_ORIGIN_Z, T_WIDTH, T_DEPTH, HEIGHT_AMP, _rng.seed)
+
+# ── Core + wave spawner ───────────────────────────────────────────────────────
+
+func _spawn_core() -> void:
+	# Pick a random flat-ish spot 15–35 m from origin.
+	var angle := _rng.randf() * TAU
+	var dist  := _rng.randf_range(15.0, 35.0)
+	var cx    := cos(angle) * dist
+	var cz    := sin(angle) * dist
+	var cy    := _sample_height(cx, cz)
+
+	core_position = Vector3(cx, cy, cz)
+
+	# Visual: a glowing green pillar.
+	var body := StaticBody3D.new()
+	body.set_script(CoreScript)
+	body.name = "Core"
+
+	var col    := CollisionShape3D.new()
+	var cshape := CylinderShape3D.new()
+	cshape.radius = 0.8
+	cshape.height = 3.0
+	col.shape     = cshape
+	body.add_child(col)
+
+	var mi   := MeshInstance3D.new()
+	var mesh := CylinderMesh.new()
+	mesh.top_radius    = 0.8
+	mesh.bottom_radius = 0.8
+	mesh.height        = 3.0
+	mi.mesh = mesh
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color      = Color(0.1, 0.9, 0.4)
+	mat.emission_enabled  = true
+	mat.emission          = Color(0.0, 0.6, 0.25)
+	mi.set_surface_override_material(0, mat)
+	body.add_child(mi)
+
+	var light := OmniLight3D.new()
+	light.light_color  = Color(0.3, 1.0, 0.55)
+	light.light_energy = 3.0
+	light.omni_range   = 28.0
+	body.add_child(light)
+
+	get_parent().add_child(body)
+	body.global_position = core_position + Vector3(0.0, 1.5, 0.0)
+
+	# Wave spawner — lives on the world root so it has correct multiplayer context.
+	var ws := Node.new()
+	ws.set_script(WaveSpawnerScript)
+	ws.name = "WaveSpawner"
+	get_parent().add_child(ws)
+	ws.core_position = core_position
+
+func _spawn_stones() -> void:
+	var stone_data := ItemRegistry.get_item("stone")
+	if not stone_data:
+		return
+	var spawned := 0
+	var tries   := 0
+	while spawned < 45 and tries < 900:
+		tries += 1
+		var wx := _rng.randf_range(T_ORIGIN_X + 15.0, T_ORIGIN_X + T_WIDTH - 15.0)
+		var wz := _rng.randf_range(T_ORIGIN_Z - T_DEPTH + 15.0, T_ORIGIN_Z - 15.0)
+		var h  := _sample_height(wx, wz)
+		if h > HEIGHT_AMP * 0.80:
+			continue
+		var stone := ITEM_SCENE.instantiate() as PhysicalItem
+		stone.item_data = stone_data
+		get_parent().add_child(stone)
+		stone.global_position = Vector3(wx, h + 0.15, wz)
+		spawned += 1
 
 func _valid_pos(wx: float, wz: float, placed: PackedVector2Array, min_dist: float) -> bool:
 	var pos2 := Vector2(wx, wz)

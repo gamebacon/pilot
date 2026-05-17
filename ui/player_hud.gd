@@ -14,6 +14,8 @@ var _plot:   Node = null
 var _day_manager: DayManager = null
 var _connected_instances: Array = []
 var _notify_tween: Tween = null
+var _core_hp_label: Label = null
+var _core: Node = null
 
 # Dirty-check cache so we don't rebuild prompt nodes every frame
 var _last_hint := ""
@@ -33,6 +35,7 @@ func _ready() -> void:
 	debug_badge.hide()
 	for lbl: Label in [crosshair, notification_label, blueprint_list, debug_badge, shift_label, objective_label]:
 		lbl.add_theme_font_override("font", UIStyle.FONT)
+	objective_label.hide()   # sauna objective — not used in new game
 	GameState.debug_mode_changed.connect(_on_debug_mode_changed)
 	GameState.shift_ended.connect(_on_shift_ended)
 	_update_shift_label(0.0)
@@ -40,6 +43,7 @@ func _ready() -> void:
 		_add_server_ip_label()
 	_add_fps_counter()
 	_add_debug_panel()
+	_add_core_hp_label()
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -57,7 +61,9 @@ func _process(delta: float) -> void:
 
 	_try_connect_plot()
 	_try_connect_day_manager()
-	_update_objective()
+	#_update_objective()   # sauna objective disabled
+	_try_connect_core()
+	_update_time_label()
 
 	if Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
 		hint_label.hide()
@@ -66,8 +72,13 @@ func _process(delta: float) -> void:
 		blueprint_list.hide()
 		return
 
-	var target: Node = _player.interact_target
-	if target and target.has_method("get_interact_hint"):
+	# Untyped so GDScript doesn't validate on assignment — is_instance_valid handles it below.
+	var target = _player.interact_target
+	if not is_instance_valid(target):
+		_player.interact_target = null
+		hint_label.hide()
+		_last_hint = ""
+	elif target.has_method("get_interact_hint"):
 		var hint: String = target.get_interact_hint(_player)
 		if hint.is_empty():
 			hint_label.hide()
@@ -96,34 +107,59 @@ func _on_debug_mode_changed(enabled: bool) -> void:
 # ── Context hints ──────────────────────────────────────────────────────────────
 
 func _update_context_hints() -> void:
+	# ── Build-place mode hints ─────────────────────────────────────────────────
+	if GameState.active_build_mode == GameConstants.BUILD_PLACE:
+		var key := "build"
+		if key != _last_context_key:
+			_last_context_key = key
+			var pairs := [
+				["attack",    "Place"],
+				["rotate_y",  "Rotate"],
+				["exit_build","Cancel"],
+			]
+			var rows: Array[Control] = []
+			for p in pairs:
+				var row: Control = UIStyle.make_prompt(p[0], p[1])
+				row.size_flags_horizontal = Control.SIZE_SHRINK_END
+				rows.append(row)
+			_rebuild_children(context_hints, rows, false)
+		context_hints.show()
+		return
+
+	# ── Any other old build mode (blueprint / freeplace) ─────────────────────
 	if GameState.active_build_mode != GameConstants.BUILD_NONE:
 		context_hints.hide()
 		_last_context_key = ""
 		return
+
+	# ── Normal gameplay hints ─────────────────────────────────────────────────
 	if _player.inventory.is_empty():
 		context_hints.hide()
 		_last_context_key = ""
 		return
 
+	var has_placeable: bool = false
+	for item in _player.inventory.items:
+		if item.item_data and item.item_data.is_placeable:
+			has_placeable = true
+			break
 	var has_multi: bool = _player.inventory.has_multiple_types()
-	var key := "%s|%s|%s|%d" % [
-		InputHelper.action_label("build_mode"),
-		InputHelper.action_label("plank_mode"),
-		InputHelper.action_label("drop"),
-		int(has_multi),
-	]
+
+	var key := "%s|%d|%d" % [InputHelper.action_label("drop"), int(has_placeable), int(has_multi)]
 	if key != _last_context_key:
 		_last_context_key = key
-		var actions := PackedStringArray(["build_mode", "plank_mode", "drop"])
-		var labels  := PackedStringArray(["Blueprint",  "Freeplace",  "Drop"])
-		if has_multi:
-			actions.append("inventory_next")
-			labels.append("Cycle")
 		var rows: Array[Control] = []
-		for i in actions.size():
-			var row: Control = UIStyle.make_prompt(actions[i], labels[i])
-			row.size_flags_horizontal = Control.SIZE_SHRINK_END
-			rows.append(row)
+		if has_placeable:
+			var brow: Control = UIStyle.make_prompt("build_mode", "Build")
+			brow.size_flags_horizontal = Control.SIZE_SHRINK_END
+			rows.append(brow)
+		var drow: Control = UIStyle.make_prompt("drop", "Drop")
+		drow.size_flags_horizontal = Control.SIZE_SHRINK_END
+		rows.append(drow)
+		if has_multi:
+			var crow: Control = UIStyle.make_prompt("inventory_next", "Cycle")
+			crow.size_flags_horizontal = Control.SIZE_SHRINK_END
+			rows.append(crow)
 		_rebuild_children(context_hints, rows, false)
 
 	context_hints.show()
@@ -213,6 +249,21 @@ func _show_notification(text: String) -> void:
 	_notify_tween.tween_property(notification_label, "modulate:a", 0.0, 0.6)
 
 # ── Shift timer ────────────────────────────────────────────────────────────────
+
+func _update_time_label() -> void:
+	var dnc := get_tree().get_first_node_in_group("day_night")
+	if not dnc:
+		return
+	var is_night: bool = dnc.time_of_day > 0.75 or dnc.time_of_day < 0.25
+	var ws  := get_tree().get_first_node_in_group("wave_spawner")
+	var wave: int = ws._wave_num if ws else 0
+	if is_night:
+		shift_label.text = "NIGHT — WAVE %d" % wave
+		shift_label.add_theme_color_override("font_color", Color(0.55, 0.75, 1.0, 0.9))
+	else:
+		var next := wave + 1
+		shift_label.text = "DAY — WAVE %d INCOMING" % next if wave > 0 else "DAY — SURVIVE THE NIGHT"
+		shift_label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.5, 0.9))
 
 func _update_shift_label(seconds: float) -> void:
 	var mins := int(seconds) / 60
@@ -422,6 +473,41 @@ func _refresh_debug_panel() -> void:
 
 	# Auto-size panel height to content
 	_debug_panel.offset_bottom = _debug_panel.offset_top + _debug_label.get_line_count() * 15 + 28
+
+# ── Core HP ────────────────────────────────────────────────────────────────────
+
+func _add_core_hp_label() -> void:
+	_core_hp_label = Label.new()
+	_core_hp_label.add_theme_font_override("font", UIStyle.FONT)
+	_core_hp_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.5, 0.9))
+	_core_hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_core_hp_label.anchor_left   = 0.5
+	_core_hp_label.anchor_right  = 0.5
+	_core_hp_label.anchor_top    = 0.0
+	_core_hp_label.anchor_bottom = 0.0
+	_core_hp_label.offset_left   = -100
+	_core_hp_label.offset_right  = 100
+	_core_hp_label.offset_top    = 10
+	_core_hp_label.offset_bottom = 30
+	_core_hp_label.text          = "CORE: 100"
+	add_child(_core_hp_label)
+
+func _try_connect_core() -> void:
+	if _core:
+		return
+	_core = get_tree().get_first_node_in_group("core")
+	if _core:
+		_core.hp_changed.connect(_on_core_hp_changed)
+
+func _on_core_hp_changed(new_hp: int) -> void:
+	if not _core_hp_label:
+		return
+	_core_hp_label.text = "CORE: %d" % new_hp
+	var t := float(new_hp) / 100.0
+	_core_hp_label.add_theme_color_override("font_color",
+		Color(1.0, t, t * 0.4, 0.9) if t < 0.5 else Color(0.3, 1.0, 0.5, 0.9))
+	if new_hp == 0:
+		_show_notification("CORE DESTROYED!")
 
 # ── Utility ────────────────────────────────────────────────────────────────────
 

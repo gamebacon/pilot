@@ -58,6 +58,10 @@ const _MATERIALS: Array = [
 	preload("res://items/resources/wet_wipes.tres"),
 	preload("res://items/resources/wood_board.tres"),
 	preload("res://items/resources/wood_plank.tres"),
+	preload("res://items/resources/stone.tres"),
+	preload("res://items/resources/wood_log.tres"),
+	preload("res://items/resources/wooden_plank.tres"),
+	preload("res://items/resources/wooden_wall.tres"),
 ]
 
 func _ready() -> void:
