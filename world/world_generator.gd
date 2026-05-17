@@ -11,7 +11,7 @@ const VERT_W     := GRID_W + 1
 const VERT_D     := GRID_D + 1
 const CELL_W     := T_WIDTH / GRID_W   # 2.5 m
 const CELL_D     := T_DEPTH / GRID_D   # 2.5 m
-const HEIGHT_AMP := 7.5
+const HEIGHT_AMP := 13.0
 
 # ── Buildings (XZ) — randomised per seed ─────────────────────────────────────
 # Home stays close to spawn; HardwareStore mid-map; Factory far south.
@@ -21,8 +21,8 @@ const BLDG_FLAT_R := {
 var _bldg_xz: Dictionary = {}  # filled in _randomise_layout()
 
 # ── Roads ─────────────────────────────────────────────────────────────────────
-const ROAD_HALF_W := 4.0
-const ROAD_BLEND  := 5.0
+const ROAD_HALF_W := 2.2
+const ROAD_BLEND  := 18.0
 const SEG_SAMPLES := 140
 var _road_segs: Array = []  # derived from building positions
 
@@ -33,14 +33,18 @@ var _heights: PackedFloat32Array          # [i + j*VERT_W], j=0 → z=T_ORIGIN_Z
 var _all_road_pts := PackedVector2Array() # flattened for fast iteration
 var _road_segs_pts: Array = []            # per-segment, used for road mesh
 
+const FoliageSystem   = preload("res://world/foliage_system.gd")
+const DayNightCycle   = preload("res://world/day_night_cycle.gd")
+
 var _mat_snow:  StandardMaterial3D
 var _mat_road:  StandardMaterial3D
-var _mat_pine:  StandardMaterial3D
-var _mat_trunk: StandardMaterial3D
-var _mat_stump: StandardMaterial3D
-var _mat_rock:  StandardMaterial3D
+var _biome_noise  := FastNoiseLite.new()
+var _detail_noise := FastNoiseLite.new()  # high-freq for terrain micro-variation
 
 # ── Entry ─────────────────────────────────────────────────────────────────────
+
+func _ready() -> void:
+	add_to_group("world_generator")
 
 # Called by world.gd so the seed is always controlled externally.
 func generate(seed_val: int) -> void:
@@ -50,10 +54,22 @@ func generate(seed_val: int) -> void:
 	_noise.frequency              = 0.0038
 	_noise.fractal_octaves        = 5
 	_noise.fractal_lacunarity     = 2.1
-	_noise.fractal_gain           = 0.45
+	_noise.fractal_gain           = 0.50
 	_noise.domain_warp_enabled    = true
-	_noise.domain_warp_amplitude  = 28.0
+	_noise.domain_warp_amplitude  = 42.0
 	_noise.domain_warp_frequency  = 0.003
+
+	_biome_noise.seed            = seed_val + 99
+	_biome_noise.noise_type      = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	_biome_noise.frequency       = 0.006
+	_biome_noise.fractal_octaves = 3
+	_biome_noise.fractal_gain    = 0.5
+
+	# Detail noise — small splotchy variation to break up solid terrain colour.
+	_detail_noise.seed            = seed_val + 557
+	_detail_noise.noise_type      = FastNoiseLite.TYPE_SIMPLEX_SMOOTH
+	_detail_noise.frequency       = 0.075
+	_detail_noise.fractal_octaves = 2
 
 	_init_mats()
 	_setup_environment()
@@ -63,7 +79,8 @@ func generate(seed_val: int) -> void:
 	_build_terrain()
 	_place_buildings()
 	_build_roads()
-	_spawn_resources()
+	_spawn_foliage()
+	_spawn_day_night_cycle()
 
 # ── Environment / sky ─────────────────────────────────────────────────────────
 func _setup_environment() -> void:
@@ -72,48 +89,105 @@ func _setup_environment() -> void:
 	if not we:
 		return
 
+	# Physical sky — DayNightCycle will animate its properties each frame.
 	var sky_mat := PhysicalSkyMaterial.new()
 	sky_mat.rayleigh_coefficient = 2.0
-	sky_mat.rayleigh_color       = Color(0.24, 0.39, 0.58)
+	sky_mat.rayleigh_color       = Color(0.20, 0.36, 0.56)
 	sky_mat.mie_coefficient      = 0.004
 	sky_mat.mie_eccentricity     = 0.82
 	sky_mat.mie_color            = Color(0.72, 0.77, 0.84)
-	sky_mat.turbidity            = 4.0
+	sky_mat.turbidity            = 3.0
 	sky_mat.sun_disk_scale       = 8.0
-	sky_mat.ground_color         = Color(0.78, 0.80, 0.84)
+	sky_mat.ground_color         = Color(0.42, 0.46, 0.40)
 	sky_mat.energy_multiplier    = 1.0
 
 	var sky := Sky.new()
 	sky.sky_material = sky_mat
 
 	var env := we.environment
-	env.background_mode      = Environment.BG_SKY
-	env.sky                  = sky
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	env.ambient_light_energy = 0.55
-	env.glow_enabled         = false
-	env.fog_enabled          = false
-	env.tonemap_mode         = Environment.TONE_MAPPER_LINEAR
+	if not env:
+		env = Environment.new()
+		we.environment = env
+
+	env.background_mode = Environment.BG_SKY
+	env.sky             = sky
+
+	# Ambient — manual colour so DayNightCycle drives it directly.
+	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	env.ambient_light_color  = Color(0.62, 0.70, 0.88)
+	env.ambient_light_energy = 0.45
+
+	# Filmic tonemapper — richer darks and highlights vs flat LINEAR.
+	env.tonemap_mode     = Environment.TONE_MAPPER_FILMIC
+	env.tonemap_exposure = 1.05
+	env.tonemap_white    = 1.0
+
+	# Screen-space ambient occlusion — grounds foliage and terrain, adds depth.
+	env.ssao_enabled   = true
+	env.ssao_radius    = 0.90
+	env.ssao_intensity = 1.6
+	env.ssao_power     = 1.5
+	env.ssao_detail    = 0.5
+
+	# Subtle bloom — sun disc halos at horizon, bright surfaces breathe.
+	env.glow_enabled   = true
+	env.glow_intensity = 0.32
+	env.glow_bloom     = 0.18
+	env.glow_strength  = 0.60
+
+	# Depth fog — DayNightCycle animates colour + density each frame.
+	env.fog_enabled             = true
+	env.fog_density             = 0.0018
+	env.fog_light_color         = Color(0.70, 0.80, 0.92)
+	env.fog_aerial_perspective  = 0.40
 
 	if sun:
-		sun.light_color    = Color(0.98, 0.93, 0.82)
-		sun.light_energy   = 1.4
+		sun.light_color    = Color(0.97, 0.93, 0.84)
+		sun.light_energy   = 1.52
 		sun.shadow_enabled = true
 		sun.sky_mode       = DirectionalLight3D.SKY_MODE_LIGHT_AND_SKY
 
 # ── Materials ─────────────────────────────────────────────────────────────────
 func _init_mats() -> void:
-	_mat_snow  = _mkmat(Color(0.82, 0.84, 0.87))
-	_mat_road  = _mkmat(Color(0.18, 0.18, 0.20))
-	_mat_pine  = _mkmat(Color(0.16, 0.26, 0.18))
-	_mat_trunk = _mkmat(Color(0.22, 0.16, 0.10))
-	_mat_stump = _mkmat(Color(0.28, 0.20, 0.13))
-	_mat_rock  = _mkmat(Color(0.44, 0.42, 0.40))
+	_mat_snow  = StandardMaterial3D.new()
+	_mat_snow.vertex_color_use_as_albedo = true
+	_mat_snow.roughness = 0.92
+	_mat_snow.metallic  = 0.0
+	_mat_road          = _mkmat(Color(0.17, 0.12, 0.07))
+	_mat_road.roughness = 0.97
 
 static func _mkmat(c: Color) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = c
 	return m
+
+func _terrain_color(wx: float, wz: float, h: float) -> Color:
+	var h_norm := h / HEIGHT_AMP
+	var biome  := (_biome_noise.get_noise_2d(wx, wz) + 1.0) * 0.5
+
+	# Biome base colours — intentionally dark and desaturated for realism.
+	const COL_BOG    := Color(0.048, 0.072, 0.030)  # near-black peaty bog
+	const COL_FOREST := Color(0.068, 0.108, 0.042)  # dark damp forest floor
+	const COL_ROCKY  := Color(0.145, 0.128, 0.088)  # dark slate / shale
+	const COL_SNOW   := Color(0.56,  0.60,  0.58)   # grey-blue packed snow
+
+	var base: Color
+	if biome < 0.42:
+		base = COL_BOG.lerp(COL_FOREST, biome / 0.42)
+	else:
+		base = COL_FOREST.lerp(COL_ROCKY, (biome - 0.42) / 0.58)
+
+	# Snow cap on the upper 25 % of the height range.
+	if h_norm > 0.72:
+		base = base.lerp(COL_SNOW, (h_norm - 0.72) / 0.28)
+
+	# Micro-variation: subtle splotchy darkening/lightening (±9 %) so the
+	# terrain doesn't look like flat painted polygons up close.
+	var detail := (_detail_noise.get_noise_2d(wx, wz) + 1.0) * 0.5
+	var v      := lerpf(0.89, 1.06, detail)
+	base = Color(base.r * v, base.g * v, base.b * v, 1.0)
+
+	return base
 
 # ── Layout randomisation ──────────────────────────────────────────────────────
 func _randomise_layout() -> void:
@@ -186,8 +260,8 @@ func _build_heightmap() -> void:
 				var d := pos2.distance_to(bpos)
 				if d < r:
 					h = 0.0
-				elif d < r + 4.0:
-					h *= (d - r) / 4.0
+				elif d < r + 16.0:
+					h *= (d - r) / 16.0
 
 			# Flatten road corridors (squared distance for speed)
 			var min_rd_sq := INF
@@ -215,12 +289,12 @@ func _build_terrain() -> void:
 
 	for j in VERT_D:
 		for i in VERT_W:
+			var wx := T_ORIGIN_X + i * CELL_W
+			var wz := T_ORIGIN_Z - j * CELL_D
+			var h  := _heights[i + j * VERT_W]
 			st.set_uv(Vector2(float(i) / GRID_W * 24.0, float(j) / GRID_D * 24.0))
-			st.add_vertex(Vector3(
-				T_ORIGIN_X + i * CELL_W,
-				_heights[i + j * VERT_W],
-				T_ORIGIN_Z - j * CELL_D
-			))
+			st.set_color(_terrain_color(wx, wz, h))
+			st.add_vertex(Vector3(wx, h, wz))
 
 	for j in GRID_D:
 		for i in GRID_W:
@@ -330,15 +404,23 @@ func _build_road_strip(parent: Node3D, pts: PackedVector2Array) -> void:
 	mi.set_surface_override_material(0, _mat_road)
 	parent.add_child(mi)
 
-# ── Resource spawning ─────────────────────────────────────────────────────────
-func _spawn_resources() -> void:
-	var root := Node3D.new()
-	root.name = "Resources"
-	add_child(root)
-	var placed := PackedVector2Array()
-	_spawn_trees(root, placed, 110)
-	_spawn_stumps(root, placed, 38)
-	_spawn_rocks(root, placed, 60)
+# ── Day / night cycle ─────────────────────────────────────────────────────────
+func _spawn_day_night_cycle() -> void:
+	# Remove any stale instance (e.g. hot-reload).
+	var old := get_parent().get_node_or_null("DayNightCycle")
+	if old:
+		old.queue_free()
+	var dnc := DayNightCycle.new()
+	dnc.name = "DayNightCycle"
+	get_parent().add_child(dnc)
+
+# ── Foliage ───────────────────────────────────────────────────────────────────
+func _spawn_foliage() -> void:
+	var fs := FoliageSystem.new()
+	fs.name = "Foliage"
+	add_child(fs)
+	fs.populate(_rng, _biome_noise, _sample_height, _valid_pos,
+		T_ORIGIN_X, T_ORIGIN_Z, T_WIDTH, T_DEPTH, HEIGHT_AMP, _rng.seed)
 
 func _valid_pos(wx: float, wz: float, placed: PackedVector2Array, min_dist: float) -> bool:
 	var pos2 := Vector2(wx, wz)
@@ -365,106 +447,3 @@ func _valid_pos(wx: float, wz: float, placed: PackedVector2Array, min_dist: floa
 		if dx * dx + dz * dz < md_sq:
 			return false
 	return true
-
-func _spawn_trees(parent: Node3D, placed: PackedVector2Array, count: int) -> void:
-	var attempts := 0
-	var spawned  := 0
-	while spawned < count and attempts < count * 25:
-		attempts += 1
-		var wx := _rng.randf_range(T_ORIGIN_X + 8, T_ORIGIN_X + T_WIDTH - 8)
-		var wz := _rng.randf_range(T_ORIGIN_Z - T_DEPTH + 8, T_ORIGIN_Z - 8)
-		if not _valid_pos(wx, wz, placed, 5.5):
-			continue
-		var wy := _sample_height(wx, wz)
-		_make_tree(parent, Vector3(wx, wy, wz))
-		placed.append(Vector2(wx, wz))
-		spawned += 1
-
-func _spawn_stumps(parent: Node3D, placed: PackedVector2Array, count: int) -> void:
-	var attempts := 0
-	var spawned  := 0
-	while spawned < count and attempts < count * 25:
-		attempts += 1
-		var wx := _rng.randf_range(T_ORIGIN_X + 8, T_ORIGIN_X + T_WIDTH - 8)
-		var wz := _rng.randf_range(T_ORIGIN_Z - T_DEPTH + 8, T_ORIGIN_Z - 8)
-		if not _valid_pos(wx, wz, placed, 2.5):
-			continue
-		var wy := _sample_height(wx, wz)
-		_make_stump(parent, Vector3(wx, wy, wz))
-		placed.append(Vector2(wx, wz))
-		spawned += 1
-
-func _spawn_rocks(parent: Node3D, placed: PackedVector2Array, count: int) -> void:
-	var attempts := 0
-	var spawned  := 0
-	while spawned < count and attempts < count * 25:
-		attempts += 1
-		var wx := _rng.randf_range(T_ORIGIN_X + 8, T_ORIGIN_X + T_WIDTH - 8)
-		var wz := _rng.randf_range(T_ORIGIN_Z - T_DEPTH + 8, T_ORIGIN_Z - 8)
-		if not _valid_pos(wx, wz, placed, 2.0):
-			continue
-		var wy := _sample_height(wx, wz)
-		_make_rock(parent, Vector3(wx, wy, wz))
-		placed.append(Vector2(wx, wz))
-		spawned += 1
-
-# ── Object builders ───────────────────────────────────────────────────────────
-func _make_tree(parent: Node3D, pos: Vector3) -> void:
-	var tree := Node3D.new()
-	tree.position     = pos
-	tree.rotation.y   = _rng.randf_range(0.0, TAU)
-	var s := _rng.randf_range(0.75, 1.35)
-
-	var trunk_mi := MeshInstance3D.new()
-	var trunk_m  := BoxMesh.new()
-	trunk_m.size   = Vector3(0.4, 2.2, 0.4) * s
-	trunk_mi.mesh  = trunk_m
-	trunk_mi.position = Vector3(0, 1.1 * s, 0)
-	trunk_mi.set_surface_override_material(0, _mat_trunk)
-	tree.add_child(trunk_mi)
-
-	var low_mi := MeshInstance3D.new()
-	var low_m  := BoxMesh.new()
-	low_m.size    = Vector3(2.8, 2.2, 2.8) * s
-	low_mi.mesh   = low_m
-	low_mi.position = Vector3(0, 2.8 * s, 0)
-	low_mi.set_surface_override_material(0, _mat_pine)
-	tree.add_child(low_mi)
-
-	var top_mi := MeshInstance3D.new()
-	var top_m  := BoxMesh.new()
-	top_m.size    = Vector3(1.8, 2.0, 1.8) * s
-	top_mi.mesh   = top_m
-	top_mi.position = Vector3(0, 4.5 * s, 0)
-	top_mi.set_surface_override_material(0, _mat_pine)
-	tree.add_child(top_mi)
-
-	parent.add_child(tree)
-
-func _make_stump(parent: Node3D, pos: Vector3) -> void:
-	var s := _rng.randf_range(0.5, 1.1)
-	var mi := MeshInstance3D.new()
-	var m  := BoxMesh.new()
-	m.size = Vector3(0.55, 0.45, 0.55) * s
-	mi.mesh = m
-	mi.position   = pos + Vector3(0, 0.225 * s, 0)
-	mi.rotation.y = _rng.randf_range(0.0, TAU)
-	mi.set_surface_override_material(0, _mat_stump)
-	parent.add_child(mi)
-
-func _make_rock(parent: Node3D, pos: Vector3) -> void:
-	var sx := _rng.randf_range(0.4, 1.5)
-	var sy := _rng.randf_range(0.3, 0.9)
-	var sz := _rng.randf_range(0.4, 1.3)
-	var mi := MeshInstance3D.new()
-	var m  := BoxMesh.new()
-	m.size = Vector3(sx, sy, sz)
-	mi.mesh = m
-	mi.position = pos + Vector3(0, sy * 0.5, 0)
-	mi.rotation = Vector3(
-		_rng.randf_range(-0.25, 0.25),
-		_rng.randf_range(0.0, TAU),
-		_rng.randf_range(-0.25, 0.25)
-	)
-	mi.set_surface_override_material(0, _mat_rock)
-	parent.add_child(mi)

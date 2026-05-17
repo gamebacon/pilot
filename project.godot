@@ -34,6 +34,7 @@ NetworkManager="*res://autoload/network_manager.gd"
 
 window/size/mode=2
 window/stretch/mode="canvas_items"
+window/vsync/vsync_mode=0
 
 [editor_plugins]
 

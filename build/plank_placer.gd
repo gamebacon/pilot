@@ -83,6 +83,8 @@ func _process(_delta: float) -> void:
 	if Input.is_action_just_pressed("place") and not _place_held:
 		_place_held = true
 		_place()
+		if not _active:
+			return
 	elif _place_held and Input.get_action_raw_strength("place") <= 0.1:
 		_place_held = false
 	_update_ghost()

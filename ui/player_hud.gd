@@ -19,6 +19,13 @@ var _notify_tween: Tween = null
 var _last_hint := ""
 var _last_context_key := ""
 
+# ── FPS / debug overlay ────────────────────────────────────────────────────────
+var _fps_label:     Label          = null
+var _debug_panel:   PanelContainer = null
+var _debug_label:   Label          = null
+var _fps_smooth:    float          = 60.0
+var _frame_ms:      float          = 16.7
+
 func _ready() -> void:
 	hint_label.hide()
 	context_hints.hide()
@@ -31,8 +38,19 @@ func _ready() -> void:
 	_update_shift_label(0.0)
 	if NetworkManager.is_server():
 		_add_server_ip_label()
+	_add_fps_counter()
+	_add_debug_panel()
 
-func _process(_delta: float) -> void:
+func _unhandled_key_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo:
+		if event.keycode == KEY_F3:
+			GameState.debug_mode = not GameState.debug_mode
+			get_viewport().set_input_as_handled()
+
+func _process(delta: float) -> void:
+	_tick_fps(delta)
+	if _debug_panel and _debug_panel.visible:
+		_refresh_debug_panel()
 	if not _player:
 		_player = get_tree().get_first_node_in_group("player")
 		return
@@ -68,10 +86,12 @@ func _process(_delta: float) -> void:
 	_update_context_hints()
 	_update_blueprint_checklist()
 
-# ── Debug badge ────────────────────────────────────────────────────────────────
+# ── Debug badge + panel ────────────────────────────────────────────────────────
 
 func _on_debug_mode_changed(enabled: bool) -> void:
 	debug_badge.visible = enabled
+	if _debug_panel:
+		_debug_panel.visible = enabled
 
 # ── Context hints ──────────────────────────────────────────────────────────────
 
@@ -284,6 +304,124 @@ func _add_server_ip_label() -> void:
 		Steam.activateGameOverlayInviteDialog(lobby_id)
 	)
 	add_child(invite_btn)
+
+# ── FPS counter ────────────────────────────────────────────────────────────────
+
+func _add_fps_counter() -> void:
+	_fps_label = Label.new()
+	_fps_label.add_theme_font_override("font", UIStyle.FONT)
+	_fps_label.add_theme_font_size_override("font_size", UIStyle.SIZE_SM)
+	_fps_label.add_theme_color_override("font_color", Color(0.80, 0.95, 0.80, 0.70))
+	_fps_label.text = "-- fps"
+	_fps_label.anchor_left   = 0.0
+	_fps_label.anchor_right  = 0.0
+	_fps_label.anchor_top    = 0.0
+	_fps_label.anchor_bottom = 0.0
+	_fps_label.offset_left   = 10
+	_fps_label.offset_right  = 120
+	_fps_label.offset_top    = 10
+	_fps_label.offset_bottom = 26
+	add_child(_fps_label)
+
+func _tick_fps(delta: float) -> void:
+	# Exponential moving average — stable without being laggy
+	_fps_smooth = lerpf(_fps_smooth, 1.0 / maxf(delta, 0.0001), 0.12)
+	_frame_ms   = lerpf(_frame_ms,   delta * 1000.0,            0.12)
+	if _fps_label:
+		var col := _fps_color(_fps_smooth)
+		_fps_label.add_theme_color_override("font_color", col)
+		_fps_label.text = "%d fps" % roundi(_fps_smooth)
+
+func _fps_color(fps: float) -> Color:
+	if fps >= 55.0: return Color(0.60, 0.95, 0.60, 0.70)   # green — smooth
+	if fps >= 30.0: return Color(0.95, 0.85, 0.30, 0.85)   # yellow — ok
+	return          Color(0.95, 0.30, 0.30, 0.95)           # red — bad
+
+# ── Debug panel ────────────────────────────────────────────────────────────────
+
+func _add_debug_panel() -> void:
+	# Outer panel
+	var style := StyleBoxFlat.new()
+	style.bg_color = UIStyle.COL_PANEL_BG
+	style.border_color = UIStyle.COL_PANEL_BORDER
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(6)
+	style.set_content_margin_all(10)
+
+	_debug_panel = PanelContainer.new()
+	_debug_panel.add_theme_stylebox_override("panel", style)
+	_debug_panel.anchor_left   = 0.0
+	_debug_panel.anchor_right  = 0.0
+	_debug_panel.anchor_top    = 0.0
+	_debug_panel.anchor_bottom = 0.0
+	_debug_panel.offset_left   = 10
+	_debug_panel.offset_right  = 260
+	_debug_panel.offset_top    = 30    # sits just below the fps counter
+	_debug_panel.offset_bottom = 200
+	_debug_panel.visible       = false
+
+	_debug_label = Label.new()
+	_debug_label.add_theme_font_override("font", UIStyle.FONT)
+	_debug_label.add_theme_font_size_override("font_size", UIStyle.SIZE_SM)
+	_debug_label.add_theme_color_override("font_color", UIStyle.COL_TEXT)
+	_debug_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	_debug_label.text = ""
+
+	_debug_panel.add_child(_debug_label)
+	add_child(_debug_panel)
+
+func _refresh_debug_panel() -> void:
+	var lines := PackedStringArray()
+
+	# Header
+	lines.append("── DEBUG  [F3 to close] ──")
+
+	# FPS block
+	lines.append("")
+	lines.append("FPS     %d   (%.1f ms)" % [roundi(_fps_smooth), _frame_ms])
+
+	# Player block
+	if _player:
+		var pos: Vector3 = _player.global_position
+		lines.append("")
+		lines.append("X  %8.2f" % pos.x)
+		lines.append("Y  %8.2f" % pos.y)
+		lines.append("Z  %8.2f" % pos.z)
+		if _player.has_method("get_real_velocity"):
+			var speed: float = (_player.get_real_velocity() as Vector3).length()
+			lines.append("Speed  %.1f m/s" % speed)
+
+	# Performance monitors
+	lines.append("")
+	var nodes := int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
+	var draws := int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
+	var mem_mb := Performance.get_monitor(Performance.RENDER_VIDEO_MEM_USED) / 1048576.0
+	lines.append("Nodes   %d" % nodes)
+	lines.append("Draws   %d" % draws)
+	lines.append("VRAM    %.1f MB" % mem_mb)
+
+	# World seed + time of day
+	var wgen := get_tree().get_first_node_in_group("world_generator")
+	if wgen and wgen.get("_rng"):
+		lines.append("")
+		lines.append("Seed  %d" % (wgen._rng.seed))
+	var dnc := get_tree().get_first_node_in_group("day_night")
+	if dnc and dnc.has_method("get_time_string"):
+		var t_str: String = dnc.get_time_string()
+		var tod: float    = dnc.time_of_day
+		var phase := "Night"
+		if   tod > 0.22 and tod < 0.28: phase = "Sunrise"
+		elif tod >= 0.28 and tod < 0.50: phase = "Morning"
+		elif tod >= 0.50 and tod < 0.55: phase = "Noon"
+		elif tod >= 0.55 and tod < 0.72: phase = "Afternoon"
+		elif tod >= 0.72 and tod < 0.78: phase = "Sunset"
+		elif tod >= 0.78 or  tod < 0.22: phase = "Night"
+		lines.append("Time  %s  %s" % [t_str, phase])
+
+	_debug_label.text = "\n".join(lines)
+
+	# Auto-size panel height to content
+	_debug_panel.offset_bottom = _debug_panel.offset_top + _debug_label.get_line_count() * 15 + 28
 
 # ── Utility ────────────────────────────────────────────────────────────────────
 
