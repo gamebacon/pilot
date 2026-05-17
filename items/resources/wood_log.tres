@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://wood_log_item"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "wood_log"
+display_name = "Wood Log"
+price = 0
+description = "A chopped log. Used for building."
+color = Color(0.46, 0.28, 0.12, 1.0)
+size = Vector3(0.28, 0.18, 0.55)
+mass = 3.0
+carry_stack = 3

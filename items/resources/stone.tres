@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://stone_item"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "stone"
+display_name = "Stone"
+price = 0
+description = "A rock found on the ground. Use it to chop trees."
+color = Color(0.52, 0.50, 0.46, 1.0)
+size = Vector3(0.24, 0.22, 0.24)
+mass = 1.5
+carry_stack = 5
