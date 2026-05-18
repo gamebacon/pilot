@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://amber_item"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "amber"
+display_name = "Amber"
+price = 0
+description = "Ancient tree resin, hardened over millennia. Something is trapped inside."
+color = Color(0.88, 0.55, 0.12, 1.0)
+size = Vector3(0.10, 0.08, 0.12)
+mass = 0.3
+carry_stack = 3

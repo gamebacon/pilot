@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="ToolItemData" format=3 uid="uid://sword_stone_item"]
+
+[ext_resource type="Script" path="res://items/tool_item_data.gd" id="1_tooldata"]
+
+[resource]
+script = ExtResource("1_tooldata")
+id = "sword_stone"
+display_name = "Stone Sword"
+price = 0
+description = "A stone blade lashed to a handle. Hits hard."
+category = "Weapons"
+color = Color(0.62, 0.60, 0.58, 1.0)
+size = Vector3(0.05, 0.06, 0.65)
+mass = 1.2
+carry_stack = 1
+held_scale = 0.95
+tool_type = "sword"
+tool_level = 2
+level_name = "Stone"
+durability_max = 90
+harvest_damage = 0.0
+attack_damage = 25.0
+harvest_tags = PackedStringArray()

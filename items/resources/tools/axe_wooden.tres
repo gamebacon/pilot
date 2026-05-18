@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="ToolItemData" format=3 uid="uid://axe_wooden_item"]
+
+[ext_resource type="Script" path="res://items/tool_item_data.gd" id="1_tooldata"]
+
+[resource]
+script = ExtResource("1_tooldata")
+id = "axe_wooden"
+display_name = "Wooden Axe"
+price = 0
+description = "A crude axe. Chops trees. Wears out quickly."
+category = "Tools"
+color = Color(0.55, 0.35, 0.15, 1.0)
+size = Vector3(0.08, 0.08, 0.55)
+mass = 1.2
+carry_stack = 1
+held_scale = 0.9
+tool_type = "axe"
+tool_level = 1
+level_name = "Wooden"
+durability_max = 60
+harvest_damage = 10.0
+attack_damage = 8.0
+harvest_tags = PackedStringArray("tree")

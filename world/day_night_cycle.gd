@@ -6,7 +6,7 @@ extends Node
 ##
 ## Time convention:  0.0 = midnight · 0.25 = sunrise · 0.5 = solar noon · 0.75 = sunset
 
-const DAY_DURATION := 240.0     # shortened for testing — was 1200.0
+const DAY_DURATION := 2040.0     # shortened for testing — was 1200.0
 const START_TIME   := 0.30    # start just after sunrise (≈ 07:12)
 
 ## Current time of day, 0..1.  Readable by HUD / other systems.

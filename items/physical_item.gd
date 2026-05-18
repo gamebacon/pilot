@@ -4,6 +4,9 @@ class_name PhysicalItem
 @export var item_data: ItemData
 var net_id: int = 0  # assigned when spawned in multiplayer
 
+## Current durability for tool/weapon items. -1 means no durability (not a tool).
+var current_durability: int = -1
+
 @onready var mesh_instance: MeshInstance3D = $MeshInstance3D
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
 @onready var label: Label3D = $Label3D
@@ -36,22 +39,34 @@ func _process(delta: float) -> void:
 		_collide_cooldown -= delta
 
 func _apply_item_data() -> void:
-	var box := BoxMesh.new()
-	box.size = item_data.size
-	mesh_instance.mesh = box
-
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = item_data.color
-	if item_data.color.a < 0.99:
-		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mesh_instance.material_override = mat
-
+	# Collision box — same for everything (bounding box is fine for dropped physics)
 	var shape := BoxShape3D.new()
 	shape.size = item_data.size
 	collision_shape.shape = shape
-
 	mass = item_data.mass
-	# label.text = "pooper" # item_data.display_name
+
+	if item_data is ToolItemData:
+		# Custom multi-surface mesh: surface 0 = handle, surface 1 = head/blade
+		var tool_mesh := MeshBuilder.tool(item_data as ToolItemData)
+		if tool_mesh:
+			mesh_instance.mesh            = tool_mesh
+			mesh_instance.material_override = null   # let per-surface mats through
+		else:
+			_apply_box_mesh()
+		current_durability = (item_data as ToolItemData).durability_max
+	else:
+		_apply_box_mesh()
+
+func _apply_box_mesh() -> void:
+	var box      := BoxMesh.new()
+	box.size      = item_data.size
+	mesh_instance.mesh = box
+
+	var m                := StandardMaterial3D.new()
+	m.albedo_color        = item_data.color
+	if item_data.color.a < 0.99:
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mesh_instance.material_override = m
 
 # --- Sound helpers ---
 func _resolve(item_sound: AudioStream, default: AudioStream) -> AudioStream:
@@ -92,3 +107,18 @@ func interact(player: Node) -> void:
 func get_interact_hint(_player: Node) -> String:
 	var n: String = item_data.display_name if item_data else "item"
 	return "%s  Pick up  %s" % [InputHelper.action_label("interact"), n]
+
+# ── Durability ─────────────────────────────────────────────────────────────────
+
+## Consume one use of durability. Returns true when the tool is broken (0 or below).
+func use_durability(amount: int = 1) -> bool:
+	if current_durability < 0:
+		return false
+	current_durability -= amount
+	return current_durability <= 0
+
+## 0.0–1.0 fullness, or -1.0 if this item has no durability.
+func durability_fraction() -> float:
+	if current_durability < 0 or not (item_data is ToolItemData):
+		return -1.0
+	return float(current_durability) / float((item_data as ToolItemData).durability_max)

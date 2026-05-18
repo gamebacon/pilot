@@ -33,11 +33,12 @@ var _heights: PackedFloat32Array          # [i + j*VERT_W], j=0 → z=T_ORIGIN_Z
 var _all_road_pts := PackedVector2Array() # flattened for fast iteration
 var _road_segs_pts: Array = []            # per-segment, used for road mesh
 
-const FoliageSystem     = preload("res://world/foliage_system.gd")
-const DayNightCycle     = preload("res://world/day_night_cycle.gd")
-const CoreScript        = preload("res://world/core.gd")
-const WaveSpawnerScript = preload("res://world/wave_spawner.gd")
-const ITEM_SCENE        = preload("res://items/physical_item.tscn")
+const FoliageSystem          = preload("res://world/foliage_system.gd")
+const DayNightCycle          = preload("res://world/day_night_cycle.gd")
+const CoreScript             = preload("res://world/core.gd")
+const WaveSpawnerScript      = preload("res://world/wave_spawner.gd")
+const ITEM_SCENE             = preload("res://items/physical_item.tscn")
+const HarvestableDepositScript = preload("res://world/harvestable_rock.gd")
 
 ## Set by _spawn_core() so world.gd can read it for player spawn positioning.
 var core_position := Vector3.ZERO
@@ -88,7 +89,7 @@ func generate(seed_val: int) -> void:
 	_spawn_foliage()
 	_spawn_day_night_cycle()
 	_spawn_core()
-	_spawn_stones()
+	_spawn_ore_deposits()
 
 # ── Environment / sky ─────────────────────────────────────────────────────────
 func _setup_environment() -> void:
@@ -483,23 +484,24 @@ func _spawn_core() -> void:
 	get_parent().add_child(ws)
 	ws.core_position = core_position
 
-func _spawn_stones() -> void:
-	var stone_data := ItemRegistry.get_item("stone")
-	if not stone_data:
-		return
+## Spawns ore deposits using OreRegistry's weighted distribution.
+## Common ores appear frequently; Legendary ores are rare finds.
+func _spawn_ore_deposits() -> void:
 	var spawned := 0
 	var tries   := 0
-	while spawned < 45 and tries < 900:
+	while spawned < 60 and tries < 1200:
 		tries += 1
 		var wx := _rng.randf_range(T_ORIGIN_X + 15.0, T_ORIGIN_X + T_WIDTH - 15.0)
 		var wz := _rng.randf_range(T_ORIGIN_Z - T_DEPTH + 15.0, T_ORIGIN_Z - 15.0)
 		var h  := _sample_height(wx, wz)
 		if h > HEIGHT_AMP * 0.80:
 			continue
-		var stone := ITEM_SCENE.instantiate() as PhysicalItem
-		stone.item_data = stone_data
-		get_parent().add_child(stone)
-		stone.global_position = Vector3(wx, h + 0.15, wz)
+		var ore  := OreRegistry.get_random_weighted(_rng)
+		var body := StaticBody3D.new()
+		body.set_script(HarvestableDepositScript)
+		body.set("ore_data", ore)
+		get_parent().add_child(body)
+		body.global_position = Vector3(wx, h, wz)
 		spawned += 1
 
 func _valid_pos(wx: float, wz: float, placed: PackedVector2Array, min_dist: float) -> bool:

@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="ToolItemData" format=3 uid="uid://axe_iron_item"]
+
+[ext_resource type="Script" path="res://items/tool_item_data.gd" id="1_tooldata"]
+
+[resource]
+script = ExtResource("1_tooldata")
+id = "axe_iron"
+display_name = "Iron Axe"
+price = 0
+description = "An iron-headed axe. Fells trees in two swings and lasts a long time."
+category = "Tools"
+color = Color(0.70, 0.68, 0.72, 1.0)
+size = Vector3(0.09, 0.09, 0.58)
+mass = 2.2
+carry_stack = 1
+held_scale = 0.9
+tool_type = "axe"
+tool_level = 3
+level_name = "Iron"
+durability_max = 200
+harvest_damage = 20.0
+attack_damage = 18.0
+harvest_tags = PackedStringArray("tree")

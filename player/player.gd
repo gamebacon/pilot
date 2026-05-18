@@ -278,11 +278,19 @@ func _try_interact() -> void:
 func _try_attack() -> void:
 	if _attack_cooldown > 0.0:
 		return
-	_attack_cooldown = 0.55   # ~1.8 hits/sec — fast enough to feel good, slow enough to read
+	_attack_cooldown = 0.55
 	var target := interact_target
 	if not is_instance_valid(target):
 		return
 	if target.is_in_group("enemies"):
-		target.take_damage(25.0)
+		var dmg := 25.0
+		var active := inventory.active()
+		if active and active.item_data is ToolItemData:
+			dmg = (active.item_data as ToolItemData).attack_damage
+			if active.use_durability(1):
+				inventory.remove(active)
+				active.queue_free()
+				_reposition_carried()
+		target.take_damage(dmg)
 	elif target.is_in_group("harvestable"):
 		target.interact(self)

@@ -62,6 +62,27 @@ const _MATERIALS: Array = [
 	preload("res://items/resources/wood_log.tres"),
 	preload("res://items/resources/wooden_plank.tres"),
 	preload("res://items/resources/wooden_wall.tres"),
+	# Tools
+	preload("res://items/resources/tools/axe_wooden.tres"),
+	preload("res://items/resources/tools/axe_stone.tres"),
+	preload("res://items/resources/tools/axe_iron.tres"),
+	preload("res://items/resources/tools/pickaxe_wooden.tres"),
+	preload("res://items/resources/tools/pickaxe_stone.tres"),
+	preload("res://items/resources/tools/pickaxe_iron.tres"),
+	# Weapons
+	preload("res://items/resources/weapons/sword_wooden.tres"),
+	preload("res://items/resources/weapons/sword_stone.tres"),
+	preload("res://items/resources/weapons/sword_iron.tres"),
+	# Ore drops
+	preload("res://items/resources/ores/flint.tres"),
+	preload("res://items/resources/ores/coal.tres"),
+	preload("res://items/resources/ores/copper_ore.tres"),
+	preload("res://items/resources/ores/iron_ore.tres"),
+	preload("res://items/resources/ores/quartz.tres"),
+	preload("res://items/resources/ores/gold_ore.tres"),
+	preload("res://items/resources/ores/amber.tres"),
+	preload("res://items/resources/ores/diamond.tres"),
+	preload("res://items/resources/ores/obsidian_shard.tres"),
 ]
 
 func _ready() -> void:

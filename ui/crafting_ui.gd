@@ -2,22 +2,32 @@ extends CanvasLayer
 class_name CraftingUI
 
 ## Minecraft-style crafting panel opened by interacting with the core.
-## Controller navigation mirrors ShopUI: left stick / D-pad scrolls,
-## A/Cross confirms, B/Circle closes.
+## Three tabs: Materials | Tools | Weapons.
+## Controller: L1/R1 switches tabs, stick/D-pad scrolls recipes, B closes.
 
 const ITEM_SCENE := preload("res://items/physical_item.tscn")
 
-const NAV_REPEAT := 0.15   # seconds between repeated scroll steps
+const NAV_REPEAT := 0.15
 
-var _player:    Node           = null
-var _list:      VBoxContainer  = null
+# UI references built once in _build_shell
+var _list:      VBoxContainer   = null
 var _scroll:    ScrollContainer = null
-var _close_btn: Button         = null
+var _close_btn: Button          = null
 
-# Controller navigation
-var _focusable: Array[Button] = []
-var _sel:       int           = 0
-var _nav_timer: float         = 0.0
+# Tab state
+const TABS := [
+	["materials", "Materials"],
+	["tools",     "Tools"],
+	["weapons",   "Weapons"],
+]
+var _active_tab: String = "materials"
+var _tab_btns: Dictionary = {}   # tab_key -> Button
+
+# Controller navigation for recipe rows
+var _player:    Node           = null
+var _focusable: Array[Button]  = []
+var _sel:       int            = 0
+var _nav_timer: float          = 0.0
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
@@ -72,6 +82,25 @@ func _unhandled_input(event: InputEvent) -> void:
 		_move_sel(1)
 		get_viewport().set_input_as_handled()
 		return
+	# L1 / R1 (or PageUp/PageDown on keyboard) cycle tabs
+	var joy := event is InputEventJoypadButton
+	if joy and (event as InputEventJoypadButton).pressed:
+		if (event as InputEventJoypadButton).button_index == JOY_BUTTON_LEFT_SHOULDER:
+			_cycle_tab(-1)
+			get_viewport().set_input_as_handled()
+			return
+		if (event as InputEventJoypadButton).button_index == JOY_BUTTON_RIGHT_SHOULDER:
+			_cycle_tab(1)
+			get_viewport().set_input_as_handled()
+			return
+	if event.is_action_pressed("ui_page_up"):
+		_cycle_tab(-1)
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("ui_page_down"):
+		_cycle_tab(1)
+		get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("ui_cancel"):
 		_close()
 		get_viewport().set_input_as_handled()
@@ -83,10 +112,15 @@ func _move_sel(dir: int) -> void:
 	_focusable[_sel].grab_focus()
 	_scroll.ensure_control_visible(_focusable[_sel])
 
+func _cycle_tab(dir: int) -> void:
+	var keys: Array = TABS.map(func(t): return t[0])
+	var idx := keys.find(_active_tab)
+	idx = (idx + dir + keys.size()) % keys.size()
+	_switch_tab(keys[idx])
+
 # ── Shell (built once) ────────────────────────────────────────────────────────
 
 func _build_shell() -> void:
-	# Dim overlay — clicking outside closes
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.48)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -96,7 +130,6 @@ func _build_shell() -> void:
 			_close())
 	add_child(dim)
 
-	# Centred panel
 	var panel := PanelContainer.new()
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.09, 0.09, 0.12, 0.97)
@@ -113,10 +146,10 @@ func _build_shell() -> void:
 	add_child(panel)
 
 	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 10)
+	vbox.add_theme_constant_override("separation", 8)
 	panel.add_child(vbox)
 
-	# Header
+	# Header row
 	var header := HBoxContainer.new()
 	vbox.add_child(header)
 
@@ -128,17 +161,68 @@ func _build_shell() -> void:
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
 
+	# Close button — focusable by mouse only; B closes from anywhere without focus.
+	# Shows the B badge on controller, plain text on keyboard.
 	_close_btn = Button.new()
-	_close_btn.flat = true
+	_close_btn.flat        = true
+	_close_btn.focus_mode  = Control.FOCUS_NONE
 	_close_btn.custom_minimum_size = Vector2(80, 32)
-	_close_btn.add_theme_stylebox_override("focus", UIStyle.make_focus_style())
 	_close_btn.pressed.connect(_close)
-	_badge_button(_close_btn, "ui_cancel", "Close")
+	if Input.get_connected_joypads().size() > 0:
+		_close_btn.text = ""
+		var cc := CenterContainer.new()
+		cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		cc.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+		cc.clip_contents = false
+		cc.add_child(UIStyle.make_badge("B", "Back"))
+		_close_btn.add_child(cc)
+	else:
+		_close_btn.text = "Close"
 	header.add_child(_close_btn)
 
 	vbox.add_child(HSeparator.new())
 
-	# Scrollable recipe list — follow_focus drives auto-scroll for controller
+	# Tab bar — L1/R1 shoulder badges (controller only) flank the tab buttons
+	var tab_row := HBoxContainer.new()
+	tab_row.add_theme_constant_override("separation", 6)
+	tab_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_child(tab_row)
+
+	var _l1 := _shoulder_badge("L1")
+	if _l1:
+		tab_row.add_child(_l1)
+
+	var tab_bar := HBoxContainer.new()
+	tab_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tab_bar.add_theme_constant_override("separation", 4)
+	tab_row.add_child(tab_bar)
+
+	var _r1 := _shoulder_badge("R1")
+	if _r1:
+		tab_row.add_child(_r1)
+
+	var tab_group := ButtonGroup.new()
+	for tab_def: Array in TABS:
+		var key: String = tab_def[0]
+		var label: String = tab_def[1]
+		var btn := Button.new()
+		btn.text = label
+		btn.toggle_mode = true
+		btn.button_group = tab_group
+		btn.button_pressed = (key == _active_tab)
+		btn.custom_minimum_size = Vector2(0, 30)
+		btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		btn.size_flags_vertical   = Control.SIZE_SHRINK_CENTER
+		btn.focus_mode = Control.FOCUS_NONE
+		btn.add_theme_font_override("font", UIStyle.FONT)
+		btn.add_theme_font_size_override("font_size", 13)
+		btn.pressed.connect(_switch_tab.bind(key))
+		tab_bar.add_child(btn)
+		_tab_btns[key] = btn
+
+	vbox.add_child(HSeparator.new())
+
+	# Scrollable recipe list
 	_scroll = ScrollContainer.new()
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_scroll.follow_focus        = true
@@ -149,14 +233,20 @@ func _build_shell() -> void:
 	_list.add_theme_constant_override("separation", 8)
 	_scroll.add_child(_list)
 
+# ── Tab switching ─────────────────────────────────────────────────────────────
+
+func _switch_tab(tab: String) -> void:
+	_active_tab = tab
+	for key in _tab_btns:
+		_tab_btns[key].set_pressed_no_signal(key == tab)
+	_sel = 0
+	_refresh()
+	if not _focusable.is_empty():
+		_focusable[0].call_deferred("grab_focus")
+
 # ── Refresh (called on open and after each craft) ─────────────────────────────
 
 func _refresh() -> void:
-	# Release focus first — otherwise Godot auto-navigates to the next widget
-	# when the focused button is freed, which looks like focus jumping up one row.
-	var owner := get_viewport().gui_get_focus_owner()
-	if owner:
-		owner.release_focus()
 	for child in _list.get_children():
 		child.queue_free()
 	_focusable.clear()
@@ -165,14 +255,21 @@ func _refresh() -> void:
 		return
 
 	var inv := _count_inventory()
-	for recipe in CraftingRecipe.all():
-		_list.add_child(_make_row(recipe, inv))
+	var recipes := CraftingRecipe.by_tab(_active_tab)
 
-	# Close button is always last in the focus ring (same convention as ShopUI)
-	_focusable.append(_close_btn)
+	if recipes.is_empty():
+		var empty_lbl := Label.new()
+		empty_lbl.text = "No recipes in this category yet."
+		empty_lbl.add_theme_font_override("font", UIStyle.FONT)
+		empty_lbl.add_theme_font_size_override("font_size", 13)
+		empty_lbl.add_theme_color_override("font_color", Color(0.50, 0.50, 0.50))
+		empty_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_list.add_child(empty_lbl)
+	else:
+		for recipe in recipes:
+			_list.add_child(_make_row(recipe, inv))
 
-	# Restore focus to the same slot if possible
-	_sel = clampi(_sel, 0, _focusable.size() - 1)
+	_sel = clampi(_sel, 0, maxi(_focusable.size() - 1, 0))
 
 # ── Recipe row ────────────────────────────────────────────────────────────────
 
@@ -191,7 +288,6 @@ func _make_row(recipe: CraftingRecipe, inv: Dictionary) -> Control:
 	hbox.add_theme_constant_override("separation", 12)
 	panel.add_child(hbox)
 
-	# Left — result name + ingredient list
 	var left := VBoxContainer.new()
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left.add_theme_constant_override("separation", 3)
@@ -199,9 +295,10 @@ func _make_row(recipe: CraftingRecipe, inv: Dictionary) -> Control:
 
 	var result_data := ItemRegistry.get_item(recipe.result_id)
 	var result_name := result_data.display_name if result_data else recipe.result_id
+	var display     := "%s  ×%d" % [result_name, recipe.result_count] if recipe.result_count > 1 else result_name
 
 	var name_lbl := Label.new()
-	name_lbl.text = "%s  ×%d" % [result_name, recipe.result_count]
+	name_lbl.text = display
 	name_lbl.add_theme_font_override("font", UIStyle.FONT)
 	name_lbl.add_theme_font_size_override("font_size", 16)
 	name_lbl.add_theme_color_override("font_color", Color(0.95, 0.90, 0.80))
@@ -242,13 +339,13 @@ func _make_row(recipe: CraftingRecipe, inv: Dictionary) -> Control:
 		have_lbl.add_theme_color_override("font_color", Color(0.50, 0.50, 0.50))
 		row.add_child(have_lbl)
 
-	# Right — Craft button with controller badge
 	var craft_btn := Button.new()
+	craft_btn.text                = "Craft"
 	craft_btn.disabled            = not can_craft
 	craft_btn.custom_minimum_size = Vector2(90, 0)
 	craft_btn.add_theme_stylebox_override("focus", UIStyle.make_focus_style())
+	craft_btn.set_meta("recipe_id", recipe.result_id)
 	craft_btn.pressed.connect(_on_craft.bind(recipe))
-	_badge_button(craft_btn, "ui_accept", "Craft")
 	_focusable.append(craft_btn)
 	hbox.add_child(craft_btn)
 
@@ -261,17 +358,14 @@ func _on_craft(recipe: CraftingRecipe) -> void:
 		return
 
 	if not GameState.debug_mode:
-		# Re-validate in case inventory changed since the last refresh
 		var inv := _count_inventory()
 		for ing_id: String in recipe.ingredients:
 			if inv.get(ing_id, 0) < (recipe.ingredients[ing_id] as int):
 				return
-		# Consume ingredients
 		for ing_id: String in recipe.ingredients:
 			for i in (recipe.ingredients[ing_id] as int):
 				_remove_one(ing_id)
 
-	# Give result — auto-pick-up, or drop at feet if inventory is full
 	var result_data := ItemRegistry.get_item(recipe.result_id)
 	if result_data:
 		for i in recipe.result_count:
@@ -285,33 +379,43 @@ func _on_craft(recipe: CraftingRecipe) -> void:
 				item.collision_mask  = 1
 				item.freeze          = false
 
-	# Rebuild rows and keep focus on the same slot
-	var prev_sel := _sel
+	var target_id := recipe.result_id
 	_refresh()
-	_sel = clampi(prev_sel, 0, _focusable.size() - 1)
-	if not _focusable.is_empty():
+	# Restore focus to the same recipe's button; fall back to nearest index.
+	var found := false
+	for i in _focusable.size():
+		if _focusable[i].get_meta("recipe_id", "") == target_id:
+			_sel = i
+			_focusable[i].call_deferred("grab_focus")
+			found = true
+			break
+	if not found and not _focusable.is_empty():
+		_sel = clampi(_sel, 0, _focusable.size() - 1)
 		_focusable[_sel].call_deferred("grab_focus")
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-## On controller: replaces button text with a badge prompt + focus outline.
-## On keyboard/mouse: plain text only — no badge, no outline.
-func _badge_button(btn: Button, action: String, label: String) -> void:
-	var controller := Input.get_connected_joypads().size() > 0
-	for child in btn.get_children():
-		child.queue_free()
-	if controller:
-		btn.text = ""
-		btn.add_theme_stylebox_override("focus", UIStyle.make_focus_style())
-		var center := CenterContainer.new()
-		center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		center.mouse_filter  = Control.MOUSE_FILTER_IGNORE
-		center.clip_contents = false
-		center.add_child(UIStyle.make_prompt(action, label))
-		btn.add_child(center)
-	else:
-		btn.text = label
-		btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+## Returns a wider, styled shoulder-button badge (L1/R1) when a controller is
+## connected, or null on keyboard-only so the caller skips adding it.
+func _shoulder_badge(label: String) -> Control:
+	if Input.get_connected_joypads().size() == 0:
+		return null
+	var bg := StyleBoxFlat.new()
+	bg.bg_color = Color(0.22, 0.22, 0.28, 1.0)
+	bg.set_corner_radius_all(5)
+	bg.content_margin_top    = 5
+	bg.content_margin_bottom = 5
+	bg.content_margin_left   = 14
+	bg.content_margin_right  = 14
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", bg)
+	var lbl := Label.new()
+	lbl.text = label
+	lbl.add_theme_font_override("font", UIStyle.FONT)
+	lbl.add_theme_font_size_override("font_size", 12)
+	lbl.add_theme_color_override("font_color", Color(0.88, 0.88, 0.92))
+	panel.add_child(lbl)
+	return panel
 
 func _count_inventory() -> Dictionary:
 	var counts := {}

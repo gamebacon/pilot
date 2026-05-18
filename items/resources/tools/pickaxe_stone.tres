@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="ToolItemData" format=3 uid="uid://pickaxe_stone_item"]
+
+[ext_resource type="Script" path="res://items/tool_item_data.gd" id="1_tooldata"]
+
+[resource]
+script = ExtResource("1_tooldata")
+id = "pickaxe_stone"
+display_name = "Stone Pickaxe"
+price = 0
+description = "A stone-headed pick. Mines rock with fewer swings."
+category = "Tools"
+color = Color(0.60, 0.58, 0.55, 1.0)
+size = Vector3(0.09, 0.09, 0.55)
+mass = 2.0
+carry_stack = 1
+held_scale = 0.9
+tool_type = "pickaxe"
+tool_level = 2
+level_name = "Stone"
+durability_max = 120
+harvest_damage = 15.0
+attack_damage = 10.0
+harvest_tags = PackedStringArray("rock")

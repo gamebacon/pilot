@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="ToolItemData" format=3 uid="uid://sword_wooden_item"]
+
+[ext_resource type="Script" path="res://items/tool_item_data.gd" id="1_tooldata"]
+
+[resource]
+script = ExtResource("1_tooldata")
+id = "sword_wooden"
+display_name = "Wooden Sword"
+price = 0
+description = "A sharpened plank. Better than bare hands."
+category = "Weapons"
+color = Color(0.58, 0.38, 0.18, 1.0)
+size = Vector3(0.05, 0.05, 0.65)
+mass = 0.8
+carry_stack = 1
+held_scale = 0.95
+tool_type = "sword"
+tool_level = 1
+level_name = "Wooden"
+durability_max = 50
+harvest_damage = 0.0
+attack_damage = 15.0
+harvest_tags = PackedStringArray()

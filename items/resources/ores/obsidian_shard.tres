@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://obsidian_shard_item"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "obsidian_shard"
+display_name = "Obsidian Shard"
+price = 0
+description = "Volcanic glass, razor-sharp edges. Forged in the deepest heat."
+color = Color(0.10, 0.07, 0.15, 1.0)
+size = Vector3(0.14, 0.04, 0.18)
+mass = 1.5
+carry_stack = 3

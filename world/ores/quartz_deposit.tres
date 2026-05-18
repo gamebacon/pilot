@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="OreData" format=3 uid="uid://bpdt2mt1thgaw"]
+
+[ext_resource type="Script" uid="uid://dqrr5hr0ebswi" path="res://world/ore_data.gd" id="1_oredata"]
+
+[resource]
+script = ExtResource("1_oredata")
+display_name = "Quartz Deposit"
+rarity = 2
+drop_item_id = "quartz"
+drop_count_max = 2
+resource_hp = 50
+required_tool_level = 2
+spawn_weight = 12.0
+ore_color = Color(0.92, 0.9, 0.95, 1)
+ore_size = Vector3(1.3, 1, 1.3)

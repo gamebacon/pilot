@@ -1,16 +1,13 @@
 extends StaticBody3D
 
 const ITEM_SCENE   := preload("res://items/physical_item.tscn")
-const SND_CHOP     := preload("res://audio/sfx/item_collide.mp3")  # swap for a real axe thud
+const SND_CHOP     := preload("res://audio/sfx/item_collide.mp3")
 
-var _chop_snd: AudioStreamPlayer3D = null
-
-## Total HP of this tree. Reduce to make trees easier to fell.
 const RESOURCE_HP  := 30
-## Wood logs dropped when felled.
 const WOOD_DROPS   := 2
 
 var _hp: float = RESOURCE_HP
+var _chop_snd: AudioStreamPlayer3D
 
 func _ready() -> void:
 	add_to_group("harvestable")
@@ -23,28 +20,40 @@ func _ready() -> void:
 
 func get_interact_hint(player: Node) -> String:
 	var p := player as Player
-	if not p or not p.inventory.has_id("stone"):
-		return "Need a stone to chop"
+	if not p:
+		return ""
+	var active := p.inventory.active()
+	var has_axe := active and active.item_data is ToolItemData \
+		and "tree" in (active.item_data as ToolItemData).harvest_tags
 	var key := InputHelper.action_label("attack")
+	if not has_axe:
+		return "Need an axe to chop"
 	if _hp >= RESOURCE_HP:
 		return key + "  Chop Tree"
 	return key + "  Keep Chopping  (%d/%d)" % [int(RESOURCE_HP - _hp), RESOURCE_HP]
 
 func interact(player: Node) -> void:
 	var p := player as Player
-	if not p or not p.inventory.has_id("stone"):
+	if not p:
 		return
+	var active := p.inventory.active()
+	if not (active and active.item_data is ToolItemData \
+			and "tree" in (active.item_data as ToolItemData).harvest_tags):
+		return
+
 	_chop_snd.pitch_scale = randf_range(0.85, 1.15)
 	_chop_snd.play()
-	# TODO: scale damage by held tool type.
-	var dmg := _hit_damage(p)
-	_hp -= dmg
+
+	var tool_data := active.item_data as ToolItemData
+	_hp -= tool_data.harvest_damage
+
+	if active.use_durability(1):
+		p.inventory.remove(active)
+		active.queue_free()
+		p._reposition_carried()
+
 	if _hp <= 0.0:
 		_fell()
-
-## Damage dealt per hit. Scales with tool in the future.
-func _hit_damage(_player: Player) -> float:
-	return 10.0
 
 func _fell() -> void:
 	var origin: Vector3 = (get_parent() as Node3D).global_position

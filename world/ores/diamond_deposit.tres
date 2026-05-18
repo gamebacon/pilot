@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="OreData" format=3 uid="uid://p7bdopuruing"]
+
+[ext_resource type="Script" uid="uid://dqrr5hr0ebswi" path="res://world/ore_data.gd" id="1_oredata"]
+
+[resource]
+script = ExtResource("1_oredata")
+display_name = "Diamond Deposit"
+rarity = 4
+drop_item_id = "diamond"
+drop_count_max = 1
+resource_hp = 100
+required_tool_level = 3
+spawn_weight = 1.0
+ore_color = Color(0.7, 0.92, 0.98, 1)
+ore_size = Vector3(1.65, 1.25, 1.65)

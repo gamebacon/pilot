@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://quartz_item"]
+
+[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "quartz"
+display_name = "Quartz"
+price = 0
+description = "Milky-white crystal. Resonates with strange energy."
+color = Color(0.92, 0.90, 0.95, 1.0)
+size = Vector3(0.10, 0.06, 0.14)
+mass = 0.4
+carry_stack = 5

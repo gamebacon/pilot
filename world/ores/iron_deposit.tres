@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="OreData" format=3 uid="uid://dkhysrxw8xs37"]
+
+[ext_resource type="Script" uid="uid://dqrr5hr0ebswi" path="res://world/ore_data.gd" id="1_oredata"]
+
+[resource]
+script = ExtResource("1_oredata")
+display_name = "Iron Deposit"
+rarity = 2
+drop_item_id = "iron_ore"
+drop_count_max = 2
+resource_hp = 60
+required_tool_level = 2
+spawn_weight = 15.0
+ore_color = Color(0.55, 0.5, 0.45, 1)
+ore_size = Vector3(1.55, 1.15, 1.55)

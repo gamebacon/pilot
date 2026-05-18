@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="OreData" format=3 uid="uid://b8iftufkgu1jr"]
+
+[ext_resource type="Script" uid="uid://dqrr5hr0ebswi" path="res://world/ore_data.gd" id="1_oredata"]
+
+[resource]
+script = ExtResource("1_oredata")
+display_name = "Coal Deposit"
+rarity = 1
+drop_item_id = "coal"
+drop_count_min = 2
+resource_hp = 35
+spawn_weight = 40.0
+ore_color = Color(0.12, 0.12, 0.13, 1)
+ore_size = Vector3(1.4, 1.05, 1.4)

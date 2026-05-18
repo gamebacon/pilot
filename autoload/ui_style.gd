@@ -64,6 +64,11 @@ static func make_prompt(action: String, hint_text: String = "") -> Control:
 	var raw := InputHelper.action_label(action).trim_prefix("[").trim_suffix("]")
 	return _build_row(_badge(raw), hint_text)
 
+## Returns a badge using [param raw] directly — bypasses the InputMap lookup.
+## Use this for labels that don't map to a Godot action (e.g. "L1", "R1", "B").
+static func make_badge(raw: String, hint_text: String = "") -> Control:
+	return _build_row(_badge(raw), hint_text)
+
 ## Parses a pre-formatted hint string like "[E] Interact" into a visual row.
 ## Falls back to a plain Label if the string does not start with "[key]".
 static func make_hint(hint: String) -> Control:
