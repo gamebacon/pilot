@@ -8,7 +8,7 @@
 [ext_resource type="PackedScene" path="res://ui/shop_ui.tscn" id="3_shopui"]
 [ext_resource type="PackedScene" path="res://ui/inventory_hud.tscn" id="4_invhud"]
 [ext_resource type="PackedScene" path="res://build/plot.tscn" id="5_plot"]
-[ext_resource type="PackedScene" path="res://build/plank_placer.tscn" id="6_build"]
+[ext_resource type="PackedScene" path="res://build/build_system.tscn" id="6_build"]
 [ext_resource type="PackedScene" path="res://ui/player_hud.tscn" id="7_phud"]
 [ext_resource type="PackedScene" path="res://build/build_system.tscn" id="9_buildsys"]
 [ext_resource type="Script" uid="uid://cdoun5ond01yl" path="res://world/day_manager.gd" id="10_daymgr"]
@@ -161,7 +161,7 @@ surface_material_override/0 = SubResource("Mat_clockin")
 [node name="Plot" parent="Factory" unique_id=1459419196 instance=ExtResource("5_plot")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.35, -6)
 
-[node name="PlankPlacer" parent="Factory" unique_id=545762094 instance=ExtResource("6_build")]
+[node name="BuildSystem" parent="Factory" unique_id=545762094 instance=ExtResource("6_build")]
 
 [node name="BuildSystem" parent="Factory" unique_id=1867202592 instance=ExtResource("9_buildsys")]
 

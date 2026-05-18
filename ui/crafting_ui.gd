@@ -152,6 +152,11 @@ func _build_shell() -> void:
 # ── Refresh (called on open and after each craft) ─────────────────────────────
 
 func _refresh() -> void:
+	# Release focus first — otherwise Godot auto-navigates to the next widget
+	# when the focused button is freed, which looks like focus jumping up one row.
+	var owner := get_viewport().gui_get_focus_owner()
+	if owner:
+		owner.release_focus()
 	for child in _list.get_children():
 		child.queue_free()
 	_focusable.clear()
@@ -206,7 +211,7 @@ func _make_row(recipe: CraftingRecipe, inv: Dictionary) -> Control:
 	for ing_id: String in recipe.ingredients:
 		var need: int = recipe.ingredients[ing_id]
 		var have: int = inv.get(ing_id, 0)
-		if have < need:
+		if have < need and not GameState.debug_mode:
 			can_craft = false
 
 		var ing_data := ItemRegistry.get_item(ing_id)
@@ -255,16 +260,16 @@ func _on_craft(recipe: CraftingRecipe) -> void:
 	if not _player:
 		return
 
-	# Re-validate in case inventory changed since the last refresh
-	var inv := _count_inventory()
-	for ing_id: String in recipe.ingredients:
-		if inv.get(ing_id, 0) < (recipe.ingredients[ing_id] as int):
-			return
-
-	# Consume ingredients
-	for ing_id: String in recipe.ingredients:
-		for i in (recipe.ingredients[ing_id] as int):
-			_remove_one(ing_id)
+	if not GameState.debug_mode:
+		# Re-validate in case inventory changed since the last refresh
+		var inv := _count_inventory()
+		for ing_id: String in recipe.ingredients:
+			if inv.get(ing_id, 0) < (recipe.ingredients[ing_id] as int):
+				return
+		# Consume ingredients
+		for ing_id: String in recipe.ingredients:
+			for i in (recipe.ingredients[ing_id] as int):
+				_remove_one(ing_id)
 
 	# Give result — auto-pick-up, or drop at feet if inventory is full
 	var result_data := ItemRegistry.get_item(recipe.result_id)
@@ -289,19 +294,24 @@ func _on_craft(recipe: CraftingRecipe) -> void:
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-## Mirrors ShopUI._badge_button: replaces button text with a prompt badge.
+## On controller: replaces button text with a badge prompt + focus outline.
+## On keyboard/mouse: plain text only — no badge, no outline.
 func _badge_button(btn: Button, action: String, label: String) -> void:
-	btn.text = ""
+	var controller := Input.get_connected_joypads().size() > 0
 	for child in btn.get_children():
 		child.queue_free()
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	# IGNORE so the center container doesn't intercept focus-rect drawing,
-	# and clip_contents=false so the focus outline isn't cut off at the edge.
-	center.mouse_filter  = Control.MOUSE_FILTER_IGNORE
-	center.clip_contents = false
-	center.add_child(UIStyle.make_prompt(action, label))
-	btn.add_child(center)
+	if controller:
+		btn.text = ""
+		btn.add_theme_stylebox_override("focus", UIStyle.make_focus_style())
+		var center := CenterContainer.new()
+		center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		center.mouse_filter  = Control.MOUSE_FILTER_IGNORE
+		center.clip_contents = false
+		center.add_child(UIStyle.make_prompt(action, label))
+		btn.add_child(center)
+	else:
+		btn.text = label
+		btn.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 
 func _count_inventory() -> Dictionary:
 	var counts := {}

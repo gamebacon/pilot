@@ -114,7 +114,7 @@ func _update_context_hints() -> void:
 			_last_context_key = key
 			var pairs := [
 				["attack",    "Place"],
-				["rotate_y",  "Rotate"],
+				["rotate_y",  "Rotate (Y)"],
 				["exit_build","Cancel"],
 			]
 			var rows: Array[Control] = []
