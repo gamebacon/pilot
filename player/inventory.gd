@@ -53,6 +53,17 @@ func cycle_next() -> void:
 			changed.emit(items, capacity, active_index)
 			return
 
+func cycle_prev() -> void:
+	if items.is_empty():
+		return
+	var current_id := _item_id(items[active_index])
+	for i in range(1, items.size()):
+		var prev := (active_index - i + items.size()) % items.size()
+		if _item_id(items[prev]) != current_id:
+			active_index = prev
+			changed.emit(items, capacity, active_index)
+			return
+
 # ── Slot counting (respects carry_stack) ──────────────────────────────────────
 
 func used_slots() -> int:

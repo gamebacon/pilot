@@ -16,6 +16,8 @@ var _connected_instances: Array = []
 var _notify_tween: Tween = null
 var _core_hp_label: Label = null
 var _core: Node = null
+var _context_bg: Panel = null
+var _hint_bg:    Panel = null
 
 # Dirty-check cache so we don't rebuild prompt nodes every frame
 var _last_hint := ""
@@ -44,6 +46,7 @@ func _ready() -> void:
 	_add_fps_counter()
 	_add_debug_panel()
 	_add_core_hp_label()
+	_build_context_bg()
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -53,6 +56,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	_tick_fps(delta)
+	_sync_hint_bg()
+	_sync_context_bg()
 	if _debug_panel and _debug_panel.visible:
 		_refresh_debug_panel()
 	if not _player:
@@ -139,7 +144,8 @@ func _update_context_hints() -> void:
 			break
 	var has_multi: bool = _player.inventory.has_multiple_types()
 
-	var key := "%s|%d|%d" % [InputHelper.action_label("drop"), int(has_placeable), int(has_multi)]
+	var has_joy: bool = Input.get_connected_joypads().size() > 0
+	var key := "%s|%d|%d|%d" % [InputHelper.action_label("drop"), int(has_placeable), int(has_multi), int(has_joy)]
 	if key != _last_context_key:
 		_last_context_key = key
 		var rows: Array[Control] = []
@@ -151,7 +157,8 @@ func _update_context_hints() -> void:
 		drow.size_flags_horizontal = Control.SIZE_SHRINK_END
 		rows.append(drow)
 		if has_multi:
-			var crow: Control = UIStyle.make_prompt("inventory_next", "Cycle")
+			var crow: Control = UIStyle.make_badge("L · R", "Cycle") if has_joy \
+				else UIStyle.make_prompt("inventory_next", "Cycle")
 			crow.size_flags_horizontal = Control.SIZE_SHRINK_END
 			rows.append(crow)
 		_rebuild_children(context_hints, rows, false)
@@ -502,6 +509,61 @@ func _on_core_hp_changed(new_hp: int) -> void:
 		Color(1.0, t, t * 0.4, 0.9) if t < 0.5 else Color(0.3, 1.0, 0.5, 0.9))
 	if new_hp == 0:
 		_show_notification("CORE DESTROYED!")
+
+# ── Context hint background ────────────────────────────────────────────────────
+
+func _build_context_bg() -> void:
+	# ── Crosshair / interact hint backdrop ────────────────────────────────────
+	var hint_style := StyleBoxFlat.new()
+	hint_style.bg_color = Color(0.08, 0.08, 0.12, 0.35)
+	hint_style.set_corner_radius_all(7)
+	_hint_bg = Panel.new()
+	_hint_bg.add_theme_stylebox_override("panel", hint_style)
+	_hint_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hint_bg.hide()
+	add_child(_hint_bg)
+	move_child(_hint_bg, hint_label.get_index())
+
+## Backdrop for the crosshair interact hint — centered on actual content.
+## hint_label rows use SIZE_SHRINK_CENTER so content is narrower than the node.
+func _sync_hint_bg() -> void:
+	if not _hint_bg:
+		return
+	if not hint_label.visible:
+		_hint_bg.hide()
+		return
+	var min_sz := hint_label.get_combined_minimum_size()
+	if min_sz.y <= 0:
+		_hint_bg.hide()
+		return
+	const PAD_X := 10.0
+	const PAD_Y := 4.0
+	var r := hint_label.get_rect()
+	_hint_bg.size = min_sz + Vector2(PAD_X * 2.0, PAD_Y * 2.0)
+	_hint_bg.position = Vector2(
+		r.position.x + (r.size.x - _hint_bg.size.x) * 0.5,
+		r.position.y - PAD_Y
+	)
+	_hint_bg.show()
+
+## Runs every frame — sizes the backdrop to wrap only the visible hint rows.
+## context_hints uses alignment=END so children sit at the bottom of the node rect;
+## get_combined_minimum_size() gives the actual content height.
+func _sync_context_bg() -> void:
+	if not _context_bg:
+		return
+	if not context_hints.visible:
+		_context_bg.hide()
+		return
+	var min_sz := context_hints.get_combined_minimum_size()
+	if min_sz.y <= 0:
+		_context_bg.hide()
+		return
+	const PAD := 10.0
+	var r := context_hints.get_rect()
+	_context_bg.size     = Vector2(r.size.x + PAD * 2.0, min_sz.y + PAD * 2.0)
+	_context_bg.position = Vector2(r.position.x - PAD,   r.end.y - min_sz.y - PAD)
+	_context_bg.show()
 
 # ── Utility ────────────────────────────────────────────────────────────────────
 

@@ -30,7 +30,8 @@ func get_interact_hint(player: Node) -> String:
 		return "Need an axe to chop"
 	if _hp >= RESOURCE_HP:
 		return key + "  Chop Tree"
-	return key + "  Keep Chopping  (%d/%d)" % [int(RESOURCE_HP - _hp), RESOURCE_HP]
+	var pct := int((1.0 - _hp / float(RESOURCE_HP)) * 100.0)
+	return key + "  Keep Chopping  (%d%%)" % pct
 
 func interact(player: Node) -> void:
 	var p := player as Player

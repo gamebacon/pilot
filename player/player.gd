@@ -100,6 +100,18 @@ func _unhandled_input(event: InputEvent) -> void:
 		inventory.cycle_next()
 		_reposition_carried()
 
+	# L1 / R1 cycle items — handled raw so they don't conflict with build-mode
+	# actions (remove_piece / reset_rotation) which share the same buttons.
+	if event is InputEventJoypadButton and (event as InputEventJoypadButton).pressed \
+			and not GameState.is_building and not interact_target:
+		var btn := (event as InputEventJoypadButton).button_index
+		if btn == JOY_BUTTON_LEFT_SHOULDER:
+			inventory.cycle_prev()
+			_reposition_carried()
+		elif btn == JOY_BUTTON_RIGHT_SHOULDER:
+			inventory.cycle_next()
+			_reposition_carried()
+
 	if event.is_action_pressed("debug_toggle"):
 		GameState.debug_mode = !GameState.debug_mode
 
