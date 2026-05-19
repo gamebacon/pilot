@@ -3,7 +3,7 @@ extends StaticBody3D
 
 var size:   Vector3 = Vector3(1.0, 1.0, 1.0)
 var color:  Color   = Color(0.7, 0.46, 0.2)
-var net_id: int     = 0  # 0 = not networked (blueprint pieces)
+var net_id: int     = 0  # 0 = not networked
 
 # Creates a fully assembled PlacedPlank ready to add to the scene.
 static func build(p_size: Vector3, p_color: Color) -> PlacedPlank:

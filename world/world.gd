@@ -17,19 +17,6 @@ func _ready() -> void:
 		seed_val = randi()
 	$WorldGenerator.generate(seed_val)
 
-	# ── Rescue BuildSystem from Factory before we disable it ─────────────────
-	var pp := get_node_or_null("Factory/BuildSystem")
-	if pp:
-		pp.reparent(self)
-
-	# ── Hide old sauna-game nodes ─────────────────────────────────────────────
-	for n in ["Home", "HardwareStore", "GroceryStore", "Factory", "ShopUI", "DayManager"]:
-		var node := get_node_or_null(n)
-		if node:
-			node.process_mode = Node.PROCESS_MODE_DISABLED
-			if node is Node3D:
-				(node as Node3D).visible = false
-
 	# ── Solo: reposition the scene-embedded Player near the core ─────────────
 	if not NetworkManager.is_active():
 		var solo := get_node_or_null("Player")

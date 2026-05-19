@@ -1,14 +1,10 @@
 [gd_scene format=3 uid="uid://ologmjw1mvui"]
 
 [ext_resource type="PackedScene" uid="uid://dv4tifvdnmq6d" path="res://player/player.tscn" id="1_main"]
-[ext_resource type="PackedScene" path="res://shop/shop.tscn" id="2_shop"]
-[ext_resource type="PackedScene" path="res://ui/shop_ui.tscn" id="3_shopui"]
 [ext_resource type="PackedScene" path="res://ui/inventory_hud.tscn" id="4_invhud"]
-[ext_resource type="PackedScene" path="res://build/plot.tscn" id="5_plot"]
 [ext_resource type="PackedScene" path="res://build/build_system.tscn" id="6_build"]
 [ext_resource type="PackedScene" path="res://ui/player_hud.tscn" id="7_phud"]
 [ext_resource type="PackedScene" uid="uid://hotbar_hud_001" path="res://ui/hotbar_hud.tscn" id="17_hotbar"]
-[ext_resource type="PackedScene" path="res://build/build_system.tscn" id="9_buildsys"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
 size = Vector3(50, 0.2, 50)
@@ -34,17 +30,7 @@ surface_material_override/0 = SubResource("Mat_ground")
 [node name="Player" parent="." unique_id=1598906135 instance=ExtResource("1_main")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, 0)
 
-[node name="Shop" parent="." unique_id=186529796 instance=ExtResource("2_shop")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, -8)
-
-[node name="Plot" parent="." unique_id=1774234740 instance=ExtResource("5_plot")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.1, -4)
-
 [node name="BuildSystem" parent="." unique_id=2119495639 instance=ExtResource("6_build")]
-
-[node name="BuildSystem" parent="." unique_id=18539979 instance=ExtResource("9_buildsys")]
-
-[node name="ShopUI" parent="." unique_id=359418072 instance=ExtResource("3_shopui")]
 
 [node name="InventoryHUD" parent="." unique_id=1659200543 instance=ExtResource("4_invhud")]
 

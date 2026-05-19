@@ -7,7 +7,7 @@ class_name ItemData
 @export var price: int = 10
 @export var description: String = ""
 
-# Shop section — use constants from GameConstants (CAT_TIMBER, CAT_SAUNA, etc.)
+# Item category — use constants from GameConstants (CAT_TOOLS, CAT_WEAPONS, etc.)
 @export var category: String = ""
 
 # --- Audio (all optional — leave empty to use defaults) ---
@@ -32,7 +32,3 @@ class_name ItemData
 ## Scale applied to the PhysicalItem node while held in the player's hand.
 ## Leave at 0.0 to auto-calculate: largest dimension is normalised to 0.40 m.
 @export var held_scale: float = 0.0
-
-# Blueprint items — set is_blueprint = true and assign blueprint_data
-@export var is_blueprint: bool = false
-@export var blueprint_data: BlueprintData

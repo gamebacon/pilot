@@ -21,6 +21,9 @@ extends Node3D
 #   p              Dictionary  forwarded verbatim to the builder
 # ─────────────────────────────────────────────────────────────────────────────
 const HarvestableTree = preload("res://world/harvestable_tree.gd")
+const ITEM_SCENE      = preload("res://items/physical_item.tscn")
+
+const LOG_SPAWN_CHANCE := 0.10
 
 const TYPES: Array = [
 	# zones: [spruce-forest, conifer-mix, birch-grove, pine-upland, open/cleared]
@@ -251,6 +254,7 @@ func _build_spruce(pos: Vector3, p: Dictionary, rng: RandomNumberGenerator) -> N
 		cmi.set_surface_override_material(0, mat_f)
 		root.add_child(cmi)
 	_add_harvest_trunk(root, 0.18 * s, 2.2 * s, 1.1 * s)
+	_maybe_spawn_log(root, rng)
 	return root
 
 
@@ -281,6 +285,7 @@ func _build_pine(pos: Vector3, p: Dictionary, rng: RandomNumberGenerator) -> Nod
 		cmi.set_surface_override_material(0, mat_f)
 		root.add_child(cmi)
 	_add_harvest_trunk(root, 0.12 * s, 3.5 * s, 1.75 * s)
+	_maybe_spawn_log(root, rng)
 	return root
 
 
@@ -314,6 +319,7 @@ func _build_birch(pos: Vector3, p: Dictionary, rng: RandomNumberGenerator) -> No
 		smi.set_surface_override_material(0, _mat(p["col_c"] as Color))
 		root.add_child(smi)
 	_add_harvest_trunk(root, 0.12 * s, 5.5 * s, 2.75 * s)
+	_maybe_spawn_log(root, rng)
 	return root
 
 
@@ -533,6 +539,17 @@ func _add_harvest_trunk(root: Node3D, radius: float, height: float, cy: float) -
 	col.position    = Vector3(0.0, cy, 0.0)
 	body.add_child(col)
 	root.add_child(body)
+
+# ─── Log litter ──────────────────────────────────────────────────────────────
+
+func _maybe_spawn_log(root: Node3D, rng: RandomNumberGenerator) -> void:
+	if rng.randf() >= LOG_SPAWN_CHANCE:
+		return
+	var log := ITEM_SCENE.instantiate() as PhysicalItem
+	log.item_data = ItemRegistry.get_item("wood_log")
+	log.position  = Vector3(rng.randf_range(-1.2, 1.2), 0.4, rng.randf_range(-1.2, 1.2))
+	log.rotation.y = rng.randf_range(0.0, TAU)
+	root.add_child(log)
 
 # ─── Material helpers ─────────────────────────────────────────────────────────
 

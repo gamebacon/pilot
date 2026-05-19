@@ -2,20 +2,10 @@
 
 [ext_resource type="Script" path="res://world/world.gd" id="0_worldgd"]
 [ext_resource type="PackedScene" uid="uid://dv4tifvdnmq6d" path="res://player/player.tscn" id="1_player"]
-[ext_resource type="PackedScene" path="res://shop/shop.tscn" id="2_shop"]
-[ext_resource type="PackedScene" path="res://shop/grocery_store.tscn" id="15_grocery"]
-[ext_resource type="PackedScene" path="res://shop/hardware_store.tscn" id="16_hardware"]
-[ext_resource type="PackedScene" path="res://ui/shop_ui.tscn" id="3_shopui"]
 [ext_resource type="PackedScene" path="res://ui/inventory_hud.tscn" id="4_invhud"]
-[ext_resource type="PackedScene" path="res://build/plot.tscn" id="5_plot"]
 [ext_resource type="PackedScene" path="res://build/build_system.tscn" id="6_build"]
 [ext_resource type="PackedScene" path="res://ui/player_hud.tscn" id="7_phud"]
 [ext_resource type="PackedScene" uid="uid://hotbar_hud_001" path="res://ui/hotbar_hud.tscn" id="17_hotbar"]
-[ext_resource type="PackedScene" path="res://build/build_system.tscn" id="9_buildsys"]
-[ext_resource type="Script" uid="uid://cdoun5ond01yl" path="res://world/day_manager.gd" id="10_daymgr"]
-[ext_resource type="Script" uid="uid://bc5exddnwdlbj" path="res://world/clock_in.gd" id="11_clockin"]
-[ext_resource type="Script" uid="uid://f6h0qqwohm1e" path="res://world/bed.gd" id="12_bed"]
-[ext_resource type="Script" uid="uid://cugx0hbwkotjh" path="res://world/zone_audio.gd" id="13_zoneaudio"]
 [ext_resource type="Script" uid="uid://dkie6dij4dj3r" path="res://world/world_generator.gd" id="14_worldgen"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
@@ -35,52 +25,6 @@ ambient_light_source = 2
 ambient_light_color = Color(0.72, 0.78, 0.86, 1)
 ambient_light_energy = 0.55
 
-[sub_resource type="BoxShape3D" id="Shape_home"]
-size = Vector3(10, 0.3, 8)
-
-[sub_resource type="BoxMesh" id="Mesh_home"]
-size = Vector3(10, 0.3, 8)
-
-[sub_resource type="StandardMaterial3D" id="Mat_home"]
-albedo_color = Color(0.5, 0.34, 0.2, 1)
-
-[sub_resource type="BoxShape3D" id="Shape_bed"]
-size = Vector3(1.6, 0.45, 0.9)
-
-[sub_resource type="BoxMesh" id="Mesh_bed"]
-size = Vector3(1.6, 0.45, 0.9)
-
-[sub_resource type="StandardMaterial3D" id="Mat_bed"]
-albedo_color = Color(0.45, 0.38, 0.6, 1)
-
-[sub_resource type="BoxShape3D" id="Shape_store"]
-size = Vector3(14, 0.3, 10)
-
-[sub_resource type="BoxMesh" id="Mesh_store"]
-size = Vector3(14, 0.3, 10)
-
-[sub_resource type="StandardMaterial3D" id="Mat_store"]
-albedo_color = Color(0.36, 0.42, 0.52, 1)
-
-
-[sub_resource type="BoxShape3D" id="Shape_factory"]
-size = Vector3(30, 0.3, 24)
-
-[sub_resource type="BoxMesh" id="Mesh_factory"]
-size = Vector3(30, 0.3, 24)
-
-[sub_resource type="StandardMaterial3D" id="Mat_factory"]
-albedo_color = Color(0.26, 0.28, 0.32, 1)
-
-[sub_resource type="BoxShape3D" id="Shape_clockin"]
-size = Vector3(0.5, 1.4, 0.5)
-
-[sub_resource type="BoxMesh" id="Mesh_clockin"]
-size = Vector3(0.5, 1.4, 0.5)
-
-[sub_resource type="StandardMaterial3D" id="Mat_clockin"]
-albedo_color = Color(0.8, 0.72, 0.2, 1)
-
 [node name="World" type="Node3D" unique_id=1715617911]
 script = ExtResource("0_worldgd")
 
@@ -93,91 +37,18 @@ light_color = Color(0.94, 0.88, 0.8, 1)
 light_energy = 0.65
 shadow_enabled = true
 
-[node name="DayManager" type="Node" parent="." unique_id=1840698874]
-script = ExtResource("10_daymgr")
-
 [node name="WorldGenerator" type="Node3D" parent="." unique_id=969902809]
 script = ExtResource("14_worldgen")
 
-[node name="Home" type="Node3D" parent="." unique_id=1558466991]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 0, -8)
-
-[node name="Building" type="StaticBody3D" parent="Home" unique_id=219608121]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Home/Building" unique_id=1233863746]
-shape = SubResource("Shape_home")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Home/Building" unique_id=1312619798]
-mesh = SubResource("Mesh_home")
-surface_material_override/0 = SubResource("Mat_home")
-
-[node name="Bed" type="StaticBody3D" parent="Home" unique_id=1227518482]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.23, 4)
-script = ExtResource("12_bed")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Home/Bed" unique_id=1577193974]
-shape = SubResource("Shape_bed")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Home/Bed" unique_id=1949782682]
-mesh = SubResource("Mesh_bed")
-surface_material_override/0 = SubResource("Mat_bed")
-
-[node name="HardwareStore" type="Node3D" parent="." unique_id=353383794]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16, 0, -85)
-
-[node name="HardwareStoreScene" parent="HardwareStore" unique_id=353383795 instance=ExtResource("16_hardware")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
-
-[node name="GroceryStore" type="Node3D" parent="." unique_id=338812045]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -22, 0, -44)
-
-[node name="GroceryStoreScene" parent="GroceryStore" unique_id=338812049 instance=ExtResource("15_grocery")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
-
-[node name="Factory" type="Node3D" parent="." unique_id=220394738]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -175)
-
-[node name="Building" type="StaticBody3D" parent="Factory" unique_id=719183457]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, 0)
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Factory/Building" unique_id=1248589898]
-shape = SubResource("Shape_factory")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Factory/Building" unique_id=2108044591]
-mesh = SubResource("Mesh_factory")
-surface_material_override/0 = SubResource("Mat_factory")
-
-[node name="ClockIn" type="StaticBody3D" parent="Factory" unique_id=1846453688]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0.7, 13)
-script = ExtResource("11_clockin")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Factory/ClockIn" unique_id=1709736429]
-shape = SubResource("Shape_clockin")
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Factory/ClockIn" unique_id=374724263]
-mesh = SubResource("Mesh_clockin")
-surface_material_override/0 = SubResource("Mat_clockin")
-
-[node name="Plot" parent="Factory" unique_id=1459419196 instance=ExtResource("5_plot")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.35, -6)
-
-[node name="BuildSystem" parent="Factory" unique_id=545762094 instance=ExtResource("6_build")]
-
-[node name="BuildSystem" parent="Factory" unique_id=1867202592 instance=ExtResource("9_buildsys")]
+[node name="BuildSystem" parent="." unique_id=545762094 instance=ExtResource("6_build")]
 
 [node name="Player" parent="." unique_id=1464333537 instance=ExtResource("1_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 2)
-
-[node name="ShopUI" parent="." unique_id=736422229 instance=ExtResource("3_shopui")]
 
 [node name="InventoryHUD" parent="." unique_id=366594673 instance=ExtResource("4_invhud")]
 
 [node name="PlayerHUD" parent="." unique_id=1596256977 instance=ExtResource("7_phud")]
 
 [node name="HotbarHUD" parent="." unique_id=1596256978 instance=ExtResource("17_hotbar")]
-
-[node name="ZoneAudio" type="Node" parent="." unique_id=1486196137]
-script = ExtResource("13_zoneaudio")
 
 [node name="Players" type="Node3D" parent="."]
