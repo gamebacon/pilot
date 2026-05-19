@@ -1,6 +1,0 @@
-[gd_resource type="Resource" script_class="WoodshedBlueprint" format=3 uid="uid://bp_woodshed"]
-
-[ext_resource type="Script" path="res://build/blueprints/woodshed.gd" id="1_bpscript"]
-
-[resource]
-script = ExtResource("1_bpscript")

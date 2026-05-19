@@ -1,6 +1,0 @@
-[gd_resource type="Resource" script_class="TerraceBlueprint" format=3 uid="uid://bp_terrace"]
-
-[ext_resource type="Script" path="res://build/blueprints/terrace.gd" id="1_bpscript"]
-
-[resource]
-script = ExtResource("1_bpscript")
