@@ -52,7 +52,7 @@ func _process(_d: float) -> void:
 	var mp := get_viewport().get_mouse_position()
 
 	if _drag_root and _drag_panel and _drag_panel.visible:
-		_drag_root.position = mp - Vector2(UIStyle.SLOT_SZ * 0.5, UIStyle.SLOT_SZ * 0.5)
+		_drag_root.position = _get_drag_pos()
 
 	if _tooltip and _tooltip.visible:
 		_position_tooltip(mp)
@@ -188,6 +188,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not visible:
 		return
 
+	if event is InputEventMouseMotion:
+		_ctrl_nav = false
+		return
+
 	# Escape / controller B → return held items then close (or just close)
 	if event.is_action_pressed("ui_cancel") \
 			or (event is InputEventJoypadButton and event.pressed \
@@ -263,10 +267,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _nav(dx: int, dy: int) -> void:
+	var total_rows := Inventory.MAIN_ROWS + Inventory.HOTBAR_ROWS
 	var col := _cursor % COLS
 	var row := _cursor / COLS
 	col    = (col + dx + COLS) % COLS
-	row    = clamp(row + dy, 0, Inventory.MAIN_ROWS - 1)
+	row    = clamp(row + dy, 0, total_rows - 1)
 	_cursor   = row * COLS + col
 	_ctrl_nav = true
 	_refresh()
@@ -290,8 +295,7 @@ func _left_activate(idx: int) -> void:
 					if is_instance_valid(item): item.visible = false
 				_update_drag_visual()
 				_drag_panel.visible = true
-				_drag_root.position = get_viewport().get_mouse_position() \
-					- Vector2(UIStyle.SLOT_SZ * 0.5, UIStyle.SLOT_SZ * 0.5)
+				_drag_root.position = _get_drag_pos()
 	else:
 		if slot.is_empty() or slot.item_data.id == _picked_data.id:
 			# Place all, keep any overflow in hand
@@ -337,8 +341,7 @@ func _right_activate(idx: int) -> void:
 					if is_instance_valid(item): item.visible = false
 				_update_drag_visual()
 				_drag_panel.visible = true
-				_drag_root.position = get_viewport().get_mouse_position() \
-					- Vector2(UIStyle.SLOT_SZ * 0.5, UIStyle.SLOT_SZ * 0.5)
+				_drag_root.position = _get_drag_pos()
 	else:
 		# Place one item if compatible and slot not full.
 		if not _picked_items.is_empty() \
@@ -467,6 +470,11 @@ func _quick_fill_main(items: Array[PhysicalItem]) -> Array[PhysicalItem]:
 	return rem
 
 # ── Drag visual ────────────────────────────────────────────────────────────────
+func _get_drag_pos() -> Vector2:
+	if _ctrl_nav and _cursor >= 0 and _cursor < _slots.size() and _slots[_cursor] != null:
+		return _slots[_cursor].global_position
+	return get_viewport().get_mouse_position() - Vector2(UIStyle.SLOT_SZ * 0.5, UIStyle.SLOT_SZ * 0.5)
+
 func _update_drag_visual() -> void:
 	if _picked_data == null or _picked_items.is_empty():
 		return
@@ -864,6 +872,6 @@ func _refresh() -> void:
 		if _slots[idx] == null:
 			continue
 		var slot      := _inv.get_slot(idx)
-		var is_cursor := idx == _cursor and _ctrl_nav and idx < Inventory.MAIN_SLOTS
+		var is_cursor := idx == _cursor and _ctrl_nav
 		_slots[idx].set_item(slot.item_data if not slot.is_empty() else null, slot.quantity)
 		_slots[idx].set_cursor(is_cursor)
