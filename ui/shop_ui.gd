@@ -39,7 +39,7 @@ func open(stock: Array[ItemData], shop: Node) -> void:
 	_nav_timer = 0.0
 	panel.show()
 	GameState.push_ui()
-	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN if InputHelper.is_joy() else Input.MOUSE_MODE_VISIBLE)
 	if not _focusable.is_empty():
 		_focusable[0].call_deferred("grab_focus")
 

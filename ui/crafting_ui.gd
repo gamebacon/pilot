@@ -44,7 +44,7 @@ func open(player: Node) -> void:
 	_refresh()
 	show()
 	GameState.push_ui()
-	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN if InputHelper.is_joy() else Input.MOUSE_MODE_VISIBLE)
 	if not _focusable.is_empty():
 		_focusable[0].call_deferred("grab_focus")
 
@@ -168,7 +168,7 @@ func _build_shell() -> void:
 	_close_btn.focus_mode  = Control.FOCUS_NONE
 	_close_btn.custom_minimum_size = Vector2(80, 32)
 	_close_btn.pressed.connect(_close)
-	if Input.get_connected_joypads().size() > 0:
+	if InputHelper.is_joy():
 		_close_btn.text = ""
 		var cc := CenterContainer.new()
 		cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -427,7 +427,7 @@ func _on_craft(recipe: CraftingRecipe) -> void:
 ## Returns a wider, styled shoulder-button badge (L1/R1) when a controller is
 ## connected, or null on keyboard-only so the caller skips adding it.
 func _shoulder_badge(label: String) -> Control:
-	if Input.get_connected_joypads().size() == 0:
+	if not InputHelper.is_joy():
 		return null
 	var bg := StyleBoxFlat.new()
 	bg.bg_color = Color(0.22, 0.22, 0.28, 1.0)

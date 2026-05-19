@@ -40,6 +40,7 @@ func _ready() -> void:
 	objective_label.hide()   # sauna objective — not used in new game
 	GameState.debug_mode_changed.connect(_on_debug_mode_changed)
 	GameState.shift_ended.connect(_on_shift_ended)
+	InputHelper.input_changed.connect(func(_joy: bool) -> void: _last_context_key = "")
 	_update_shift_label(0.0)
 	if NetworkManager.is_server():
 		_add_server_ip_label()
@@ -77,6 +78,8 @@ func _process(delta: float) -> void:
 		blueprint_list.hide()
 		return
 
+	crosshair.show()
+
 	# Untyped so GDScript doesn't validate on assignment — is_instance_valid handles it below.
 	var target = _player.interact_target
 	if not is_instance_valid(target):
@@ -94,7 +97,6 @@ func _process(delta: float) -> void:
 				var hint_rows: Array[Control] = [UIStyle.make_hint(hint)]
 				_rebuild_children(hint_label, hint_rows, true)
 			hint_label.show()
-			crosshair.show()
 	else:
 		hint_label.hide()
 		_last_hint = ""
@@ -145,7 +147,7 @@ func _update_context_hints() -> void:
 		var hand_slot := inv.get_hotbar_slot(inv.active_hotbar_row, inv.active_slot)
 		has_item_in_hand = not hand_slot.is_empty()
 
-	var has_joy: bool = Input.get_connected_joypads().size() > 0
+	var has_joy: bool = InputHelper.is_joy()
 	var key := "%s|%d|%d|%d|%d" % [InputHelper.action_label("drop"), int(has_placeable), int(has_multi), int(has_joy), int(has_item_in_hand)]
 	if key != _last_context_key:
 		_last_context_key = key
@@ -159,7 +161,7 @@ func _update_context_hints() -> void:
 			drow.size_flags_horizontal = Control.SIZE_SHRINK_END
 			rows.append(drow)
 		if has_multi:
-			var crow: Control = _make_cycle_row() if has_joy \
+			var crow: Control = UIStyle.make_badge_pair("L1", "R1", "Cycle") if has_joy \
 				else UIStyle.make_prompt("inventory_next", "Cycle")
 			crow.size_flags_horizontal = Control.SIZE_SHRINK_END
 			rows.append(crow)
@@ -579,24 +581,3 @@ func _rebuild_children(container: Control, rows: Array[Control], center: bool) -
 		if center:
 			row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		container.add_child(row)
-
-func _make_cycle_row() -> Control:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 4)
-	row.add_child(UIStyle.make_badge("L1"))
-	var sep := Label.new()
-	sep.text = "/"
-	sep.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	sep.add_theme_font_override("font", UIStyle.FONT)
-	sep.add_theme_font_size_override("font_size", UIStyle.SIZE_SM)
-	sep.add_theme_color_override("font_color", UIStyle.COL_TEXT_DIM)
-	row.add_child(sep)
-	row.add_child(UIStyle.make_badge("R1"))
-	var lbl := Label.new()
-	lbl.text = "Cycle"
-	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	lbl.add_theme_font_override("font", UIStyle.FONT)
-	lbl.add_theme_font_size_override("font_size", UIStyle.SIZE_BODY)
-	lbl.add_theme_color_override("font_color", UIStyle.COL_TEXT)
-	row.add_child(lbl)
-	return row

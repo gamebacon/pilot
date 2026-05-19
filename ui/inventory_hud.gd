@@ -37,6 +37,10 @@ var _drag_panel: Panel       = null
 var _drag_icon:  TextureRect = null
 var _drag_count: Label       = null
 
+# ── Title bar ──────────────────────────────────────────────────────────────────
+var _title_row:  HBoxContainer = null
+var _close_hint: Control       = null
+
 # ── Tooltip ────────────────────────────────────────────────────────────────────
 var _tooltip:      Panel         = null
 var _tooltip_vbox: VBoxContainer = null
@@ -47,6 +51,7 @@ func _ready() -> void:
 	set_process(false)
 	_build()
 	hide()
+	InputHelper.input_changed.connect(_on_input_device_changed)
 
 func _process(_d: float) -> void:
 	var mp := get_viewport().get_mouse_position()
@@ -82,9 +87,8 @@ func _open() -> void:
 	_connect_inv()
 	show()
 	GameState.push_ui()
-	var has_joy := Input.get_connected_joypads().size() > 0
-	Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN if has_joy else Input.MOUSE_MODE_VISIBLE)
-	_ctrl_nav = has_joy
+	_apply_input_mode(InputHelper.is_joy())
+	_rebuild_close_hint()
 	_drag_panel.visible = false
 	_hide_tooltip()
 	set_process(true)
@@ -631,17 +635,16 @@ func _build() -> void:
 	root.add_child(vbox)
 
 	# Title
-	var title_row := HBoxContainer.new()
-	title_row.add_theme_constant_override("separation", 8)
-	vbox.add_child(title_row)
+	_title_row = HBoxContainer.new()
+	_title_row.add_theme_constant_override("separation", 8)
+	vbox.add_child(_title_row)
 	var title := Label.new()
 	title.text = "INVENTORY"
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.add_theme_font_override("font", UIStyle.FONT_BOLD)
 	title.add_theme_font_size_override("font_size", UIStyle.SIZE_LG)
 	title.add_theme_color_override("font_color", UIStyle.COL_TEXT_HEADING)
-	title_row.add_child(title)
-	title_row.add_child(_make_close_row())
+	_title_row.add_child(title)
 
 	# ── Main 3×8 grid ─────────────────────────────────────────────────────────
 	var main_grid := VBoxContainer.new()
@@ -885,6 +888,20 @@ func _refresh() -> void:
 		_slots[idx].set_item(slot.item_data if not slot.is_empty() else null, slot.quantity)
 		_slots[idx].set_cursor(is_cursor)
 
-func _make_close_row() -> Control:
-	var has_joy := Input.get_connected_joypads().size() > 0
-	return UIStyle.make_badge("B" if has_joy else "Esc", "Close")
+func _apply_input_mode(using_joy: bool) -> void:
+	_ctrl_nav = using_joy
+	Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN if using_joy else Input.MOUSE_MODE_VISIBLE)
+
+func _rebuild_close_hint() -> void:
+	if _close_hint:
+		_close_hint.get_parent().remove_child(_close_hint)
+		_close_hint.queue_free()
+	_close_hint = UIStyle.make_badge("B" if InputHelper.is_joy() else "Esc", "Close")
+	_title_row.add_child(_close_hint)
+
+func _on_input_device_changed(using_joy: bool) -> void:
+	if not visible:
+		return
+	_apply_input_mode(using_joy)
+	_rebuild_close_hint()
+	_refresh()

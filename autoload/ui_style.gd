@@ -126,9 +126,32 @@ static func _build_row(badge: Control, hint_text: String) -> Control:
 	row.add_child(lbl)
 	return row
 
+## Two badges separated by "/" with optional trailing label.
+## Use for paired actions like L1/R1 cycle prompts.
+static func make_badge_pair(raw_a: String, raw_b: String, hint_text: String = "") -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	row.add_child(_badge(raw_a))
+	var sep := Label.new()
+	sep.text = "/"
+	sep.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	sep.add_theme_font_override("font", FONT)
+	sep.add_theme_font_size_override("font_size", SIZE_SM)
+	sep.add_theme_color_override("font_color", COL_TEXT_DIM)
+	row.add_child(sep)
+	row.add_child(_badge(raw_b))
+	if not hint_text.is_empty():
+		var lbl := Label.new()
+		lbl.text = hint_text
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lbl.add_theme_font_override("font", FONT)
+		lbl.add_theme_font_size_override("font_size", SIZE_BODY)
+		lbl.add_theme_color_override("font_color", COL_TEXT)
+		row.add_child(lbl)
+	return row
+
 static func _badge(raw: String) -> Control:
-	var pad := Input.get_connected_joypads().size() > 0
-	return _controller_badge(raw) if pad else _keyboard_badge(raw)
+	return _controller_badge(raw) if InputHelper.is_joy() else _keyboard_badge(raw)
 
 static func _controller_badge(raw: String) -> Control:
 	var is_wide_badge := raw in ["L2", "R2", "L1", "R1", 'View', 'Menu', 'Start']

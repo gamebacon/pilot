@@ -1,16 +1,48 @@
-class_name InputHelper
+extends Node
+
+# Emitted whenever the active input device switches (controller ↔ keyboard/mouse).
+signal input_changed(using_joy: bool)
 
 # Switch to true for Nintendo Switch Pro controller (A↔B and X↔Y are swapped).
-# false = Xbox / PlayStation layout: A = bottom (confirm), B = right (cancel).
 const NINTENDO_LAYOUT := true
+
+# Tracks the active input device across the whole session.
+# Static so static methods (action_label etc.) can read it without going through the singleton.
+static var _using_joy: bool = false
+
+func _ready() -> void:
+	_using_joy = Input.get_connected_joypads().size() > 0
+	# Also react if a controller is physically connected / disconnected at runtime.
+	Input.joy_connection_changed.connect(_on_joy_connection)
+
+func _on_joy_connection(_device: int, _connected: bool) -> void:
+	var now := Input.get_connected_joypads().size() > 0
+	if now != _using_joy:
+		_using_joy = now
+		input_changed.emit(_using_joy)
+
+# "Last input wins": any joypad event → controller mode; any key or mouse button → KB/M mode.
+# Mouse motion is intentionally excluded to avoid false positives from stick drift.
+func _input(event: InputEvent) -> void:
+	var was := _using_joy
+	if event is InputEventJoypadButton or event is InputEventJoypadMotion:
+		_using_joy = true
+	elif event is InputEventKey or event is InputEventMouseButton:
+		_using_joy = false
+	if _using_joy != was:
+		input_changed.emit(_using_joy)
+
+# ── Public API ────────────────────────────────────────────────────────────────
+
+static func is_joy() -> bool:
+	return _using_joy
 
 # Reads from the InputMap so labels always match what is actually bound.
 static func action_label(action: String) -> String:
 	if not InputMap.has_action(action):
 		return "[?]"
 	var events := InputMap.action_get_events(action)
-	var pad_connected := Input.get_connected_joypads().size() > 0
-	if pad_connected:
+	if _using_joy:
 		for e in events:
 			if e is InputEventJoypadButton:
 				return "[%s]" % _joy_button_label(e.button_index as JoyButton)
