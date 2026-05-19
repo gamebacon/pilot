@@ -82,8 +82,9 @@ func _open() -> void:
 	_connect_inv()
 	show()
 	GameState.push_ui()
-	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
-	_ctrl_nav = false
+	var has_joy := Input.get_connected_joypads().size() > 0
+	Input.set_mouse_mode(Input.MOUSE_MODE_HIDDEN if has_joy else Input.MOUSE_MODE_VISIBLE)
+	_ctrl_nav = has_joy
 	_drag_panel.visible = false
 	_hide_tooltip()
 	set_process(true)
@@ -192,8 +193,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		_ctrl_nav = false
 		return
 
-	# Escape / controller B → return held items then close (or just close)
+	# Escape / open_inventory toggle / controller B → return held items then close
 	if event.is_action_pressed("ui_cancel") \
+			or event.is_action_pressed("open_inventory") \
 			or (event is InputEventJoypadButton and event.pressed \
 				and (event as InputEventJoypadButton).button_index == JOY_BUTTON_A):
 		if not _picked_items.is_empty():
@@ -567,14 +569,17 @@ func _add_stat(label: String, value: String) -> void:
 
 # ── Build UI ───────────────────────────────────────────────────────────────────
 func _build() -> void:
-	const PAD := 16.0
-	var grid_w  := float(COLS * (UIStyle.SLOT_SZ + UIStyle.SLOT_GAP) - UIStyle.SLOT_GAP)
-	var panel_w := grid_w + PAD * 2.0
-	var panel_h := 50.0 \
-		+ float(Inventory.MAIN_ROWS)   * (UIStyle.SLOT_SZ + UIStyle.SLOT_GAP) \
-		+ 30.0 \
-		+ float(Inventory.HOTBAR_ROWS) * (UIStyle.SLOT_SZ + UIStyle.SLOT_GAP) \
-		+ PAD * 2.0
+	const PAD      := 16.0
+	const TITLE_H  := 24.0   # title label row (FONT_BOLD SIZE_LG ≈ 18 + line gap)
+	const VBOX_SEP :=  8.0   # VBoxContainer.separation
+	const SPACER_H := 12.0   # extra gap between main grid and hotbar
+
+	var grid_w   := float(COLS * (UIStyle.SLOT_SZ + UIStyle.SLOT_GAP) - UIStyle.SLOT_GAP)
+	var panel_w  := grid_w + PAD * 2.0
+	var main_h   := float(Inventory.MAIN_ROWS   * UIStyle.SLOT_SZ + maxi(0, Inventory.MAIN_ROWS   - 1) * UIStyle.SLOT_GAP)
+	var hotbar_h := float(Inventory.HOTBAR_ROWS * UIStyle.SLOT_SZ + maxi(0, Inventory.HOTBAR_ROWS - 1) * UIStyle.SLOT_GAP)
+	# layout: [PAD] title [sep] main [sep] spacer [sep] hotbar [PAD]
+	var panel_h  := PAD + TITLE_H + VBOX_SEP + main_h + VBOX_SEP + SPACER_H + VBOX_SEP + hotbar_h + PAD
 
 	_slots.resize(Inventory.TOTAL_SLOTS)
 	for i in Inventory.TOTAL_SLOTS:
@@ -636,7 +641,7 @@ func _build() -> void:
 	title.add_theme_font_size_override("font_size", UIStyle.SIZE_LG)
 	title.add_theme_color_override("font_color", UIStyle.COL_TEXT_HEADING)
 	title_row.add_child(title)
-	title_row.add_child(UIStyle.make_prompt("open_inventory", "Close"))
+	title_row.add_child(_make_close_row())
 
 	# ── Main 3×8 grid ─────────────────────────────────────────────────────────
 	var main_grid := VBoxContainer.new()
@@ -648,6 +653,10 @@ func _build() -> void:
 		main_grid.add_child(hbox)
 		for c in COLS:
 			_build_slot(hbox, r * COLS + c)
+
+	var sec_spacer := Control.new()
+	sec_spacer.custom_minimum_size = Vector2(0, SPACER_H)
+	vbox.add_child(sec_spacer)
 
 	# ── Hotbar row (same slots as bottom HUD) ────────────────────────────────
 	var hotbar_grid := VBoxContainer.new()
@@ -875,3 +884,7 @@ func _refresh() -> void:
 		var is_cursor := idx == _cursor and _ctrl_nav
 		_slots[idx].set_item(slot.item_data if not slot.is_empty() else null, slot.quantity)
 		_slots[idx].set_cursor(is_cursor)
+
+func _make_close_row() -> Control:
+	var has_joy := Input.get_connected_joypads().size() > 0
+	return UIStyle.make_badge("B" if has_joy else "Esc", "Close")

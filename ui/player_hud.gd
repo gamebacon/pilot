@@ -132,20 +132,21 @@ func _update_context_hints() -> void:
 		return
 
 	# ── Normal gameplay hints ─────────────────────────────────────────────────
-	if _player.inventory.is_empty():
-		context_hints.hide()
-		_last_context_key = ""
-		return
-
+	var inv: Inventory = _player.inventory
 	var has_placeable: bool = false
-	for item in _player.inventory.items:
-		if item.item_data and item.item_data.is_placeable:
-			has_placeable = true
-			break
-	var has_multi: bool = _player.inventory.has_multiple_types()
+	var has_multi: bool     = false
+	var has_item_in_hand: bool = false
+	if not inv.is_empty():
+		for item in inv.items:
+			if item.item_data and item.item_data.is_placeable:
+				has_placeable = true
+				break
+		has_multi = inv.has_multiple_types()
+		var hand_slot := inv.get_hotbar_slot(inv.active_hotbar_row, inv.active_slot)
+		has_item_in_hand = not hand_slot.is_empty()
 
 	var has_joy: bool = Input.get_connected_joypads().size() > 0
-	var key := "%s|%d|%d|%d" % [InputHelper.action_label("drop"), int(has_placeable), int(has_multi), int(has_joy)]
+	var key := "%s|%d|%d|%d|%d" % [InputHelper.action_label("drop"), int(has_placeable), int(has_multi), int(has_joy), int(has_item_in_hand)]
 	if key != _last_context_key:
 		_last_context_key = key
 		var rows: Array[Control] = []
@@ -153,14 +154,18 @@ func _update_context_hints() -> void:
 			var brow: Control = UIStyle.make_prompt("build_mode", "Build")
 			brow.size_flags_horizontal = Control.SIZE_SHRINK_END
 			rows.append(brow)
-		var drow: Control = UIStyle.make_prompt("drop", "Drop")
-		drow.size_flags_horizontal = Control.SIZE_SHRINK_END
-		rows.append(drow)
+		if has_item_in_hand:
+			var drow: Control = UIStyle.make_prompt("drop", "Drop")
+			drow.size_flags_horizontal = Control.SIZE_SHRINK_END
+			rows.append(drow)
 		if has_multi:
-			var crow: Control = UIStyle.make_badge("L · R", "Cycle") if has_joy \
+			var crow: Control = _make_cycle_row() if has_joy \
 				else UIStyle.make_prompt("inventory_next", "Cycle")
 			crow.size_flags_horizontal = Control.SIZE_SHRINK_END
 			rows.append(crow)
+		var irow: Control = UIStyle.make_prompt("open_inventory", "Inventory")
+		irow.size_flags_horizontal = Control.SIZE_SHRINK_END
+		rows.append(irow)
 		_rebuild_children(context_hints, rows, false)
 
 	context_hints.show()
@@ -574,3 +579,24 @@ func _rebuild_children(container: Control, rows: Array[Control], center: bool) -
 		if center:
 			row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		container.add_child(row)
+
+func _make_cycle_row() -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 4)
+	row.add_child(UIStyle.make_badge("L1"))
+	var sep := Label.new()
+	sep.text = "/"
+	sep.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	sep.add_theme_font_override("font", UIStyle.FONT)
+	sep.add_theme_font_size_override("font_size", UIStyle.SIZE_SM)
+	sep.add_theme_color_override("font_color", UIStyle.COL_TEXT_DIM)
+	row.add_child(sep)
+	row.add_child(UIStyle.make_badge("R1"))
+	var lbl := Label.new()
+	lbl.text = "Cycle"
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.add_theme_font_override("font", UIStyle.FONT)
+	lbl.add_theme_font_size_override("font_size", UIStyle.SIZE_BODY)
+	lbl.add_theme_color_override("font_color", UIStyle.COL_TEXT)
+	row.add_child(lbl)
+	return row
