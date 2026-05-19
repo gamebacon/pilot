@@ -286,23 +286,32 @@ func _make_row(recipe: CraftingRecipe, inv: Dictionary) -> Control:
 
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", 12)
+	hbox.alignment = BoxContainer.ALIGNMENT_CENTER
 	panel.add_child(hbox)
 
-	var left := VBoxContainer.new()
-	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left.add_theme_constant_override("separation", 3)
-	hbox.add_child(left)
-
+	# ── Result slot ───────────────────────────────────────────────────────────
 	var result_data := ItemRegistry.get_item(recipe.result_id)
-	var result_name := result_data.display_name if result_data else recipe.result_id
-	var display     := "%s  ×%d" % [result_name, recipe.result_count] if recipe.result_count > 1 else result_name
+	var result_slot := ItemSlotWidget.new()
+	result_slot.custom_minimum_size = Vector2(UIStyle.SLOT_SZ_SM, UIStyle.SLOT_SZ_SM)
+	result_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hbox.add_child(result_slot)
+	if result_data:
+		result_slot.set_item(result_data, recipe.result_count)
 
-	var name_lbl := Label.new()
-	name_lbl.text = display
-	name_lbl.add_theme_font_override("font", UIStyle.FONT)
-	name_lbl.add_theme_font_size_override("font_size", 16)
-	name_lbl.add_theme_color_override("font_color", Color(0.95, 0.90, 0.80))
-	left.add_child(name_lbl)
+	# ── Arrow ─────────────────────────────────────────────────────────────────
+	var arrow := Label.new()
+	arrow.text = "←"
+	arrow.add_theme_font_override("font", UIStyle.FONT)
+	arrow.add_theme_font_size_override("font_size", 14)
+	arrow.add_theme_color_override("font_color", Color(0.50, 0.50, 0.55))
+	arrow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	hbox.add_child(arrow)
+
+	# ── Ingredients ───────────────────────────────────────────────────────────
+	var ing_vbox := VBoxContainer.new()
+	ing_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ing_vbox.add_theme_constant_override("separation", 4)
+	hbox.add_child(ing_vbox)
 
 	var can_craft := true
 	for ing_id: String in recipe.ingredients:
@@ -313,36 +322,50 @@ func _make_row(recipe: CraftingRecipe, inv: Dictionary) -> Control:
 
 		var ing_data := ItemRegistry.get_item(ing_id)
 		var ing_name := ing_data.display_name if ing_data else ing_id
+		var enough   := have >= need or GameState.debug_mode
 
-		var row := HBoxContainer.new()
-		left.add_child(row)
+		var ing_row := HBoxContainer.new()
+		ing_row.add_theme_constant_override("separation", 6)
+		ing_row.alignment = BoxContainer.ALIGNMENT_BEGIN
+		ing_vbox.add_child(ing_row)
 
-		var bullet := Label.new()
-		bullet.text = "  ▸ "
-		bullet.add_theme_font_override("font", UIStyle.FONT)
-		bullet.add_theme_font_size_override("font_size", 12)
-		bullet.add_theme_color_override("font_color", Color(0.55, 0.55, 0.55))
-		row.add_child(bullet)
+		# Small icon slot
+		var ing_slot := ItemSlotWidget.new()
+		ing_slot.custom_minimum_size = Vector2(UIStyle.SLOT_SZ_SM, UIStyle.SLOT_SZ_SM)
+		ing_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if ing_data:
+			ing_slot.set_item(ing_data)
+			ing_slot.set_badge("%d" % need,
+				Color(0.50, 0.88, 0.50) if enough else Color(0.90, 0.35, 0.30))
+		ing_row.add_child(ing_slot)
+
+		# "Name  (have N)" text
+		var text_col := VBoxContainer.new()
+		text_col.add_theme_constant_override("separation", 1)
+		text_col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		ing_row.add_child(text_col)
 
 		var ing_lbl := Label.new()
-		ing_lbl.text = "%d× %s" % [need, ing_name]
+		ing_lbl.text = ing_name
 		ing_lbl.add_theme_font_override("font", UIStyle.FONT)
-		ing_lbl.add_theme_font_size_override("font_size", 12)
+		ing_lbl.add_theme_font_size_override("font_size", 13)
 		ing_lbl.add_theme_color_override("font_color",
-			Color(0.50, 0.88, 0.50) if have >= need else Color(0.85, 0.38, 0.32))
-		row.add_child(ing_lbl)
+			Color(0.50, 0.88, 0.50) if enough else Color(0.90, 0.35, 0.30))
+		text_col.add_child(ing_lbl)
 
 		var have_lbl := Label.new()
-		have_lbl.text = "  (have %d)" % have
+		have_lbl.text = "have %d / need %d" % [have, need]
 		have_lbl.add_theme_font_override("font", UIStyle.FONT)
-		have_lbl.add_theme_font_size_override("font_size", 11)
+		have_lbl.add_theme_font_size_override("font_size", 10)
 		have_lbl.add_theme_color_override("font_color", Color(0.50, 0.50, 0.50))
-		row.add_child(have_lbl)
+		text_col.add_child(have_lbl)
 
+	# ── Craft button ──────────────────────────────────────────────────────────
 	var craft_btn := Button.new()
 	craft_btn.text                = "Craft"
 	craft_btn.disabled            = not can_craft
 	craft_btn.custom_minimum_size = Vector2(90, 0)
+	craft_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	craft_btn.add_theme_stylebox_override("focus", UIStyle.make_focus_style())
 	craft_btn.set_meta("recipe_id", recipe.result_id)
 	craft_btn.pressed.connect(_on_craft.bind(recipe))
@@ -379,9 +402,14 @@ func _on_craft(recipe: CraftingRecipe) -> void:
 				item.collision_mask  = 1
 				item.freeze          = false
 
-	var target_id := recipe.result_id
+	var target_id  := recipe.result_id
+	var scroll_pos := _scroll.scroll_vertical
 	_refresh()
-	# Restore focus to the same recipe's button; fall back to nearest index.
+	_scroll.scroll_vertical = scroll_pos
+	# Restore focus without letting follow_focus scroll the list.
+	# Disable it first, grab focus (deferred), then re-enable (deferred after,
+	# so it runs after grab_focus — call_deferred is FIFO).
+	_scroll.follow_focus = false
 	var found := false
 	for i in _focusable.size():
 		if _focusable[i].get_meta("recipe_id", "") == target_id:
@@ -392,6 +420,7 @@ func _on_craft(recipe: CraftingRecipe) -> void:
 	if not found and not _focusable.is_empty():
 		_sel = clampi(_sel, 0, _focusable.size() - 1)
 		_focusable[_sel].call_deferred("grab_focus")
+	(func() -> void: _scroll.follow_focus = true).call_deferred()
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

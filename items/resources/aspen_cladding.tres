@@ -12,4 +12,3 @@ category = "Sauna"
 color = Color(0.95, 0.90, 0.72, 1.0)
 size = Vector3(0.150, 0.015, 2.4)
 mass = 1.0
-carry_stack = 4

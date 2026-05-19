@@ -4,6 +4,9 @@ class_name ToolItemData
 ## Extended ItemData for tools (axe, pickaxe) and weapons (sword).
 ## Durability is tracked per PhysicalItem instance, not here.
 
+func _init() -> void:
+	carry_stack = 1   # tools never stack
+
 @export_enum("axe", "pickaxe", "sword") var tool_type: String = "axe"
 
 ## 1 = Wooden, 2 = Stone, 3 = Iron

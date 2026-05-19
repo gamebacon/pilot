@@ -11,4 +11,3 @@ description = "13 mm gypsum plasterboard, 1.2 m wide × 2.4 m tall."
 color = Color(0.94, 0.94, 0.92, 1.0)
 size = Vector3(1.2, 0.013, 2.4)
 mass = 3.5
-carry_stack = 1

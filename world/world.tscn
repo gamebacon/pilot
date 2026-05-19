@@ -10,6 +10,7 @@
 [ext_resource type="PackedScene" path="res://build/plot.tscn" id="5_plot"]
 [ext_resource type="PackedScene" path="res://build/build_system.tscn" id="6_build"]
 [ext_resource type="PackedScene" path="res://ui/player_hud.tscn" id="7_phud"]
+[ext_resource type="PackedScene" uid="uid://hotbar_hud_001" path="res://ui/hotbar_hud.tscn" id="17_hotbar"]
 [ext_resource type="PackedScene" path="res://build/build_system.tscn" id="9_buildsys"]
 [ext_resource type="Script" uid="uid://cdoun5ond01yl" path="res://world/day_manager.gd" id="10_daymgr"]
 [ext_resource type="Script" uid="uid://bc5exddnwdlbj" path="res://world/clock_in.gd" id="11_clockin"]
@@ -173,6 +174,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 2)
 [node name="InventoryHUD" parent="." unique_id=366594673 instance=ExtResource("4_invhud")]
 
 [node name="PlayerHUD" parent="." unique_id=1596256977 instance=ExtResource("7_phud")]
+
+[node name="HotbarHUD" parent="." unique_id=1596256978 instance=ExtResource("17_hotbar")]
 
 [node name="ZoneAudio" type="Node" parent="." unique_id=1486196137]
 script = ExtResource("13_zoneaudio")

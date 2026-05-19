@@ -32,6 +32,7 @@ func _ready() -> void:
 	inventory = Inventory.new()
 	inventory.name = "Inventory"
 	add_child(inventory)
+	inventory.changed.connect(func() -> void: _reposition_carried())
 
 	if NetworkManager.is_active() and not is_multiplayer_authority():
 		_setup_as_remote()
@@ -70,6 +71,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	if NetworkManager.is_active() and not is_multiplayer_authority():
 		return
 
+	# Toggle inventory before the ui_open guard so it works both ways.
+	if event.is_action_pressed("open_inventory"):
+		var inv_hud := get_tree().get_first_node_in_group("inventory_hud")
+		if inv_hud:
+			inv_hud.toggle()
+		get_viewport().set_input_as_handled()
+		return
+
 	if GameState.ui_open:
 		return
 
@@ -100,8 +109,17 @@ func _unhandled_input(event: InputEvent) -> void:
 		inventory.cycle_next()
 		_reposition_carried()
 
-	# L1 / R1 cycle items — handled raw so they don't conflict with build-mode
-	# actions (remove_piece / reset_rotation) which share the same buttons.
+	# Number keys 1-5 select hotbar slots directly.
+	if event is InputEventKey and event.pressed and not event.echo:
+		match (event as InputEventKey).physical_keycode:
+			KEY_1: inventory.set_active_hotbar_slot(0); _reposition_carried()
+			KEY_2: inventory.set_active_hotbar_slot(1); _reposition_carried()
+			KEY_3: inventory.set_active_hotbar_slot(2); _reposition_carried()
+			KEY_4: inventory.set_active_hotbar_slot(3); _reposition_carried()
+			KEY_5: inventory.set_active_hotbar_slot(4); _reposition_carried()
+
+	# L1/R1 cycle slot; D-pad up/down switch hotbar row — raw so they don't
+	# conflict with build-mode actions that share the same buttons.
 	if event is InputEventJoypadButton and (event as InputEventJoypadButton).pressed \
 			and not GameState.is_building and not interact_target:
 		var btn := (event as InputEventJoypadButton).button_index
@@ -110,6 +128,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			_reposition_carried()
 		elif btn == JOY_BUTTON_RIGHT_SHOULDER:
 			inventory.cycle_next()
+			_reposition_carried()
+		elif btn == JOY_BUTTON_DPAD_UP:
+			inventory.prev_hotbar_row()
+			_reposition_carried()
+		elif btn == JOY_BUTTON_DPAD_DOWN:
+			inventory.next_hotbar_row()
 			_reposition_carried()
 
 	if event.is_action_pressed("debug_toggle"):
@@ -215,11 +239,10 @@ func pick_up(item: PhysicalItem) -> bool:
 	return true
 
 func drop_active() -> void:
-	var item := inventory.active()
+	var item := inventory.remove_active_one()
 	if not item:
 		return
-	inventory.remove(item)
-	_reposition_carried()
+	item.visible         = true
 	item.reparent(get_tree().current_scene, true)
 	item.scale           = Vector3.ONE
 	item.collision_layer = 1
@@ -234,12 +257,42 @@ func drop_active() -> void:
 				item.net_id = world.assign_item_id()
 			world.sync_item_drop(item.item_data.id, item.global_position, item.net_id)
 
-# Positions all carried items so same-type items stack visually.
+## Drop a specific [item] into the world in front of the player with multiplayer sync.
+## Safe to call from inventory UI — does not touch inventory slot data.
+func drop_item(item: PhysicalItem) -> void:
+	if not is_instance_valid(item):
+		return
+	item.visible         = true
+	item.reparent(get_tree().current_scene, true)
+	item.scale           = Vector3.ONE
+	item.collision_layer = 1
+	item.collision_mask  = 1
+	item.freeze          = false
+	item.linear_velocity = -transform.basis.z * 3.0 + Vector3(0, 2, 0)
+
+	if NetworkManager.is_active() and item.item_data:
+		var world := get_tree().get_first_node_in_group("world")
+		if world:
+			if item.net_id == 0:
+				item.net_id = world.assign_item_id()
+			world.sync_item_drop(item.item_data.id, item.global_position, item.net_id)
+
+# Show only the active slot's first item; hide everything else.
 func _reposition_carried() -> void:
-	for item in inventory.items:
-		item.position = Vector3(0.25 * inventory.slot_for(item), -0.3, -0.6)
-		item.rotation = Vector3(-0.3, 0.0, 0.1)
-		item.scale    = Vector3.ONE * _held_scale(item)
+	var active_idx := Inventory.MAIN_SLOTS \
+		+ inventory.active_hotbar_row * Inventory.HOTBAR_COLS + inventory.active_slot
+	for i in Inventory.TOTAL_SLOTS:
+		var slot: Inventory.Slot = inventory.get_slot(i)
+		for j in slot.physical.size():
+			var item: PhysicalItem = slot.physical[j]
+			if i == active_idx and j == 0:
+				item.visible  = true
+				item.position = Vector3(0.0, -0.3, -0.6)
+				item.rotation = Vector3(-0.3, 0.0, 0.1)
+				item.scale    = Vector3.ONE * _held_scale(item)
+			else:
+				item.visible   = false
+				item.position  = Vector3(0.0, -0.3, -0.6)  # keep stacked items at carry_point so drop position is correct
 
 ## Returns the uniform scale to use while an item is carried.
 ## Normalises the largest dimension to 0.40 m so nothing blocks the view,

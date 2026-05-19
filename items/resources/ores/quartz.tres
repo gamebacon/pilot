@@ -11,4 +11,3 @@ description = "Milky-white crystal. Resonates with strange energy."
 color = Color(0.92, 0.90, 0.95, 1.0)
 size = Vector3(0.10, 0.06, 0.14)
 mass = 0.4
-carry_stack = 5

@@ -12,4 +12,3 @@ category = "Boarding & Cladding"
 color = Color(0.88, 0.76, 0.54, 1.0)
 size = Vector3(0.095, 0.019, 1.2)
 mass = 0.7
-carry_stack = 4

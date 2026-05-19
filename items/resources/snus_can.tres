@@ -12,4 +12,3 @@ category = "Grocery"
 color = Color(0.14, 0.42, 0.22, 1.0)
 size = Vector3(0.075, 0.025, 0.075)
 mass = 0.05
-carry_stack = 4

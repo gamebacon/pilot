@@ -3,32 +3,5 @@
 [ext_resource type="Script" path="res://ui/inventory_hud.gd" id="1_invhud"]
 
 [node name="InventoryHUD" type="CanvasLayer"]
+layer = 10
 script = ExtResource("1_invhud")
-
-[node name="Panel" type="Panel" parent="."]
-anchor_left = 0.0
-anchor_top = 1.0
-anchor_right = 0.0
-anchor_bottom = 1.0
-offset_left = 12.0
-offset_top = -180.0
-offset_right = 230.0
-offset_bottom = -12.0
-
-[node name="VBox" type="VBoxContainer" parent="Panel"]
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 10.0
-offset_top = 8.0
-offset_right = -10.0
-offset_bottom = -8.0
-
-[node name="CurrencyLabel" type="Label" parent="Panel/VBox"]
-text = "$500"
-
-[node name="HSeparator" type="HSeparator" parent="Panel/VBox"]
-
-[node name="CarryLabel" type="Label" parent="Panel/VBox"]
-text = "Hands empty"
-autowrap_mode = 3

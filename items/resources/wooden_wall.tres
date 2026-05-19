@@ -11,5 +11,4 @@ description = "A solid wall panel. Place it to defend the core."
 color = Color(0.52, 0.35, 0.15, 1.0)
 size = Vector3(2.0, 2.0, 0.15)
 mass = 6.0
-carry_stack = 2
 is_placeable = true

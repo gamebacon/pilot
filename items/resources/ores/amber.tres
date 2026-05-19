@@ -11,4 +11,3 @@ description = "Ancient tree resin, hardened over millennia. Something is trapped
 color = Color(0.88, 0.55, 0.12, 1.0)
 size = Vector3(0.10, 0.08, 0.12)
 mass = 0.3
-carry_stack = 3

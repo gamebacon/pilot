@@ -1,0 +1,7 @@
+[gd_scene format=3 uid="uid://hotbar_hud_001"]
+
+[ext_resource type="Script" path="res://ui/hotbar_hud.gd" id="1_hotbar"]
+
+[node name="HotbarHUD" type="CanvasLayer"]
+layer = 9
+script = ExtResource("1_hotbar")

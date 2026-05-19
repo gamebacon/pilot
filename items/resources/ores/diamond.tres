@@ -11,4 +11,3 @@ description = "The hardest material known. Brilliant and near-indestructible."
 color = Color(0.70, 0.92, 0.98, 1.0)
 size = Vector3(0.08, 0.06, 0.10)
 mass = 0.5
-carry_stack = 3

@@ -11,4 +11,3 @@ description = "Tongue-and-groove aspen cladding for sauna interiors. 10cm wide, 
 color = Color(0.88, 0.78, 0.55, 1.0)
 size = Vector3(0.1, 0.015, 1.0)
 mass = 0.4
-carry_stack = 5

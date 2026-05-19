@@ -11,4 +11,3 @@ description = "Standard 38×89 mm framing stud, 2.4 m long. The backbone of timb
 color = Color(0.90, 0.76, 0.52, 1.0)
 size = Vector3(0.038, 0.089, 2.4)
 mass = 2.5
-carry_stack = 2

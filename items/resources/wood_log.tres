@@ -11,4 +11,3 @@ description = "A chopped log. Used for building."
 color = Color(0.46, 0.28, 0.12, 1.0)
 size = Vector3(0.28, 0.18, 0.55)
 mass = 3.0
-carry_stack = 3

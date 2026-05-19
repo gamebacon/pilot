@@ -11,4 +11,3 @@ description = "Structural wall and floor plank. 20cm wide, 1m long."
 color = Color(0.72, 0.48, 0.18, 1.0)
 size = Vector3(0.2, 0.05, 1.0)
 mass = 2.0
-carry_stack = 2

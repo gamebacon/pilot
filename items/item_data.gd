@@ -3,6 +3,7 @@ class_name ItemData
 
 @export var id: String = ""
 @export var display_name: String = ""
+@export var icon: Texture2D
 @export var price: int = 10
 @export var description: String = ""
 
@@ -23,7 +24,7 @@ class_name ItemData
 # Physics
 @export var mass: float = 2.0
 
-@export var carry_stack: int = 1
+@export var carry_stack: int = 32
 
 # Placeable items — can be placed in the world via build mode
 @export var is_placeable: bool = false

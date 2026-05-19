@@ -11,4 +11,3 @@ description = "Reddish-orange ore. Smelt it into copper bars."
 color = Color(0.72, 0.44, 0.18, 1.0)
 size = Vector3(0.14, 0.10, 0.14)
 mass = 1.2
-carry_stack = 5

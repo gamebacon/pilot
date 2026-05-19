@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" path="res://build/plot.tscn" id="5_plot"]
 [ext_resource type="PackedScene" path="res://build/build_system.tscn" id="6_build"]
 [ext_resource type="PackedScene" path="res://ui/player_hud.tscn" id="7_phud"]
+[ext_resource type="PackedScene" uid="uid://hotbar_hud_001" path="res://ui/hotbar_hud.tscn" id="17_hotbar"]
 [ext_resource type="PackedScene" path="res://build/build_system.tscn" id="9_buildsys"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_ground"]
@@ -48,6 +49,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0.1, -4)
 [node name="InventoryHUD" parent="." unique_id=1659200543 instance=ExtResource("4_invhud")]
 
 [node name="PlayerHUD" parent="." unique_id=283809856 instance=ExtResource("7_phud")]
+
+[node name="HotbarHUD" parent="." unique_id=283809857 instance=ExtResource("17_hotbar")]
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=2016765552]
 transform = Transform3D(0.707107, -0.5, 0.5, 0, 0.707107, 0.707107, -0.707107, -0.5, 0.5, 0, 10, 0)

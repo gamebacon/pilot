@@ -1,5 +1,10 @@
 class_name UIStyle
 
+# ── Inventory / hotbar slot sizing ────────────────────────────────────────────
+const SLOT_SZ    := 56   # full-size slot (inventory & hotbar)
+const SLOT_SZ_SM := 40   # compact slot (crafting, shop)
+const SLOT_GAP   := 4
+
 # ── Palette ────────────────────────────────────────────────────────────────────
 const COL_TEXT          := Color(0.90, 0.92, 0.95, 0.90)
 const COL_TEXT_DIM      := Color(0.60, 0.62, 0.65, 0.80)

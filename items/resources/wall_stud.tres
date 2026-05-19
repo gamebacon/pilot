@@ -12,4 +12,3 @@ category = "Timber & Framing"
 color = Color(0.85, 0.70, 0.48, 1.0)
 size = Vector3(0.089, 0.038, 2.4)
 mass = 3.5
-carry_stack = 2

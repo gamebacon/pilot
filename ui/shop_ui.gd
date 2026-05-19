@@ -114,11 +114,12 @@ func _add_row(item: ItemData) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
 
-	# ── Color swatch ──────────────────────────────────────────────────────────
-	var swatch := ColorRect.new()
-	swatch.color = item.color
-	swatch.custom_minimum_size = Vector2(26, 26)
+	# ── Item slot icon ────────────────────────────────────────────────────────
+	var swatch := ItemSlotWidget.new()
+	swatch.custom_minimum_size = Vector2(UIStyle.SLOT_SZ_SM, UIStyle.SLOT_SZ_SM)
+	swatch.mouse_filter        = Control.MOUSE_FILTER_IGNORE
 	swatch.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	swatch.set_item(item)
 	row.add_child(swatch)
 
 	# ── Name + subtitle ───────────────────────────────────────────────────────
