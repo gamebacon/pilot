@@ -1,7 +1,7 @@
 extends CanvasLayer
 
 
-const COLS := Inventory.MAIN_COLS
+const COLS := Inventory.COLS
 
 var _inv: Inventory = null
 
@@ -41,10 +41,6 @@ var _drag_count: Label       = null
 var _title_row:  HBoxContainer = null
 var _close_hint: Control       = null
 
-# ── Tooltip ────────────────────────────────────────────────────────────────────
-var _tooltip:      Panel         = null
-var _tooltip_vbox: VBoxContainer = null
-
 # ══════════════════════════════════════════════════════════════════════════════
 func _ready() -> void:
 	add_to_group("inventory_hud")
@@ -58,9 +54,6 @@ func _process(_d: float) -> void:
 
 	if _drag_root and _drag_panel and _drag_panel.visible:
 		_drag_root.position = _get_drag_pos()
-
-	if _tooltip and _tooltip.visible:
-		_position_tooltip(mp)
 
 	# Detect mouse-button release to commit drag-split or single-slot click.
 	if _split_button >= 0 and not Input.is_mouse_button_pressed(_split_button):
@@ -90,7 +83,7 @@ func _open() -> void:
 	_apply_input_mode(InputHelper.is_joy())
 	_rebuild_close_hint()
 	_drag_panel.visible = false
-	_hide_tooltip()
+	ItemTooltip.hide()
 	set_process(true)
 	_refresh()
 	var hb := get_tree().get_first_node_in_group("hotbar_hud")
@@ -98,7 +91,7 @@ func _open() -> void:
 
 func _close() -> void:
 	_cancel_drag()
-	_hide_tooltip()
+	ItemTooltip.hide()
 	hide()
 	GameState.pop_ui()
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
@@ -214,11 +207,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			and _hovered_slot >= 0 and _picked_items.is_empty():
 		var slot_num := -1
 		match (event as InputEventKey).physical_keycode:
+			# TODO: dont hardcode, dynamic based on hotbar size
 			KEY_1: slot_num = 0
 			KEY_2: slot_num = 1
 			KEY_3: slot_num = 2
 			KEY_4: slot_num = 3
 			KEY_5: slot_num = 4
+			KEY_6: slot_num = 5
+			KEY_7: slot_num = 6
+			KEY_8: slot_num = 7
 		if slot_num >= 0 and _inv:
 			var hotbar_idx := Inventory.MAIN_SLOTS \
 				+ _inv.active_hotbar_row * Inventory.HOTBAR_COLS + slot_num
@@ -273,7 +270,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 func _nav(dx: int, dy: int) -> void:
-	var total_rows := Inventory.MAIN_ROWS + Inventory.HOTBAR_ROWS
+	var total_rows := Inventory.ROWS + Inventory.HOTBAR_ROWS
 	var col := _cursor % COLS
 	var row := _cursor / COLS
 	col    = (col + dx + COLS) % COLS
@@ -292,7 +289,7 @@ func _left_activate(idx: int) -> void:
 
 	if _picked_items.is_empty():
 		if not slot.is_empty():
-			_hide_tooltip()
+			ItemTooltip.hide()
 			var taken := _inv.take_items(idx, slot.quantity)
 			if not taken.is_empty():
 				_picked_items = taken
@@ -337,7 +334,7 @@ func _right_activate(idx: int) -> void:
 
 	if _picked_items.is_empty():
 		if not slot.is_empty():
-			_hide_tooltip()
+			ItemTooltip.hide()
 			var qty  := (slot.quantity + 1) / 2
 			var taken := _inv.take_items(idx, qty)
 			if not taken.is_empty():
@@ -494,83 +491,6 @@ func _update_drag_visual() -> void:
 	_drag_count.text   = str(_picked_items.size()) if _picked_items.size() > 1 else ""
 	_drag_icon.texture = _picked_data.icon
 
-# ── Tooltip ────────────────────────────────────────────────────────────────────
-func _show_tooltip(slot: Inventory.Slot) -> void:
-	if slot.is_empty(): return
-	_populate_tooltip(slot)
-	_tooltip.visible = true
-	_position_tooltip(get_viewport().get_mouse_position())
-
-func _hide_tooltip() -> void:
-	if _tooltip: _tooltip.visible = false
-
-func _position_tooltip(mp: Vector2) -> void:
-	_tooltip.reset_size()
-	var sz := _tooltip.size
-	var vp := get_viewport().get_visible_rect().size
-	var x  := mp.x + 18.0
-	var y  := mp.y + 18.0
-	if x + sz.x > vp.x - 8.0: x = mp.x - sz.x - 8.0
-	if y + sz.y > vp.y - 8.0: y = mp.y - sz.y - 8.0
-	_tooltip.position = Vector2(x, y)
-
-func _populate_tooltip(slot: Inventory.Slot) -> void:
-	for child in _tooltip_vbox.get_children():
-		child.queue_free()
-	var data := slot.item_data
-
-	var name_lbl := Label.new()
-	name_lbl.text = data.display_name
-	name_lbl.add_theme_font_override("font", UIStyle.FONT_BOLD)
-	name_lbl.add_theme_font_size_override("font_size", UIStyle.SIZE_LG)
-	name_lbl.add_theme_color_override("font_color", UIStyle.COL_TEXT_HEADING)
-	_tooltip_vbox.add_child(name_lbl)
-
-	if not data.description.is_empty():
-		var desc := Label.new()
-		desc.text = data.description
-		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		desc.custom_minimum_size = Vector2(200, 0)
-		desc.add_theme_font_override("font", UIStyle.FONT_LIGHT)
-		desc.add_theme_font_size_override("font_size", UIStyle.SIZE_SM)
-		desc.add_theme_color_override("font_color", UIStyle.COL_TEXT_DIM)
-		_tooltip_vbox.add_child(desc)
-
-	var sep := HSeparator.new()
-	sep.add_theme_constant_override("separation", 4)
-	_tooltip_vbox.add_child(sep)
-
-	if data.mass > 0.0:       _add_stat("Mass",  "%.1f kg" % data.mass)
-	if data.carry_stack > 1:  _add_stat("Stack", "×%d"    % data.carry_stack)
-	if data.price > 0:        _add_stat("Value", "$%d"     % data.price)
-
-	if data is ToolItemData:
-		var td  := data as ToolItemData
-		var cur := slot.physical[0].current_durability if not slot.physical.is_empty() else td.durability_max
-		_add_stat("Type",       td.tool_type.capitalize())
-		_add_stat("Tier",       td.level_name)
-		_add_stat("Durability", "%d / %d" % [cur, td.durability_max])
-		if td.attack_damage  > 0.0: _add_stat("Attack",  "%.0f dmg" % td.attack_damage)
-		if td.harvest_damage > 0.0: _add_stat("Harvest", "%.0f dmg" % td.harvest_damage)
-
-func _add_stat(label: String, value: String) -> void:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 12)
-	var lbl := Label.new()
-	lbl.text = label
-	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lbl.add_theme_font_override("font", UIStyle.FONT)
-	lbl.add_theme_font_size_override("font_size", UIStyle.SIZE_SM)
-	lbl.add_theme_color_override("font_color", UIStyle.COL_TEXT_DIM)
-	row.add_child(lbl)
-	var val := Label.new()
-	val.text = value
-	val.add_theme_font_override("font", UIStyle.FONT_BOLD)
-	val.add_theme_font_size_override("font_size", UIStyle.SIZE_SM)
-	val.add_theme_color_override("font_color", UIStyle.COL_TEXT)
-	row.add_child(val)
-	_tooltip_vbox.add_child(row)
-
 # ── Build UI ───────────────────────────────────────────────────────────────────
 func _build() -> void:
 	const PAD      := 16.0
@@ -580,7 +500,7 @@ func _build() -> void:
 
 	var grid_w   := float(COLS * (UIStyle.SLOT_SZ + UIStyle.SLOT_GAP) - UIStyle.SLOT_GAP)
 	var panel_w  := grid_w + PAD * 2.0
-	var main_h   := float(Inventory.MAIN_ROWS   * UIStyle.SLOT_SZ + maxi(0, Inventory.MAIN_ROWS   - 1) * UIStyle.SLOT_GAP)
+	var main_h   := float(Inventory.ROWS   * UIStyle.SLOT_SZ + maxi(0, Inventory.ROWS   - 1) * UIStyle.SLOT_GAP)
 	var hotbar_h := float(Inventory.HOTBAR_ROWS * UIStyle.SLOT_SZ + maxi(0, Inventory.HOTBAR_ROWS - 1) * UIStyle.SLOT_GAP)
 	# layout: [PAD] title [sep] main [sep] spacer [sep] hotbar [PAD]
 	var panel_h  := PAD + TITLE_H + VBOX_SEP + main_h + VBOX_SEP + SPACER_H + VBOX_SEP + hotbar_h + PAD
@@ -641,7 +561,7 @@ func _build() -> void:
 	var title := Label.new()
 	title.text = "INVENTORY"
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.add_theme_font_override("font", UIStyle.FONT_BOLD)
+	title.add_theme_font_override("font", UIStyle.FONT)
 	title.add_theme_font_size_override("font_size", UIStyle.SIZE_LG)
 	title.add_theme_color_override("font_color", UIStyle.COL_TEXT_HEADING)
 	_title_row.add_child(title)
@@ -650,7 +570,7 @@ func _build() -> void:
 	var main_grid := VBoxContainer.new()
 	main_grid.add_theme_constant_override("separation", UIStyle.SLOT_GAP)
 	vbox.add_child(main_grid)
-	for r in Inventory.MAIN_ROWS:
+	for r in Inventory.ROWS:
 		var hbox := HBoxContainer.new()
 		hbox.add_theme_constant_override("separation", UIStyle.SLOT_GAP)
 		main_grid.add_child(hbox)
@@ -705,27 +625,6 @@ func _build() -> void:
 	_drag_count.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_drag_panel.add_child(_drag_count)
 
-	# ── Tooltip (z=200) ───────────────────────────────────────────────────────
-	var tip_style := StyleBoxFlat.new()
-	tip_style.bg_color     = Color(0.05, 0.05, 0.08, 0.96)
-	tip_style.border_color = UIStyle.COL_PANEL_BORDER
-	tip_style.set_border_width_all(1)
-	tip_style.set_corner_radius_all(6)
-	tip_style.set_content_margin_all(10)
-
-	_tooltip = Panel.new()
-	_tooltip.add_theme_stylebox_override("panel", tip_style)
-	_tooltip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_tooltip.z_index      = 200
-	_tooltip.visible      = false
-	add_child(_tooltip)
-
-	_tooltip_vbox = VBoxContainer.new()
-	_tooltip_vbox.add_theme_constant_override("separation", 4)
-	_tooltip_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_tooltip_vbox.set_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 10)
-	_tooltip.add_child(_tooltip_vbox)
-
 ## Build one ItemSlotWidget at [idx] and wire up all mouse events.
 func _build_slot(parent: Control, idx: int) -> void:
 	var w := ItemSlotWidget.new()
@@ -745,7 +644,7 @@ func _build_slot(parent: Control, idx: int) -> void:
 				and _last_click_slot == i2 \
 				and (now_ms - _last_click_msec) <= DCLICK_MS:
 			_clear_split()
-			_hide_tooltip()
+			ItemTooltip.hide()
 			if _picked_items.is_empty():
 				if _inv:
 					var src := _inv.get_slot(i2)
@@ -866,14 +765,13 @@ func _build_slot(parent: Control, idx: int) -> void:
 				_drag_panel.visible = true
 			_refresh()
 
-		if _inv and not _inv.get_slot(i2).is_empty() and _picked_items.is_empty():
-			_show_tooltip(_inv.get_slot(i2))
+		if not _picked_items.is_empty():
+			ItemTooltip.hide()
 	)
 
 	w.mouse_exited.connect(func() -> void:
 		if _hovered_slot == i2:
 			_hovered_slot = -1
-		_hide_tooltip()
 	)
 
 # ── Refresh ────────────────────────────────────────────────────────────────────
@@ -885,8 +783,14 @@ func _refresh() -> void:
 			continue
 		var slot      := _inv.get_slot(idx)
 		var is_cursor := idx == _cursor and _ctrl_nav
-		_slots[idx].set_item(slot.item_data if not slot.is_empty() else null, slot.quantity)
+		_slots[idx].set_item(slot.item_data if not slot.is_empty() else null, slot.quantity, slot.physical if not slot.is_empty() else [])
 		_slots[idx].set_cursor(is_cursor)
+	if _ctrl_nav and _cursor < _slots.size() and _slots[_cursor] != null:
+		var cur_slot := _inv.get_slot(_cursor)
+		if not cur_slot.is_empty():
+			ItemTooltip.show_for(cur_slot.item_data, cur_slot.physical, _slots[_cursor])
+		else:
+			ItemTooltip.hide()
 
 func _apply_input_mode(using_joy: bool) -> void:
 	_ctrl_nav = using_joy

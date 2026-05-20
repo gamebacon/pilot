@@ -4,8 +4,6 @@ extends Control
 ## Reusable item-slot widget shared by hotbar, inventory, crafting and shop UIs.
 ##
 ## Default size: UIStyle.SLOT_SZ × UIStyle.SLOT_SZ.
-## Set custom_minimum_size BEFORE adding to the scene tree to use a different size
-## (e.g. UIStyle.SLOT_SZ_SM for crafting / shop rows).
 ##
 ## API:
 ##   set_item(data, qty)    — show an item icon and stack count
@@ -20,6 +18,7 @@ var _count: Label        = null
 var _style: StyleBoxFlat = null
 
 var item_data: ItemData = null
+var _physical: Array    = []
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
@@ -35,6 +34,9 @@ func _ensure_built() -> void:
 	if custom_minimum_size == Vector2.ZERO:
 		custom_minimum_size = Vector2(UIStyle.SLOT_SZ, UIStyle.SLOT_SZ)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	mouse_entered.connect(func() -> void:
+		if item_data: ItemTooltip.show_for(item_data, _physical))
+	mouse_exited.connect(func() -> void: ItemTooltip.hide())
 
 	_style = StyleBoxFlat.new()
 	_style.set_corner_radius_all(5)
@@ -71,9 +73,10 @@ func _ensure_built() -> void:
 # ── Public API ────────────────────────────────────────────────────────────────
 
 ## Show [param data] with a stack-count badge.  Pass null to show an empty slot.
-func set_item(data: ItemData, qty: int = 0) -> void:
+func set_item(data: ItemData, qty: int = 0, physical: Array = []) -> void:
 	_ensure_built()
 	item_data = data
+	_physical = physical
 	if data == null:
 		_icon.texture   = null
 		_count.text     = ""

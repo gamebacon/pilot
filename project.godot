@@ -29,6 +29,7 @@ GameState="*res://autoload/game_state.gd"
 InputHelper="*res://autoload/input_helper.gd"
 AudioManager="*uid://cch00ygm1pukj"
 ItemRegistry="*res://autoload/item_registry.gd"
+ItemTooltip="*res://autoload/item_tooltip.gd"
 NetworkManager="*res://autoload/network_manager.gd"
 
 [display]

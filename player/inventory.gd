@@ -1,12 +1,14 @@
 class_name Inventory
 extends Node
 
-const MAIN_COLS   := 5
-const HOTBAR_COLS := 5
-const COLS        := HOTBAR_COLS   # backward-compat alias used by cycle functions
-const MAIN_ROWS   := 3
+const COLS   := 8
+const ROWS   := 3
+
+
+# retarded
+const HOTBAR_COLS := COLS
 const HOTBAR_ROWS := 1
-const MAIN_SLOTS  := MAIN_ROWS   * MAIN_COLS    # 24
+const MAIN_SLOTS  := ROWS * COLS    # 24
 const HOTBAR_SLOTS := HOTBAR_ROWS * HOTBAR_COLS  # 15
 const TOTAL_SLOTS := MAIN_SLOTS + HOTBAR_SLOTS   # 39
 
@@ -244,4 +246,4 @@ func get_hotbar_slot(r: int, c: int) -> Slot:
 	return _slots[MAIN_SLOTS + r * HOTBAR_COLS + c]
 
 func get_main_slot(r: int, c: int) -> Slot:
-	return _slots[r * MAIN_COLS + c]
+	return _slots[r * COLS + c]
