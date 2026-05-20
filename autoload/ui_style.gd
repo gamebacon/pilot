@@ -31,6 +31,7 @@ const SURFACE_VARIANT := Color(0.14, 0.14, 0.18, 1.00)  # raised cards within a 
 const SURFACE_BORDER  := Color(0.28, 0.28, 0.33, 0.70)
 const SCRIM           := Color(0.00, 0.00, 0.00, 0.50)  # full-screen dim overlay
 const ON_SURFACE      := Color(0.72, 0.72, 0.72, 1.00)  # heading text
+const ON_SURFACE_DIM  := Color(0.45, 0.45, 0.50, 0.80)  # secondary / hint text on a surface
 
 # ── Status — same hues as controller face buttons ──────────────────────────────
 const STATUS_OK      := Color(0.25, 0.85, 0.45, 1.00)  # green  — success / A btn

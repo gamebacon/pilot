@@ -1,13 +1,22 @@
 extends Control
 
-@onready var name_field:   LineEdit = $Panel/VBox/NameRow/NameField
-@onready var lobby_field:  LineEdit = $Panel/VBox/JoinRow/IPField    # repurposed
-@onready var status_label: Label    = $Panel/VBox/StatusLabel
-@onready var host_btn:     Button   = $Panel/VBox/HostButton
-@onready var join_btn:     Button   = $Panel/VBox/JoinRow/JoinButton
-@onready var solo_btn:     Button   = $Panel/VBox/SoloButton
+const UIStyle := preload("res://autoload/ui_style.gd")
+
+@onready var panel:        PanelContainer = $Panel
+@onready var title_label:  Label          = $Panel/VBox/Title
+@onready var name_label:   Label          = $Panel/VBox/NameRow/NameLabel
+@onready var name_field:   LineEdit       = $Panel/VBox/NameRow/NameField
+@onready var lobby_field:  LineEdit       = $Panel/VBox/JoinRow/IPField
+@onready var status_label: Label          = $Panel/VBox/StatusLabel
+@onready var host_btn:     Button         = $Panel/VBox/HostButton
+@onready var join_btn:     Button         = $Panel/VBox/JoinRow/JoinButton
+@onready var solo_btn:     Button         = $Panel/VBox/SoloButton
 
 func _ready() -> void:
+	_apply_style()
+	# Deferred so it wins after any scene-tree _ready() that may re-capture the mouse.
+	call_deferred(&"_restore_cursor")
+
 	NetworkManager.connected_ok.connect(_on_connected_ok)
 	NetworkManager.connect_failed.connect(_on_connect_failed)
 	NetworkManager.server_disconnected.connect(_on_disconnected)
@@ -28,6 +37,42 @@ func _ready() -> void:
 
 	solo_btn.call_deferred("grab_focus")
 
+func _restore_cursor() -> void:
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+
+func _apply_style() -> void:
+	# Full-screen background fill.
+	var bg := ColorRect.new()
+	bg.color = UIStyle.BACKGROUND
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(bg)
+	move_child(bg, 0)
+
+	panel.add_theme_stylebox_override("panel", UIStyle.make_panel_style(UIStyle.SURFACE, UIStyle.SURFACE_BORDER, 10, 20.0))
+
+	UIStyle.apply_label(title_label, UIStyle.SIZE_HEADING, UIStyle.ON_SURFACE, true)
+	UIStyle.apply_label(name_label,  UIStyle.SIZE_BODY,    UIStyle.ON_SURFACE_DIM)
+	UIStyle.apply_label(status_label, UIStyle.SIZE_SM,     UIStyle.ON_SURFACE_DIM)
+
+	_style_field(name_field)
+	_style_field(lobby_field)
+
+	_style_button(solo_btn)
+	_style_button(host_btn)
+	_style_button(join_btn)
+
+static func _style_field(field: LineEdit) -> void:
+	field.add_theme_font_override("font", UIStyle.FONT)
+	field.add_theme_font_size_override("font_size", UIStyle.SIZE_BODY)
+	field.add_theme_color_override("font_color", UIStyle.ON_SURFACE)
+	field.add_theme_color_override("font_placeholder_color", UIStyle.ON_BACKGROUND_DIM)
+
+static func _style_button(btn: Button) -> void:
+	btn.add_theme_font_override("font", UIStyle.FONT_BOLD)
+	btn.add_theme_font_size_override("font_size", UIStyle.SIZE_BODY)
+	btn.add_theme_color_override("font_color", UIStyle.ON_SURFACE)
+	btn.add_theme_stylebox_override("focus", UIStyle.make_focus_style(UIStyle.PRIMARY))
+
 func _on_solo() -> void:
 	get_tree().change_scene_to_file("res://world/world.tscn")
 
@@ -37,9 +82,6 @@ func _on_host() -> void:
 	_set_buttons(false)
 	NetworkManager.host()
 
-# Lobby is live — jump into the world immediately.
-# The Lobby ID shown in the HUD lets friends copy-paste it to join,
-# and the Steam overlay (Shift+Tab → Friends) lets you send direct invites.
 func _on_lobby_ready(_lobby_id: int) -> void:
 	get_tree().change_scene_to_file("res://world/world.tscn")
 

@@ -157,26 +157,27 @@ Layout modes:
 
 ### Color palette (`autoload/ui_style.gd`)
 
-| Constant            | Purpose                                               |
-| ------------------- | ----------------------------------------------------- |
-| `PRIMARY`           | Gold accent — active slots, focus rings, highlights   |
-| `PRIMARY_VARIANT`   | Hover / pressed state of PRIMARY                      |
-| `ON_PRIMARY`        | Text/icons drawn on a PRIMARY background              |
-| `SECONDARY`         | Sky blue — controller D-pad cursor, interactive focus |
-| `ON_SECONDARY`      | Text/icons drawn on a SECONDARY background            |
-| `BACKGROUND`        | Page/world background                                 |
-| `ON_BACKGROUND`     | Body text, icons on BACKGROUND                        |
-| `ON_BACKGROUND_DIM` | Secondary / hint text (lower contrast)                |
-| `SURFACE`           | Panels, slots, tooltips, badges                       |
-| `SURFACE_VARIANT`   | Raised cards within a panel                           |
-| `SURFACE_BORDER`    | Panel and slot borders                                |
-| `SCRIM`             | Full-screen dim overlay behind modals                 |
-| `ON_SURFACE`        | Heading text on a SURFACE                             |
-| `STATUS_OK`         | Green — success, safe, A button                       |
-| `STATUS_WARN`       | Red — danger, destructive, B button                   |
-| `STATUS_CAUTION`    | Yellow — warning, X button                            |
-| `STATUS_INFO`       | Blue — informational, Y button                        |
-| `BTN_SHOULDER`      | Dark grey — L1/R1/L2/R2 shoulder badges               |
+| Constant            | Purpose                                                                    |
+| ------------------- | -------------------------------------------------------------------------- |
+| `PRIMARY`           | Gold accent — active slots, focus rings, highlights                        |
+| `PRIMARY_VARIANT`   | Hover / pressed state of PRIMARY                                           |
+| `ON_PRIMARY`        | Text/icons drawn on a PRIMARY background                                   |
+| `SECONDARY`         | Sky blue — controller D-pad cursor, interactive focus                      |
+| `ON_SECONDARY`      | Text/icons drawn on a SECONDARY background                                 |
+| `BACKGROUND`        | Page/world background                                                      |
+| `ON_BACKGROUND`     | Text/icons drawn directly on `BACKGROUND` — **not inside panels**          |
+| `ON_BACKGROUND_DIM` | Secondary/hint text drawn directly on `BACKGROUND` — **not inside panels** |
+| `SURFACE`           | Panels, slots, tooltips, badges                                            |
+| `SURFACE_VARIANT`   | Raised cards within a panel                                                |
+| `SURFACE_BORDER`    | Panel and slot borders                                                     |
+| `SCRIM`             | Full-screen dim overlay behind modals                                      |
+| `ON_SURFACE`        | Primary text/icons drawn on a `SURFACE` element                            |
+| `ON_SURFACE_DIM`    | Secondary/hint text drawn on a `SURFACE` element                           |
+| `STATUS_OK`         | Green — success, safe, A button                                            |
+| `STATUS_WARN`       | Red — danger, destructive, back, exit, B button                            |
+| `STATUS_CAUTION`    | Yellow — warning, X button                                                 |
+| `STATUS_INFO`       | Blue — informational, Y button                                             |
+| `BTN_SHOULDER`      | Dark grey — L1/R1/L2/R2 shoulder badges                                    |
 
 ### Factory functions — always use these, never raw `add_theme_*_override` chains
 
@@ -184,8 +185,8 @@ Layout modes:
 # Create a new Label (font + size + color wired up)
 UIStyle.make_label(text, UIStyle.SIZE_BODY, UIStyle.ON_BACKGROUND, bold)
 
-# Style an existing @onready Label from a scene
-UIStyle.apply_label(lbl, UIStyle.SIZE_SM, UIStyle.ON_BACKGROUND_DIM)
+# Style an existing @onready Label from a scene (inside a panel → ON_SURFACE / ON_SURFACE_DIM)
+UIStyle.apply_label(lbl, UIStyle.SIZE_SM, UIStyle.ON_SURFACE_DIM)
 
 # StyleBoxFlat for panels, tooltips, cards
 UIStyle.make_panel_style(UIStyle.SURFACE, UIStyle.SURFACE_BORDER, radius, margin)
