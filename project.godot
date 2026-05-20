@@ -34,7 +34,8 @@ NetworkManager="*res://autoload/network_manager.gd"
 
 [display]
 
-window/size/mode=3
+window/size/viewport_width=1080
+window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 window/vsync/vsync_mode=0
 

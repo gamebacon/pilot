@@ -113,6 +113,40 @@ player.tscn (player/player.gd : CharacterBody3D)
 
 ## UI conventions
 
+### Inventory windows
+
+All inventory-style panels (player inventory, crafting table, chests, shops, …) extend `InventoryWindow` (`ui/inventory_window.gd`). The base class provides:
+
+- Window frame: scrim overlay + panel + title bar + close button (auto keyboard/controller badge)
+- Drag-and-drop system: pick up, place, split, shift-click transfer, double-click collect
+- Mouse-mode management and controller-badge close hint
+- `GameState.push_ui()` / `pop_ui()` lifecycle
+- `InputHelper.input_changed` wiring
+
+**Creating a new inventory window:**
+
+```gdscript
+extends InventoryWindow
+
+func _window_title()   -> String: return "CHEST"
+func _window_layout()  -> Layout: return Layout.CENTERED   # or ANCHORED
+func _window_anchors() -> Array[float]: return [0.3, 0.1, 0.7, 0.9]  # ANCHORED only
+
+func _build_content(vbox: VBoxContainer) -> void:
+    # populate slots using _build_slot(parent, idx, slots_array)
+    pass
+
+func _on_opened()  -> void: pass   # connect _inv, call _refresh()
+func _on_closed()  -> void: pass   # cleanup
+func _refresh()    -> void: pass   # update slot displays
+func _handle_input(event: InputEvent) -> bool: return false  # true = consumed
+func _quick_transfer(items, from_idx) -> Array[PhysicalItem]: return items  # shift-click
+```
+
+Layout modes:
+- `CENTERED` — panel auto-sizes to content, centered on screen (player inventory)
+- `ANCHORED` — panel stretches to anchor rect, good for scrollable content (crafting)
+
 ### Rules
 
 - **Never construct `Color()` anywhere outside `autoload/ui_style.gd`.** All color values live there and are referenced by name everywhere else.
