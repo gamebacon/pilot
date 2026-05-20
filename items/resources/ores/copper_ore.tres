@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://copper_ore_item"]
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://ddfbtb8nyam3r"]
 
-[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+[ext_resource type="Script" uid="uid://qoy77nbg6xgn" path="res://items/item_data.gd" id="1_itemdata"]
 
 [resource]
 script = ExtResource("1_itemdata")
@@ -8,6 +8,6 @@ id = "copper_ore"
 display_name = "Copper Ore"
 price = 0
 description = "Reddish-orange ore. Smelt it into copper bars."
-color = Color(0.72, 0.44, 0.18, 1.0)
-size = Vector3(0.14, 0.10, 0.14)
+color = Color(0.72, 0.44, 0.18, 1)
+size = Vector3(0.14, 0.1, 0.14)
 mass = 1.2

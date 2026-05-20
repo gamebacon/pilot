@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://gold_ore_item"]
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://bfjfhb3s8rkcg"]
 
-[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+[ext_resource type="Script" uid="uid://qoy77nbg6xgn" path="res://items/item_data.gd" id="1_itemdata"]
 
 [resource]
 script = ExtResource("1_itemdata")
@@ -8,6 +8,6 @@ id = "gold_ore"
 display_name = "Gold Ore"
 price = 0
 description = "Dense golden ore. Rare and valuable."
-color = Color(0.85, 0.70, 0.12, 1.0)
+color = Color(0.85, 0.7, 0.12, 1)
 size = Vector3(0.12, 0.08, 0.12)
 mass = 2.5

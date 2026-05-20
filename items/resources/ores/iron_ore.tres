@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://iron_ore_item"]
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://c81nwwk8iurkm"]
 
-[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+[ext_resource type="Script" uid="uid://qoy77nbg6xgn" path="res://items/item_data.gd" id="1_itemdata"]
 
 [resource]
 script = ExtResource("1_itemdata")
@@ -8,6 +8,5 @@ id = "iron_ore"
 display_name = "Iron Ore"
 price = 0
 description = "Heavy brownish ore. Smelt it to craft iron tools."
-color = Color(0.55, 0.50, 0.45, 1.0)
-size = Vector3(0.14, 0.10, 0.14)
-mass = 2.0
+color = Color(0.55, 0.5, 0.45, 1)
+size = Vector3(0.14, 0.1, 0.14)

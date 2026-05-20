@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://wooden_plank_item"]
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://bmfivkimd6tbh"]
 
-[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+[ext_resource type="Script" uid="uid://qoy77nbg6xgn" path="res://items/item_data.gd" id="1_itemdata"]
 
 [resource]
 script = ExtResource("1_itemdata")
@@ -8,6 +8,6 @@ id = "wooden_plank"
 display_name = "Wooden Plank"
 price = 0
 description = "A smoothed plank. Used for crafting walls."
-color = Color(0.76, 0.57, 0.30, 1.0)
-size = Vector3(0.60, 0.06, 0.18)
+color = Color(0.76, 0.57, 0.3, 1)
+size = Vector3(0.6, 0.06, 0.18)
 mass = 1.2

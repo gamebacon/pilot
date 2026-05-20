@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://flint_item"]
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://bt8vfvdt4qai0"]
 
-[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+[ext_resource type="Script" uid="uid://qoy77nbg6xgn" path="res://items/item_data.gd" id="1_itemdata"]
 
 [resource]
 script = ExtResource("1_itemdata")
@@ -8,6 +8,6 @@ id = "flint"
 display_name = "Flint"
 price = 0
 description = "Sharp grey stone. Useful for primitive tools and fire-starting."
-color = Color(0.35, 0.33, 0.30, 1.0)
+color = Color(0.35, 0.33, 0.3, 1)
 size = Vector3(0.12, 0.04, 0.18)
 mass = 0.3

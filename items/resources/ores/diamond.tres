@@ -1,6 +1,6 @@
-[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://diamond_item"]
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://be6m7cyisuc2m"]
 
-[ext_resource type="Script" path="res://items/item_data.gd" id="1_itemdata"]
+[ext_resource type="Script" uid="uid://qoy77nbg6xgn" path="res://items/item_data.gd" id="1_itemdata"]
 
 [resource]
 script = ExtResource("1_itemdata")
@@ -8,6 +8,6 @@ id = "diamond"
 display_name = "Diamond"
 price = 0
 description = "The hardest material known. Brilliant and near-indestructible."
-color = Color(0.70, 0.92, 0.98, 1.0)
-size = Vector3(0.08, 0.06, 0.10)
+color = Color(0.7, 0.92, 0.98, 1)
+size = Vector3(0.08, 0.06, 0.1)
 mass = 0.5
