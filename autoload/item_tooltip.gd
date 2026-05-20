@@ -67,7 +67,7 @@ func _populate(data: ItemData, physical: Array) -> void:
 	name_lbl.text = data.display_name
 	name_lbl.add_theme_font_override("font", UIStyle.FONT_BOLD)
 	name_lbl.add_theme_font_size_override("font_size", UIStyle.SIZE_LG)
-	name_lbl.add_theme_color_override("font_color", UIStyle.COL_TEXT_HEADING)
+	name_lbl.add_theme_color_override("font_color", UIStyle.ON_SURFACE)
 	_vbox.add_child(name_lbl)
 
 	if not data.description.is_empty():
@@ -77,7 +77,7 @@ func _populate(data: ItemData, physical: Array) -> void:
 		desc.custom_minimum_size = Vector2(200, 0)
 		desc.add_theme_font_override("font", UIStyle.FONT_LIGHT)
 		desc.add_theme_font_size_override("font_size", UIStyle.SIZE_SM)
-		desc.add_theme_color_override("font_color", UIStyle.COL_TEXT_DIM)
+		desc.add_theme_color_override("font_color", UIStyle.ON_BACKGROUND_DIM)
 		_vbox.add_child(desc)
 
 	if GameState.debug_mode:
@@ -108,28 +108,21 @@ func _stat(label: String, value: String) -> void:
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lbl.add_theme_font_override("font", UIStyle.FONT)
 	lbl.add_theme_font_size_override("font_size", UIStyle.SIZE_SM)
-	lbl.add_theme_color_override("font_color", UIStyle.COL_TEXT_DIM)
+	lbl.add_theme_color_override("font_color", UIStyle.ON_BACKGROUND_DIM)
 	row.add_child(lbl)
 	var val := Label.new()
 	val.text = value
 	val.add_theme_font_override("font", UIStyle.FONT_BOLD)
 	val.add_theme_font_size_override("font_size", UIStyle.SIZE_SM)
-	val.add_theme_color_override("font_color", UIStyle.COL_TEXT)
+	val.add_theme_color_override("font_color", UIStyle.ON_BACKGROUND)
 	row.add_child(val)
 	_vbox.add_child(row)
 
 # ── Build ──────────────────────────────────────────────────────────────────────
 
 func _build(layer: CanvasLayer) -> void:
-	var s := StyleBoxFlat.new()
-	s.bg_color     = Color(0.05, 0.05, 0.08, 0.96)
-	s.border_color = UIStyle.COL_PANEL_BORDER
-	s.set_border_width_all(1)
-	s.set_corner_radius_all(6)
-	s.set_content_margin_all(10)
-
 	_panel = Panel.new()
-	_panel.add_theme_stylebox_override("panel", s)
+	_panel.add_theme_stylebox_override("panel", UIStyle.make_panel_style(UIStyle.SURFACE, UIStyle.SURFACE_BORDER, 6, 10))
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_panel.visible      = false
 	layer.add_child(_panel)

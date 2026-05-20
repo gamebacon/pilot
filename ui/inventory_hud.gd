@@ -190,11 +190,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		_ctrl_nav = false
 		return
 
-	# Escape / open_inventory toggle / controller B → return held items then close
-	if event.is_action_pressed("ui_cancel") \
-			or event.is_action_pressed("open_inventory") \
-			or (event is InputEventJoypadButton and event.pressed \
-				and (event as InputEventJoypadButton).button_index == JOY_BUTTON_A):
+	# Escape / open_inventory toggle → return held items then close
+	if event.is_action_pressed("ui_cancel") or event.is_action_pressed("open_inventory"):
 		if not _picked_items.is_empty():
 			_cancel_drag(); _refresh()
 		else:
@@ -202,38 +199,27 @@ func _unhandled_input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 
-	# Number keys 1-5: hotswap hovered slot ↔ active-row hotbar slot N
-	if event is InputEventKey and event.pressed and not event.echo \
-			and _hovered_slot >= 0 and _picked_items.is_empty():
-		var slot_num := -1
-		match (event as InputEventKey).physical_keycode:
-			# TODO: dont hardcode, dynamic based on hotbar size
-			KEY_1: slot_num = 0
-			KEY_2: slot_num = 1
-			KEY_3: slot_num = 2
-			KEY_4: slot_num = 3
-			KEY_5: slot_num = 4
-			KEY_6: slot_num = 5
-			KEY_7: slot_num = 6
-			KEY_8: slot_num = 7
-		if slot_num >= 0 and _inv:
-			var hotbar_idx := Inventory.MAIN_SLOTS \
-				+ _inv.active_hotbar_row * Inventory.HOTBAR_COLS + slot_num
-			if _hovered_slot != hotbar_idx:
-				var hov := _inv.get_slot(_hovered_slot)
-				var hot := _inv.get_slot(hotbar_idx)
-				if not hov.is_empty() and not hot.is_empty() \
-						and hov.item_data.id == hot.item_data.id \
-						and not hot.is_full():
-					var items := _inv.take_items(_hovered_slot, hov.quantity)
-					var leftover := _inv.place_items(hotbar_idx, items)
-					for item in leftover:
-						_inv.add(item)
-				else:
-					_inv.swap_slots(_hovered_slot, hotbar_idx)
-			_refresh()
-			get_viewport().set_input_as_handled()
-			return
+	# Number keys hotswap hovered slot ↔ active-row hotbar slot N
+	if _hovered_slot >= 0 and _picked_items.is_empty() and _inv:
+		for slot_num in Inventory.HOTBAR_COLS:
+			if event.is_action_pressed("hotbar_slot_%d" % (slot_num + 1)):
+				var hotbar_idx := Inventory.MAIN_SLOTS \
+					+ _inv.active_hotbar_row * Inventory.HOTBAR_COLS + slot_num
+				if _hovered_slot != hotbar_idx:
+					var hov := _inv.get_slot(_hovered_slot)
+					var hot := _inv.get_slot(hotbar_idx)
+					if not hov.is_empty() and not hot.is_empty() \
+							and hov.item_data.id == hot.item_data.id \
+							and not hot.is_full():
+						var items := _inv.take_items(_hovered_slot, hov.quantity)
+						var leftover := _inv.place_items(hotbar_idx, items)
+						for item in leftover:
+							_inv.add(item)
+					else:
+						_inv.swap_slots(_hovered_slot, hotbar_idx)
+				_refresh()
+				get_viewport().set_input_as_handled()
+				return
 
 	# Q over a slot → drop one item from that slot into the world
 	if event.is_action_pressed("drop") and _hovered_slot >= 0 and _picked_items.is_empty() and _inv:
@@ -256,17 +242,14 @@ func _unhandled_input(event: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 			return
 
-	# Controller d-pad navigation (main grid only)
-	if event is InputEventJoypadButton and event.pressed:
-		var btn := (event as InputEventJoypadButton).button_index
-		match btn:
-			JOY_BUTTON_DPAD_LEFT:  _nav(-1,  0)
-			JOY_BUTTON_DPAD_RIGHT: _nav( 1,  0)
-			JOY_BUTTON_DPAD_UP:    _nav( 0, -1)
-			JOY_BUTTON_DPAD_DOWN:  _nav( 0,  1)
-			JOY_BUTTON_B:
-				_clear_split()
-				_left_activate(_cursor)
+	# Controller / keyboard grid navigation
+	if event.is_action_pressed("ui_left",  true): _nav(-1,  0); get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("ui_right", true): _nav( 1,  0); get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("ui_up",    true): _nav( 0, -1); get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("ui_down",  true): _nav( 0,  1); get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("ui_accept"):
+		_clear_split()
+		_left_activate(_cursor)
 		get_viewport().set_input_as_handled()
 
 func _nav(dx: int, dy: int) -> void:
@@ -485,7 +468,7 @@ func _update_drag_visual() -> void:
 	var s := StyleBoxFlat.new()
 	s.set_corner_radius_all(6)
 	s.bg_color     = Color(c.r * 0.55, c.g * 0.55, c.b * 0.55, 0.95)
-	s.border_color = UIStyle.COL_ACCENT
+	s.border_color = UIStyle.PRIMARY
 	s.set_border_width_all(2)
 	_drag_panel.add_theme_stylebox_override("panel", s)
 	_drag_count.text   = str(_picked_items.size()) if _picked_items.size() > 1 else ""
@@ -513,7 +496,7 @@ func _build() -> void:
 	# LMB held items → drop all;  LMB empty hands → close.
 	# RMB held items → drop one.
 	var overlay := ColorRect.new()
-	overlay.color        = Color(0, 0, 0, 0.50)
+	overlay.color        = UIStyle.SCRIM
 	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.gui_input.connect(func(ev: InputEvent) -> void:
@@ -533,8 +516,8 @@ func _build() -> void:
 
 	# Centred panel
 	var ps := StyleBoxFlat.new()
-	ps.bg_color     = UIStyle.COL_PANEL_BG
-	ps.border_color = UIStyle.COL_PANEL_BORDER
+	ps.bg_color     = UIStyle.SURFACE
+	ps.border_color = UIStyle.SURFACE_BORDER
 	ps.set_border_width_all(1)
 	ps.set_corner_radius_all(10)
 	ps.set_content_margin_all(PAD)
@@ -558,12 +541,8 @@ func _build() -> void:
 	_title_row = HBoxContainer.new()
 	_title_row.add_theme_constant_override("separation", 8)
 	vbox.add_child(_title_row)
-	var title := Label.new()
-	title.text = "INVENTORY"
+	var title := UIStyle.make_label("INVENTORY", UIStyle.SIZE_LG, UIStyle.ON_SURFACE)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title.add_theme_font_override("font", UIStyle.FONT)
-	title.add_theme_font_size_override("font_size", UIStyle.SIZE_LG)
-	title.add_theme_color_override("font_color", UIStyle.COL_TEXT_HEADING)
 	_title_row.add_child(title)
 
 	# ── Main 3×8 grid ─────────────────────────────────────────────────────────
@@ -614,14 +593,11 @@ func _build() -> void:
 	_drag_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_drag_panel.add_child(_drag_icon)
 
-	_drag_count = Label.new()
+	_drag_count = UIStyle.make_label("", UIStyle.SIZE_SM, Color.WHITE, true)
 	_drag_count.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
 	_drag_count.offset_left = -28; _drag_count.offset_top    = -18
 	_drag_count.offset_right = -3; _drag_count.offset_bottom = -3
 	_drag_count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_drag_count.add_theme_font_override("font", UIStyle.FONT_BOLD)
-	_drag_count.add_theme_font_size_override("font_size", UIStyle.SIZE_SM)
-	_drag_count.add_theme_color_override("font_color", Color.WHITE)
 	_drag_count.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_drag_panel.add_child(_drag_count)
 

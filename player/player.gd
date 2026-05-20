@@ -109,32 +109,20 @@ func _unhandled_input(event: InputEvent) -> void:
 		inventory.cycle_next()
 		_reposition_carried()
 
-	# Number keys 1-5 select hotbar slots directly.
-	if event is InputEventKey and event.pressed and not event.echo:
-		match (event as InputEventKey).physical_keycode:
-			KEY_1: inventory.set_active_hotbar_slot(0); _reposition_carried()
-			KEY_2: inventory.set_active_hotbar_slot(1); _reposition_carried()
-			KEY_3: inventory.set_active_hotbar_slot(2); _reposition_carried()
-			KEY_4: inventory.set_active_hotbar_slot(3); _reposition_carried()
-			KEY_5: inventory.set_active_hotbar_slot(4); _reposition_carried()
+	for slot in Inventory.HOTBAR_COLS:
+		if event.is_action_pressed("hotbar_slot_%d" % (slot + 1)):
+			inventory.set_active_hotbar_slot(slot)
+			_reposition_carried()
 
-	# L1/R1 cycle slot; D-pad up/down switch hotbar row — raw so they don't
-	# conflict with build-mode actions that share the same buttons.
-	if event is InputEventJoypadButton and (event as InputEventJoypadButton).pressed \
-			and not GameState.is_building and not interact_target:
-		var btn := (event as InputEventJoypadButton).button_index
-		if btn == JOY_BUTTON_LEFT_SHOULDER:
-			inventory.cycle_prev()
-			_reposition_carried()
-		elif btn == JOY_BUTTON_RIGHT_SHOULDER:
-			inventory.cycle_next()
-			_reposition_carried()
-		elif btn == JOY_BUTTON_DPAD_UP:
-			inventory.prev_hotbar_row()
-			_reposition_carried()
-		elif btn == JOY_BUTTON_DPAD_DOWN:
-			inventory.next_hotbar_row()
-			_reposition_carried()
+	if not GameState.is_building and not interact_target:
+		if event.is_action_pressed("hotbar_cycle_prev"):
+			inventory.cycle_prev(); _reposition_carried()
+		elif event.is_action_pressed("hotbar_cycle_next"):
+			inventory.cycle_next(); _reposition_carried()
+		elif event.is_action_pressed("hotbar_row_prev"):
+			inventory.prev_hotbar_row(); _reposition_carried()
+		elif event.is_action_pressed("hotbar_row_next"):
+			inventory.next_hotbar_row(); _reposition_carried()
 
 	if event.is_action_pressed("debug_toggle"):
 		GameState.debug_mode = !GameState.debug_mode

@@ -58,16 +58,8 @@ func _build() -> void:
 			_hide_tooltip()
 		)
 
-	# Tooltip panel
-	var tip_style := StyleBoxFlat.new()
-	tip_style.bg_color     = Color(0.05, 0.05, 0.08, 0.96)
-	tip_style.border_color = UIStyle.COL_PANEL_BORDER
-	tip_style.set_border_width_all(1)
-	tip_style.set_corner_radius_all(6)
-	tip_style.set_content_margin_all(10)
-
 	_tooltip = Panel.new()
-	_tooltip.add_theme_stylebox_override("panel", tip_style)
+	_tooltip.add_theme_stylebox_override("panel", UIStyle.make_panel_style(UIStyle.SURFACE, UIStyle.SURFACE_BORDER, 6, 10))
 	_tooltip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_tooltip.z_index      = 100
 	_tooltip.visible      = false
@@ -116,20 +108,13 @@ func _populate_tooltip(slot: Inventory.Slot) -> void:
 	for child in _tooltip_vbox.get_children():
 		child.queue_free()
 	var data := slot.item_data
-	var name_lbl := Label.new()
-	name_lbl.text = data.display_name
-	name_lbl.add_theme_font_override("font", UIStyle.FONT_BOLD)
-	name_lbl.add_theme_font_size_override("font_size", UIStyle.SIZE_LG)
-	name_lbl.add_theme_color_override("font_color", UIStyle.COL_TEXT_HEADING)
+	var name_lbl := UIStyle.make_label(data.display_name, UIStyle.SIZE_LG, UIStyle.ON_SURFACE, true)
 	_tooltip_vbox.add_child(name_lbl)
 	if not data.description.is_empty():
-		var desc := Label.new()
-		desc.text = data.description
+		var desc := UIStyle.make_label(data.description, UIStyle.SIZE_SM, UIStyle.ON_BACKGROUND_DIM)
+		desc.add_theme_font_override("font", UIStyle.FONT_LIGHT)
 		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		desc.custom_minimum_size = Vector2(180, 0)
-		desc.add_theme_font_override("font", UIStyle.FONT_LIGHT)
-		desc.add_theme_font_size_override("font_size", UIStyle.SIZE_SM)
-		desc.add_theme_color_override("font_color", UIStyle.COL_TEXT_DIM)
 		_tooltip_vbox.add_child(desc)
 	var sep := HSeparator.new()
 	sep.add_theme_constant_override("separation", 4)
@@ -149,17 +134,8 @@ func _populate_tooltip(slot: Inventory.Slot) -> void:
 func _add_stat(label: String, value: String) -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
-	var lbl := Label.new()
-	lbl.text = label
+	var lbl := UIStyle.make_label(label, UIStyle.SIZE_SM, UIStyle.ON_BACKGROUND_DIM)
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	lbl.add_theme_font_override("font", UIStyle.FONT)
-	lbl.add_theme_font_size_override("font_size", UIStyle.SIZE_SM)
-	lbl.add_theme_color_override("font_color", UIStyle.COL_TEXT_DIM)
 	row.add_child(lbl)
-	var val := Label.new()
-	val.text = value
-	val.add_theme_font_override("font", UIStyle.FONT_BOLD)
-	val.add_theme_font_size_override("font_size", UIStyle.SIZE_SM)
-	val.add_theme_color_override("font_color", UIStyle.COL_TEXT)
-	row.add_child(val)
+	row.add_child(UIStyle.make_label(value, UIStyle.SIZE_SM, UIStyle.ON_BACKGROUND, true))
 	_tooltip_vbox.add_child(row)

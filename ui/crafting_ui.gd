@@ -94,36 +94,19 @@ func _unhandled_input(event: InputEvent) -> void:
 		_move_col(1)
 		get_viewport().set_input_as_handled()
 		return
-	# L1 / R1 (or PageUp/PageDown on keyboard) cycle tabs
-	var joy := event is InputEventJoypadButton
-	if joy and (event as InputEventJoypadButton).pressed:
-		# TODO: There should be no hardcoded input
-		match (event as InputEventJoypadButton).button_index:
-			JOY_BUTTON_B:
-				_close()
-				get_viewport().set_input_as_handled()
-				return
-			JOY_BUTTON_A:
-				# Craft button with focus handles A natively; only fire here for slot nav
-				if not _slot_rows.is_empty():
-					var row: Array = _slot_rows[_row_idx]
-					if row[_col_idx] is ItemSlotWidget and _row_idx < _row_recipes.size():
-						_on_craft(_row_recipes[_row_idx])
-				get_viewport().set_input_as_handled()
-				return
-		if (event as InputEventJoypadButton).button_index == JOY_BUTTON_LEFT_SHOULDER:
-			_cycle_tab(-1)
-			get_viewport().set_input_as_handled()
-			return
-		if (event as InputEventJoypadButton).button_index == JOY_BUTTON_RIGHT_SHOULDER:
-			_cycle_tab(1)
-			get_viewport().set_input_as_handled()
-			return
-	if event.is_action_pressed("ui_page_up"):
+	if event.is_action_pressed("ui_accept"):
+		# Craft button with focus handles accept natively; only fire here for slot nav
+		if not _slot_rows.is_empty():
+			var row: Array = _slot_rows[_row_idx]
+			if row[_col_idx] is ItemSlotWidget and _row_idx < _row_recipes.size():
+				_on_craft(_row_recipes[_row_idx])
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("craft_tab_prev"):
 		_cycle_tab(-1)
 		get_viewport().set_input_as_handled()
 		return
-	if event.is_action_pressed("ui_page_down"):
+	if event.is_action_pressed("craft_tab_next"):
 		_cycle_tab(1)
 		get_viewport().set_input_as_handled()
 		return
@@ -155,7 +138,7 @@ func _cycle_tab(dir: int) -> void:
 
 func _build_shell() -> void:
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.48)
+	dim.color = UIStyle.SCRIM
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	dim.gui_input.connect(func(ev: InputEvent):
@@ -164,13 +147,8 @@ func _build_shell() -> void:
 	add_child(dim)
 
 	var panel := PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.09, 0.09, 0.12, 0.97)
-	style.border_color = Color(0.38, 0.38, 0.46, 1.0)
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(8)
-	style.set_content_margin_all(18)
-	panel.add_theme_stylebox_override("panel", style)
+	panel.add_theme_stylebox_override("panel", UIStyle.make_panel_style(
+		UIStyle.SURFACE, UIStyle.SURFACE_BORDER, 8, 18))
 	panel.anchor_left   = 0.28
 	panel.anchor_right  = 0.72
 	panel.anchor_top    = 0.08
@@ -186,11 +164,7 @@ func _build_shell() -> void:
 	var header := HBoxContainer.new()
 	vbox.add_child(header)
 
-	var title := Label.new()
-	title.text = "CRAFTING"
-	title.add_theme_font_override("font", UIStyle.FONT)
-	title.add_theme_font_size_override("font_size", UIStyle.SIZE_LG)
-	title.add_theme_color_override("font_color", UIStyle.COL_TEXT_HEADING)
+	var title := UIStyle.make_label("CRAFTING", UIStyle.SIZE_LG, UIStyle.ON_SURFACE)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
 
@@ -291,11 +265,7 @@ func _refresh() -> void:
 	var recipes := CraftingRecipe.by_tab(_active_tab)
 
 	if recipes.is_empty():
-		var empty_lbl := Label.new()
-		empty_lbl.text = "No recipes in this category yet."
-		empty_lbl.add_theme_font_override("font", UIStyle.FONT)
-		empty_lbl.add_theme_font_size_override("font_size", 13)
-		empty_lbl.add_theme_color_override("font_color", Color(0.50, 0.50, 0.50))
+		var empty_lbl := UIStyle.make_label("No recipes in this category yet.", UIStyle.SIZE_SM, UIStyle.ON_BACKGROUND_DIM)
 		empty_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		_list.add_child(empty_lbl)
 	else:
@@ -314,17 +284,13 @@ func _make_row(recipe: CraftingRecipe, inv: Dictionary) -> Control:
 
 	# Title label — result item name
 	var result_data := ItemRegistry.get_item(recipe.result_id)
-	var title := Label.new()
-	title.text = result_data.display_name if result_data else recipe.result_id
-	title.add_theme_font_override("font", UIStyle.FONT)
-	title.add_theme_font_size_override("font_size", UIStyle.SIZE_SM)
-	title.add_theme_color_override("font_color", UIStyle.COL_TEXT_DIM)
+	var title := UIStyle.make_label(result_data.display_name if result_data else recipe.result_id, UIStyle.SIZE_SM, UIStyle.ON_BACKGROUND_DIM)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	outer.add_child(title)
 
 	# Slot row
 	var bg := StyleBoxFlat.new()
-	bg.bg_color = Color(0.14, 0.14, 0.18, 1.0)
+	bg.bg_color = UIStyle.SURFACE_VARIANT
 	bg.set_corner_radius_all(6)
 	bg.set_content_margin_all(8)
 	var panel := PanelContainer.new()
@@ -365,7 +331,7 @@ func _make_row(recipe: CraftingRecipe, inv: Dictionary) -> Control:
 		if ing_data:
 			ing_slot.set_item(ing_data)
 			ing_slot.set_badge("%d" % need,
-				Color(0.50, 0.88, 0.50) if enough else Color(0.90, 0.35, 0.30))
+				UIStyle.STATUS_OK if enough else UIStyle.STATUS_WARN)
 		hbox.add_child(ing_slot)
 		row_slots.append(ing_slot)
 

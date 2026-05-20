@@ -40,11 +40,6 @@ func _ready() -> void:
 	_add_core_hp_label()
 	_build_context_bg()
 
-func _unhandled_key_input(event: InputEvent) -> void:
-	if event is InputEventKey and event.pressed and not event.echo:
-		if event.keycode == KEY_F3:
-			GameState.debug_mode = not GameState.debug_mode
-			get_viewport().set_input_as_handled()
 
 func _process(delta: float) -> void:
 	_tick_fps(delta)
@@ -178,11 +173,11 @@ func _update_time_label() -> void:
 	var wave: int = ws._wave_num if ws else 0
 	if is_night:
 		shift_label.text = "NIGHT — WAVE %d" % wave
-		shift_label.add_theme_color_override("font_color", Color(0.55, 0.75, 1.0, 0.9))
+		shift_label.add_theme_color_override("font_color", UIStyle.STATUS_INFO)
 	else:
 		var next := wave + 1
 		shift_label.text = "DAY — WAVE %d INCOMING" % next if wave > 0 else "DAY — SURVIVE THE NIGHT"
-		shift_label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.5, 0.9))
+		shift_label.add_theme_color_override("font_color", UIStyle.PRIMARY)
 
 # ── Server IP display ──────────────────────────────────────────────────────────
 
@@ -190,10 +185,7 @@ func _add_server_ip_label() -> void:
 	var lobby_id := NetworkManager.current_lobby()
 
 	# Lobby ID label
-	var lbl := Label.new()
-	lbl.text = "Lobby: %d" % lobby_id
-	lbl.add_theme_font_override("font", UIStyle.FONT)
-	lbl.add_theme_color_override("font_color", Color(0.5, 1.0, 0.6, 0.75))
+	var lbl := UIStyle.make_label("Lobby: %d" % lobby_id, UIStyle.SIZE_BODY, UIStyle.STATUS_OK)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	lbl.anchor_left   = 1.0
 	lbl.anchor_right  = 1.0
@@ -245,11 +237,7 @@ func _add_server_ip_label() -> void:
 # ── FPS counter ────────────────────────────────────────────────────────────────
 
 func _add_fps_counter() -> void:
-	_fps_label = Label.new()
-	_fps_label.add_theme_font_override("font", UIStyle.FONT)
-	_fps_label.add_theme_font_size_override("font_size", UIStyle.SIZE_SM)
-	_fps_label.add_theme_color_override("font_color", Color(0.80, 0.95, 0.80, 0.70))
-	_fps_label.text = "-- fps"
+	_fps_label = UIStyle.make_label("-- fps", UIStyle.SIZE_SM, UIStyle.STATUS_OK)
 	_fps_label.anchor_left   = 0.0
 	_fps_label.anchor_right  = 0.0
 	_fps_label.anchor_top    = 0.0
@@ -270,23 +258,16 @@ func _tick_fps(delta: float) -> void:
 		_fps_label.text = "%d fps" % roundi(_fps_smooth)
 
 func _fps_color(fps: float) -> Color:
-	if fps >= 55.0: return Color(0.60, 0.95, 0.60, 0.70)   # green — smooth
-	if fps >= 30.0: return Color(0.95, 0.85, 0.30, 0.85)   # yellow — ok
-	return          Color(0.95, 0.30, 0.30, 0.95)           # red — bad
+	if fps >= 55.0: return UIStyle.STATUS_OK
+	if fps >= 30.0: return UIStyle.STATUS_CAUTION
+	return          UIStyle.STATUS_WARN
 
 # ── Debug panel ────────────────────────────────────────────────────────────────
 
 func _add_debug_panel() -> void:
 	# Outer panel
-	var style := StyleBoxFlat.new()
-	style.bg_color = UIStyle.COL_PANEL_BG
-	style.border_color = UIStyle.COL_PANEL_BORDER
-	style.set_border_width_all(1)
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(10)
-
 	_debug_panel = PanelContainer.new()
-	_debug_panel.add_theme_stylebox_override("panel", style)
+	_debug_panel.add_theme_stylebox_override("panel", UIStyle.make_panel_style(UIStyle.SURFACE, UIStyle.SURFACE_BORDER, 6, 10))
 	_debug_panel.anchor_left   = 0.0
 	_debug_panel.anchor_right  = 0.0
 	_debug_panel.anchor_top    = 0.0
@@ -297,12 +278,8 @@ func _add_debug_panel() -> void:
 	_debug_panel.offset_bottom = 200
 	_debug_panel.visible       = false
 
-	_debug_label = Label.new()
-	_debug_label.add_theme_font_override("font", UIStyle.FONT)
-	_debug_label.add_theme_font_size_override("font_size", UIStyle.SIZE_SM)
-	_debug_label.add_theme_color_override("font_color", UIStyle.COL_TEXT)
+	_debug_label = UIStyle.make_label("", UIStyle.SIZE_SM)
 	_debug_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	_debug_label.text = ""
 
 	_debug_panel.add_child(_debug_label)
 	add_child(_debug_panel)
@@ -363,9 +340,7 @@ func _refresh_debug_panel() -> void:
 # ── Core HP ────────────────────────────────────────────────────────────────────
 
 func _add_core_hp_label() -> void:
-	_core_hp_label = Label.new()
-	_core_hp_label.add_theme_font_override("font", UIStyle.FONT)
-	_core_hp_label.add_theme_color_override("font_color", Color(0.3, 1.0, 0.5, 0.9))
+	_core_hp_label = UIStyle.make_label("", UIStyle.SIZE_BODY, UIStyle.STATUS_OK)
 	_core_hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_core_hp_label.anchor_left   = 0.5
 	_core_hp_label.anchor_right  = 0.5
@@ -391,7 +366,7 @@ func _on_core_hp_changed(new_hp: int) -> void:
 	_core_hp_label.text = "CORE: %d" % new_hp
 	var t := float(new_hp) / 100.0
 	_core_hp_label.add_theme_color_override("font_color",
-		Color(1.0, t, t * 0.4, 0.9) if t < 0.5 else Color(0.3, 1.0, 0.5, 0.9))
+		Color(1.0, t, t * 0.4, 0.9) if t < 0.5 else UIStyle.STATUS_OK)
 	if new_hp == 0:
 		_show_notification("CORE DESTROYED!")
 
@@ -400,7 +375,7 @@ func _on_core_hp_changed(new_hp: int) -> void:
 func _build_context_bg() -> void:
 	# ── Crosshair / interact hint backdrop ────────────────────────────────────
 	var hint_style := StyleBoxFlat.new()
-	hint_style.bg_color = Color(0.08, 0.08, 0.12, 0.35)
+	hint_style.bg_color = UIStyle.SCRIM
 	hint_style.set_corner_radius_all(7)
 	_hint_bg = Panel.new()
 	_hint_bg.add_theme_stylebox_override("panel", hint_style)

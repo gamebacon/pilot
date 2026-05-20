@@ -41,8 +41,8 @@ func _ensure_built() -> void:
 	_style = StyleBoxFlat.new()
 	_style.set_corner_radius_all(5)
 	_style.set_border_width_all(2)
-	_style.bg_color     = Color(0.09, 0.09, 0.12, 0.80)
-	_style.border_color = UIStyle.COL_PANEL_BORDER
+	_style.bg_color     = UIStyle.SURFACE
+	_style.border_color = UIStyle.SURFACE_BORDER
 
 	_panel = Panel.new()
 	_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -59,14 +59,11 @@ func _ensure_built() -> void:
 	_icon.mouse_filter  = Control.MOUSE_FILTER_IGNORE
 	_panel.add_child(_icon)
 
-	_count = Label.new()
+	_count = UIStyle.make_label("", UIStyle.SIZE_SM, Color.WHITE, true)
 	_count.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
 	_count.offset_left   = -28; _count.offset_top    = -18
 	_count.offset_right  =  -3; _count.offset_bottom =  -3
 	_count.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_count.add_theme_font_override("font", UIStyle.FONT_BOLD)
-	_count.add_theme_font_size_override("font_size", UIStyle.SIZE_SM)
-	_count.add_theme_color_override("font_color", Color.WHITE)
 	_count.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_panel.add_child(_count)
 
@@ -80,7 +77,7 @@ func set_item(data: ItemData, qty: int = 0, physical: Array = []) -> void:
 	if data == null:
 		_icon.texture   = null
 		_count.text     = ""
-		_style.bg_color = Color(0.09, 0.09, 0.12, 0.80)
+		_style.bg_color = UIStyle.SURFACE
 	else:
 		_icon.texture = data.icon
 		_count.text   = str(qty) if qty > 1 else ""
@@ -92,14 +89,14 @@ func set_item(data: ItemData, qty: int = 0, physical: Array = []) -> void:
 ## Gold accent border + thicker bottom edge — marks the active hotbar slot.
 func set_active(on: bool) -> void:
 	_ensure_built()
-	_style.border_color        = UIStyle.COL_ACCENT if on else UIStyle.COL_PANEL_BORDER
+	_style.border_color        = UIStyle.PRIMARY if on else UIStyle.SURFACE_BORDER
 	_style.border_width_bottom = 3 if on else 2
 	_panel.add_theme_stylebox_override("panel", _style)
 
 ## Cyan border — marks the controller D-pad cursor position in the inventory.
 func set_cursor(on: bool) -> void:
 	_ensure_built()
-	_style.border_color        = Color(0.55, 0.88, 1.0, 1.0) if on else UIStyle.COL_PANEL_BORDER
+	_style.border_color        = UIStyle.SECONDARY if on else UIStyle.SURFACE_BORDER
 	_style.border_width_bottom = 2
 	_panel.add_theme_stylebox_override("panel", _style)
 
