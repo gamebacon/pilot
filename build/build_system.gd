@@ -47,7 +47,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not _active:
 		return
 
-	if event.is_action_pressed("rotate_y") and not event.is_echo():
+	if event.is_action_pressed("rotate") and not event.is_echo():
 		_ghost.global_rotate(Vector3.UP, deg_to_rad(ROT_STEP))
 
 	if event.is_action_pressed("exit_build"):

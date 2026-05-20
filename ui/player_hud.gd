@@ -101,8 +101,8 @@ func _update_context_hints() -> void:
 		if key != _last_context_key:
 			_last_context_key = key
 			var pairs := [
-				["attack",    "Place"],
-				["rotate_y",  "Rotate (Y)"],
+				["interact",    "Place"],
+				["rotate",  "Rotate"],
 				["exit_build","Cancel"],
 			]
 			var rows: Array[Control] = []
@@ -119,15 +119,13 @@ func _update_context_hints() -> void:
 	var has_placeable: bool = false
 	var has_multi: bool     = false
 	var has_item_in_hand: bool = false
-	if not inv.is_empty():
-		for item in inv.items:
-			if item.item_data and item.item_data.is_placeable:
-				has_placeable = true
-				break
-		has_multi = inv.has_multiple_types()
-		var hand_slot := inv.get_hotbar_slot(inv.active_hotbar_row, inv.active_slot)
-		has_item_in_hand = not hand_slot.is_empty()
+	var active_item = inv.active()
 
+	if not inv.is_empty():
+		has_multi = inv.has_multiple_types()
+		if active_item:
+			has_item_in_hand = true
+			has_placeable = active_item.item_data.is_placeable
 	var has_joy: bool = InputHelper.is_joy()
 	var key := "%s|%d|%d|%d|%d" % [InputHelper.action_label("drop"), int(has_placeable), int(has_multi), int(has_joy), int(has_item_in_hand)]
 	if key != _last_context_key:
@@ -149,6 +147,7 @@ func _update_context_hints() -> void:
 		var irow: Control = UIStyle.make_prompt("open_inventory", "Inventory")
 		irow.size_flags_horizontal = Control.SIZE_SHRINK_END
 		rows.append(irow)
+
 		_rebuild_children(context_hints, rows, false)
 
 	context_hints.show()
