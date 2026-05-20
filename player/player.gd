@@ -71,6 +71,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if NetworkManager.is_active() and not is_multiplayer_authority():
 		return
 
+	if event.is_action_pressed("debug_toggle"):
+		GameState.debug_mode = !GameState.debug_mode
+		get_viewport().set_input_as_handled()
+		return
+
 	# Toggle inventory before the ui_open guard so it works both ways.
 	if event.is_action_pressed("open_inventory"):
 		var inv_hud := get_tree().get_first_node_in_group("inventory_hud")
@@ -123,9 +128,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			inventory.prev_hotbar_row(); _reposition_carried()
 		elif event.is_action_pressed("hotbar_row_next"):
 			inventory.next_hotbar_row(); _reposition_carried()
-
-	if event.is_action_pressed("debug_toggle"):
-		GameState.debug_mode = !GameState.debug_mode
 
 func _physics_process(delta: float) -> void:
 	if NetworkManager.is_active() and not is_multiplayer_authority():

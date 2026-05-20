@@ -37,6 +37,7 @@ const STATUS_OK      := Color(0.25, 0.85, 0.45, 1.00)  # green  — success / A 
 const STATUS_WARN    := Color(0.90, 0.25, 0.25, 1.00)  # red    — danger  / B btn
 const STATUS_CAUTION := Color(0.92, 0.78, 0.16, 1.00)  # yellow — caution / X btn
 const STATUS_INFO    := Color(0.28, 0.55, 0.95, 1.00)  # blue   — info    / Y btn
+
 const BTN_SHOULDER   := Color(0.22, 0.22, 0.28, 1.00)  # L1 / R1 / L2 / R2
 
 # ── Font ───────────────────────────────────────────────────────────────────────

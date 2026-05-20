@@ -7,7 +7,8 @@ const MAX_REACH := 15.0
 var _active      := false
 var _snapping    := false
 var _place_held  := false  # hysteresis gate: arm ≥ 0.9, disarm ≤ 0.1
-var _planks_root: Node3D
+var _planks_root:  Node3D
+var _placed_root:  Node3D
 var _net_counter := 0
 
 var _held_item: PhysicalItem = null
@@ -26,7 +27,11 @@ var _mat_blocked: StandardMaterial3D
 func _ready() -> void:
 	_planks_root      = Node3D.new()
 	_planks_root.name = "PlacedPlanks"
-	add_child(_planks_root)  # child of self — survives reparenting, never inside Factory
+	add_child(_planks_root)
+
+	_placed_root      = Node3D.new()
+	_placed_root.name = "PlacedItems"
+	add_child(_placed_root)
 
 	_mat_snap    = _ghost_mat(Color(0.25, 0.90, 0.35, 0.55))
 	_mat_blocked = _ghost_mat(Color(0.90, 0.20, 0.20, 0.55))
@@ -146,6 +151,8 @@ func _find_snap_offset() -> Vector3:
 	return best_offset
 
 func _ghost_world_sockets() -> Array:
+	if _held_data is PlaceableItemData:
+		return []
 	var result := []
 	for local_pos: Vector3 in PlacedPlank.sockets_for(_held_size):
 		result.append(_ghost.global_transform * local_pos)
@@ -157,13 +164,10 @@ func _place() -> void:
 	if not _ghost.visible or _is_blocked() or _held_item == null:
 		return
 
-	var net_id := _assign_net_id()
+	var net_id  := _assign_net_id()
 	var world_t := _ghost.global_transform
 
-	var piece := PlacedPlank.build(_held_size, _held_data.color)
-	piece.net_id = net_id
-	_planks_root.add_child(piece)
-	piece.set_deferred("global_transform", world_t)
+	_apply_place_local(_held_data.id, world_t, net_id)
 
 	_held_item.play_place_sound()
 	_rumble(0.0, 0.7, 0.12)
@@ -187,10 +191,11 @@ func _consume_held() -> void:
 	_held_item.queue_free()
 	_held_item = null
 
-	if player.inventory.is_empty():
+	var next_item := player.inventory.active()
+	if next_item == null:
 		_exit()
 	else:
-		_hold(player.inventory.active())
+		_hold(next_item)
 		_refresh_ghost_for_held()
 
 # ── Remove placed piece ───────────────────────────────────────────────────────
@@ -292,10 +297,18 @@ func _apply_place_local(item_id: String, world_transform: Transform3D, net_id: i
 	var data := ItemRegistry.get_item(item_id)
 	if not data:
 		return
-	var piece := PlacedPlank.build(data.size, data.color)
-	piece.net_id = net_id
-	_planks_root.add_child(piece)
-	piece.set_deferred("global_transform", world_transform)
+	if data is PlaceableItemData:
+		var scene := (data as PlaceableItemData).get_placement_scene()
+		if scene:
+			var node := scene.instantiate()
+			node.set("net_id", net_id)
+			_placed_root.add_child(node)
+			node.set_deferred("global_transform", world_transform)
+	else:
+		var piece := PlacedPlank.build(data.size, data.color)
+		piece.net_id = net_id
+		_planks_root.add_child(piece)
+		piece.set_deferred("global_transform", world_transform)
 
 @rpc("any_peer", "reliable")
 func _request_remove(net_id: int) -> void:

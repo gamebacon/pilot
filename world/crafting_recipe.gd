@@ -18,6 +18,7 @@ static func all() -> Array[CraftingRecipe]:
 		# Materials
 		_wooden_plank(),
 		_wooden_wall(),
+		_chest(),
 		# Tools
 		_axe_wooden(),
 		_axe_stone(),
@@ -56,6 +57,15 @@ static func _wooden_wall() -> CraftingRecipe:
 	r.result_count   = 1
 	r.ingredients    = {"wooden_plank": 3}
 	r.tab            = "materials"
+	return r
+
+static func _chest() -> CraftingRecipe:
+	var r          := CraftingRecipe.new()
+	r.display_name  = "Chest"
+	r.result_id     = "chest"
+	r.result_count  = 1
+	r.ingredients   = {"wooden_plank": 8}
+	r.tab           = "materials"
 	return r
 
 # ── Tools ─────────────────────────────────────────────────────────────────────

@@ -177,7 +177,7 @@ func _update_time_label() -> void:
 	else:
 		var next := wave + 1
 		shift_label.text = "DAY — WAVE %d INCOMING" % next if wave > 0 else "DAY — SURVIVE THE NIGHT"
-		shift_label.add_theme_color_override("font_color", UIStyle.PRIMARY)
+		shift_label.add_theme_color_override("font_color", UIStyle.ON_BACKGROUND)
 
 # ── Server IP display ──────────────────────────────────────────────────────────
 
@@ -185,7 +185,7 @@ func _add_server_ip_label() -> void:
 	var lobby_id := NetworkManager.current_lobby()
 
 	# Lobby ID label
-	var lbl := UIStyle.make_label("Lobby: %d" % lobby_id, UIStyle.SIZE_BODY, UIStyle.STATUS_OK)
+	var lbl := UIStyle.make_label("Lobby: %d" % lobby_id, UIStyle.SIZE_BODY, UIStyle.ON_BACKGROUND)
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	lbl.anchor_left   = 1.0
 	lbl.anchor_right  = 1.0
@@ -237,7 +237,7 @@ func _add_server_ip_label() -> void:
 # ── FPS counter ────────────────────────────────────────────────────────────────
 
 func _add_fps_counter() -> void:
-	_fps_label = UIStyle.make_label("-- fps", UIStyle.SIZE_SM, UIStyle.STATUS_OK)
+	_fps_label = UIStyle.make_label("-- fps", UIStyle.SIZE_SM, UIStyle.ON_BACKGROUND)
 	_fps_label.anchor_left   = 0.0
 	_fps_label.anchor_right  = 0.0
 	_fps_label.anchor_top    = 0.0
@@ -258,7 +258,7 @@ func _tick_fps(delta: float) -> void:
 		_fps_label.text = "%d fps" % roundi(_fps_smooth)
 
 func _fps_color(fps: float) -> Color:
-	if fps >= 55.0: return UIStyle.STATUS_OK
+	if fps >= 55.0: return UIStyle.ON_BACKGROUND
 	if fps >= 30.0: return UIStyle.STATUS_CAUTION
 	return          UIStyle.STATUS_WARN
 
@@ -340,7 +340,7 @@ func _refresh_debug_panel() -> void:
 # ── Core HP ────────────────────────────────────────────────────────────────────
 
 func _add_core_hp_label() -> void:
-	_core_hp_label = UIStyle.make_label("", UIStyle.SIZE_BODY, UIStyle.STATUS_OK)
+	_core_hp_label = UIStyle.make_label("", UIStyle.SIZE_BODY, UIStyle.ON_BACKGROUND)
 	_core_hp_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_core_hp_label.anchor_left   = 0.5
 	_core_hp_label.anchor_right  = 0.5

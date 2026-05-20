@@ -144,6 +144,7 @@ func _quick_transfer(items, from_idx) -> Array[PhysicalItem]: return items  # sh
 ```
 
 Layout modes:
+
 - `CENTERED` — panel auto-sizes to content, centered on screen (player inventory)
 - `ANCHORED` — panel stretches to anchor rect, good for scrollable content (crafting)
 
@@ -156,26 +157,26 @@ Layout modes:
 
 ### Color palette (`autoload/ui_style.gd`)
 
-| Constant | Purpose |
-| -------- | ------- |
-| `PRIMARY` | Gold accent — active slots, focus rings, highlights |
-| `PRIMARY_VARIANT` | Hover / pressed state of PRIMARY |
-| `ON_PRIMARY` | Text/icons drawn on a PRIMARY background |
-| `SECONDARY` | Sky blue — controller D-pad cursor, interactive focus |
-| `ON_SECONDARY` | Text/icons drawn on a SECONDARY background |
-| `BACKGROUND` | Page/world background |
-| `ON_BACKGROUND` | Body text, icons on BACKGROUND |
-| `ON_BACKGROUND_DIM` | Secondary / hint text (lower contrast) |
-| `SURFACE` | Panels, slots, tooltips, badges |
-| `SURFACE_VARIANT` | Raised cards within a panel |
-| `SURFACE_BORDER` | Panel and slot borders |
-| `SCRIM` | Full-screen dim overlay behind modals |
-| `ON_SURFACE` | Heading text on a SURFACE |
-| `STATUS_OK` | Green — success, safe, A button |
-| `STATUS_WARN` | Red — danger, destructive, B button |
-| `STATUS_CAUTION` | Yellow — warning, X button |
-| `STATUS_INFO` | Blue — informational, Y button |
-| `BTN_SHOULDER` | Dark grey — L1/R1/L2/R2 shoulder badges |
+| Constant            | Purpose                                               |
+| ------------------- | ----------------------------------------------------- |
+| `PRIMARY`           | Gold accent — active slots, focus rings, highlights   |
+| `PRIMARY_VARIANT`   | Hover / pressed state of PRIMARY                      |
+| `ON_PRIMARY`        | Text/icons drawn on a PRIMARY background              |
+| `SECONDARY`         | Sky blue — controller D-pad cursor, interactive focus |
+| `ON_SECONDARY`      | Text/icons drawn on a SECONDARY background            |
+| `BACKGROUND`        | Page/world background                                 |
+| `ON_BACKGROUND`     | Body text, icons on BACKGROUND                        |
+| `ON_BACKGROUND_DIM` | Secondary / hint text (lower contrast)                |
+| `SURFACE`           | Panels, slots, tooltips, badges                       |
+| `SURFACE_VARIANT`   | Raised cards within a panel                           |
+| `SURFACE_BORDER`    | Panel and slot borders                                |
+| `SCRIM`             | Full-screen dim overlay behind modals                 |
+| `ON_SURFACE`        | Heading text on a SURFACE                             |
+| `STATUS_OK`         | Green — success, safe, A button                       |
+| `STATUS_WARN`       | Red — danger, destructive, B button                   |
+| `STATUS_CAUTION`    | Yellow — warning, X button                            |
+| `STATUS_INFO`       | Blue — informational, Y button                        |
+| `BTN_SHOULDER`      | Dark grey — L1/R1/L2/R2 shoulder badges               |
 
 ### Factory functions — always use these, never raw `add_theme_*_override` chains
 
@@ -195,13 +196,13 @@ UIStyle.make_focus_style(UIStyle.PRIMARY)
 
 ### Font sizes
 
-| Constant | Value | Use |
-| -------- | ----- | --- |
-| `SIZE_XS` | 9 | Badge labels |
-| `SIZE_SM` | 11 | Secondary text, stats |
-| `SIZE_BODY` | 14 | Default body text |
-| `SIZE_LG` | 18 | Section headings |
-| `SIZE_HEADING` | 22 | Panel titles |
+| Constant       | Value | Use                   |
+| -------------- | ----- | --------------------- |
+| `SIZE_XS`      | 9     | Badge labels          |
+| `SIZE_SM`      | 11    | Secondary text, stats |
+| `SIZE_BODY`    | 14    | Default body text     |
+| `SIZE_LG`      | 18    | Section headings      |
+| `SIZE_HEADING` | 22    | Panel titles          |
 
 ### Input prompt badges
 
@@ -234,34 +235,34 @@ UIStyle.set_hint(container, [["@attack", "Place"], ["@exit_build", "Cancel"]])
 
 ### Input actions
 
-| Action | Keyboard | Gamepad | Context |
-| ------ | -------- | ------- | ------- |
-| `move_forward/back/left/right` | WASD | Left stick | Gameplay |
-| `look_left/right/up/down` | — | Right stick | Gameplay |
-| `jump` | Space | B | Gameplay |
-| `sprint` | Shift | R-stick click | Gameplay (toggle) |
-| `attack` | LMB | R-trigger | Gameplay |
-| `interact` | RMB | L-trigger | Gameplay |
-| `drop` | Q | A | Gameplay |
-| `open_inventory` | E | X | Gameplay |
-| `build_mode` | B | Y | Gameplay |
-| `place` | LMB release | R-trigger | Build mode |
-| `exit_build` | RMB release | A | Build mode |
-| `rotate_y/x/z` | R / X / Z | D-pad | Build mode |
-| `reset_rotation` | Q | R1 | Build mode |
-| `remove_piece` | F | L1 | Build mode |
-| `hotbar_slot_1`–`hotbar_slot_8` | 1–8 | — | Gameplay |
-| `hotbar_cycle_prev` | — | L1 | Gameplay |
-| `hotbar_cycle_next` | — | R1 | Gameplay |
-| `hotbar_row_prev` | — | D-pad up | Gameplay |
-| `hotbar_row_next` | — | D-pad down | Gameplay |
-| `craft_tab_prev` | Page Up | L1 | Crafting UI |
-| `craft_tab_next` | Page Down | R1 | Crafting UI |
-| `inventory_next` | Tab | — | Gameplay |
-| `debug_toggle` | F11 | L-stick click | Any |
-| `ui_accept` | Enter | B | UI |
-| `ui_cancel` | Escape | A | UI |
-| `ui_left/right/up/down` | Arrow keys | D-pad | UI navigation |
+| Action                          | Keyboard    | Gamepad       | Context           |
+| ------------------------------- | ----------- | ------------- | ----------------- |
+| `move_forward/back/left/right`  | WASD        | Left stick    | Gameplay          |
+| `look_left/right/up/down`       | —           | Right stick   | Gameplay          |
+| `jump`                          | Space       | B             | Gameplay          |
+| `sprint`                        | Shift       | R-stick click | Gameplay (toggle) |
+| `attack`                        | LMB         | R-trigger     | Gameplay          |
+| `interact`                      | RMB         | L-trigger     | Gameplay          |
+| `drop`                          | Q           | A             | Gameplay          |
+| `open_inventory`                | E           | X             | Gameplay          |
+| `build_mode`                    | B           | Y             | Gameplay          |
+| `place`                         | LMB release | R-trigger     | Build mode        |
+| `exit_build`                    | RMB release | A             | Build mode        |
+| `rotate_y/x/z`                  | R / X / Z   | D-pad         | Build mode        |
+| `reset_rotation`                | Q           | R1            | Build mode        |
+| `remove_piece`                  | F           | L1            | Build mode        |
+| `hotbar_slot_1`–`hotbar_slot_8` | 1–8         | —             | Gameplay          |
+| `hotbar_cycle_prev`             | —           | L1            | Gameplay          |
+| `hotbar_cycle_next`             | —           | R1            | Gameplay          |
+| `hotbar_row_prev`               | —           | D-pad up      | Gameplay          |
+| `hotbar_row_next`               | —           | D-pad down    | Gameplay          |
+| `craft_tab_prev`                | Page Up     | L1            | Crafting UI       |
+| `craft_tab_next`                | Page Down   | R1            | Crafting UI       |
+| `inventory_next`                | Tab         | —             | Gameplay          |
+| `debug_toggle`                  | F3          | L-stick click | Any               |
+| `ui_accept`                     | Enter       | B             | UI                |
+| `ui_cancel`                     | Escape      | A             | UI                |
+| `ui_left/right/up/down`         | Arrow keys  | D-pad         | UI navigation     |
 
 ---
 

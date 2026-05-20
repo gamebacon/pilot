@@ -21,6 +21,8 @@ const _MATERIALS: Array = [
 	preload("res://items/resources/weapons/sword_wooden.tres"),
 	preload("res://items/resources/weapons/sword_stone.tres"),
 	preload("res://items/resources/weapons/sword_iron.tres"),
+	# Placeable items
+	preload("res://items/resources/chest.tres"),
 	# Ore drops
 	preload("res://items/resources/ores/flint.tres"),
 	preload("res://items/resources/ores/coal.tres"),

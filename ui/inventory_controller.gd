@@ -1,4 +1,3 @@
-class_name InventoryController
 extends RefCounted
 
 ## Middle layer between Inventory (data) and InventoryWindow (UI).
