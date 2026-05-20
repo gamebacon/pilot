@@ -1,0 +1,26 @@
+[gd_scene format=3 uid="uid://chest_scene_001"]
+
+[ext_resource type="Script" path="res://world/chest.gd" id="1_chest"]
+[ext_resource type="Script" path="res://player/inventory.gd" id="2_inv"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_chest"]
+size = Vector3(1.0, 0.7, 0.6)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_chest"]
+size = Vector3(1.0, 0.7, 0.6)
+
+[sub_resource type="StandardMaterial3D" id="Mat_chest"]
+albedo_color = Color(0.55, 0.35, 0.12, 1)
+
+[node name="Chest" type="StaticBody3D"]
+script = ExtResource("1_chest")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_chest")
+surface_material_override/0 = SubResource("Mat_chest")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_chest")
+
+[node name="Inventory" type="Node" parent="."]
+script = ExtResource("2_inv")
