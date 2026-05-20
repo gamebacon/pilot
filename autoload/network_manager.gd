@@ -9,6 +9,7 @@ signal connected_ok()
 signal connect_failed()
 signal server_disconnected()
 signal lobby_ready(lobby_id: int)
+signal steam_became_ready()
 
 # id -> {name: String}
 var players:    Dictionary = {}
@@ -20,29 +21,39 @@ var _steam_ok: bool = false
 
 # ── Init ──────────────────────────────────────────────────────────────────────
 
+var _steam_retry_timer: float = 0.0
+const _STEAM_RETRY_INTERVAL := 2.0
+
 func _ready() -> void:
 	OS.set_environment("SteamAppId", str(APP_ID))
 	OS.set_environment("SteamGameId", str(APP_ID))
+	_try_init_steam()
 
+func _try_init_steam() -> void:
 	var init := Steam.steamInit()
 	if not init:
-		push_warning("Steam unavailable — is Steam running? Multiplayer disabled.")
+		push_warning("Steam unavailable — is Steam running? Retrying every %.0fs." % _STEAM_RETRY_INTERVAL)
 		return
+	_on_steam_ready()
 
+func _on_steam_ready() -> void:
 	_steam_ok  = true
 	local_name = Steam.getFriendPersonaName(Steam.getSteamID())
-
-	# SteamMultiplayerPeer requires the relay network to be available.
-	# We call this immediately and wait for the ready signal before allowing hosting.
 	Steam.initRelayNetworkAccess()
-
 	Steam.lobby_created.connect(_on_lobby_created)
 	Steam.lobby_joined.connect(_on_lobby_joined)
 	Steam.join_requested.connect(_on_join_requested)
+	steam_became_ready.emit()
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if _steam_ok:
 		Steam.run_callbacks()
+		return
+	# Poll until Steam becomes available.
+	_steam_retry_timer += delta
+	if _steam_retry_timer >= _STEAM_RETRY_INTERVAL:
+		_steam_retry_timer = 0.0
+		_try_init_steam()
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
