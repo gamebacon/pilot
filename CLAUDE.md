@@ -245,8 +245,8 @@ func _window_layout()  -> Layout: return Layout.CENTERED   # or ANCHORED
 func _window_anchors() -> Array[float]: return [0.3, 0.1, 0.7, 0.9]  # ANCHORED only
 
 func _build_content(vbox: VBoxContainer) -> void:
-    # populate slots using _build_slot(parent, idx, slots_array)
-    pass
+	# populate slots using _build_slot(parent, idx, slots_array)
+	pass
 
 func _on_opened()  -> void: pass   # connect _inv, call _refresh()
 func _on_closed()  -> void: pass   # cleanup

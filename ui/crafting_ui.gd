@@ -217,8 +217,7 @@ func _make_recipe_row(recipe: CraftingRecipe, inv: Dictionary) -> Control:
 		row_slots.append(ing_slot)
 
 	# Craft button
-	var craft_btn := Button.new()
-	craft_btn.text                  = "Craft"
+	var craft_btn: Button = UIStyle.make_button("Craft")
 	craft_btn.disabled              = not can_craft
 	craft_btn.custom_minimum_size   = Vector2(72, 0)
 	craft_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER

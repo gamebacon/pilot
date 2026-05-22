@@ -2,20 +2,23 @@ extends Control
 
 const UIStyle := preload("res://autoload/ui_style.gd")
 
-@onready var panel:        PanelContainer = $Panel
-@onready var title_label:  Label          = $Panel/VBox/Title
-@onready var name_label:   Label          = $Panel/VBox/NameRow/NameLabel
-@onready var name_field:   LineEdit       = $Panel/VBox/NameRow/NameField
-@onready var lobby_field:  LineEdit       = $Panel/VBox/JoinRow/IPField
-@onready var status_label: Label          = $Panel/VBox/StatusLabel
-@onready var host_btn:     Button         = $Panel/VBox/HostButton
-@onready var join_btn:     Button         = $Panel/VBox/JoinRow/JoinButton
-@onready var solo_btn:     Button         = $Panel/VBox/SoloButton
+const _FRIENDS_POLL_INTERVAL: float = 6.0
+const _LOBBY_ID_MIN_LENGTH:   int   = 17
 
-# If the player hits Host/Join before Steam is ready we queue the action
-# and fire it automatically the moment Steam connects.
-enum _Pending { NONE, HOST, JOIN }
-var _pending: _Pending = _Pending.NONE
+@onready var panel:               PanelContainer = $Panel
+@onready var title_label:         Label          = $Panel/VBox/Title
+@onready var status_label:        Label          = $Panel/VBox/StatusLabel
+@onready var host_btn:            Button         = $Panel/VBox/HostButton
+@onready var solo_btn:            Button         = $Panel/VBox/SoloButton
+@onready var lobby_field:         LineEdit       = $Panel/VBox/LobbyField
+@onready var _friends_header_lbl: Label          = $Panel/VBox/FriendsHeaderLabel
+@onready var _friends_list:       VBoxContainer  = $Panel/VBox/FriendsList
+
+var _pending_host: bool = false
+
+# steam_id -> TextureRect for in-flight avatar requests.
+var _pending_avatars: Dictionary = {}
+var _friends_poll_timer: float = 0.0
 
 func _ready() -> void:
 	_apply_style()
@@ -28,28 +31,34 @@ func _ready() -> void:
 	NetworkManager.steam_became_ready.connect(_on_steam_became_ready)
 	solo_btn.pressed.connect(_on_solo)
 	host_btn.pressed.connect(_on_host)
-	join_btn.pressed.connect(_on_join)
-
-	lobby_field.placeholder_text = "Lobby ID"
+	lobby_field.text_changed.connect(_on_lobby_field_changed)
 
 	if NetworkManager.steam_ready():
-		name_field.text = NetworkManager.local_name
+		_on_steam_became_ready()
 	else:
-		_set_status("Connecting to Steam...")
+		_set_status("Connecting to Steam…")
+		_refresh_friends()
 
 	solo_btn.call_deferred("grab_focus")
 
 func _restore_cursor() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
+func _process(delta: float) -> void:
+	if not NetworkManager.steam_ready():
+		return
+	_friends_poll_timer += delta
+	if _friends_poll_timer >= _FRIENDS_POLL_INTERVAL:
+		_friends_poll_timer = 0.0
+		_refresh_friends()
+
 func _on_steam_became_ready() -> void:
-	name_field.text = NetworkManager.local_name
 	status_label.text = ""
-	# Fire any queued action the player already asked for.
-	match _pending:
-		_Pending.HOST: _do_host()
-		_Pending.JOIN: _do_join()
-	_pending = _Pending.NONE
+	_connect_avatar_signal()
+	_refresh_friends()
+	if _pending_host:
+		_pending_host = false
+		_do_host()
 
 # ── Button handlers ───────────────────────────────────────────────────────────
 
@@ -58,35 +67,28 @@ func _on_solo() -> void:
 
 func _on_host() -> void:
 	if not NetworkManager.steam_ready():
-		_pending = _Pending.HOST
+		_pending_host = true
 		return
 	_do_host()
 
-func _on_join() -> void:
-	if not NetworkManager.steam_ready():
-		_pending = _Pending.JOIN
+func _on_lobby_field_changed(text: String) -> void:
+	var id_str := text.strip_edges()
+	if id_str.length() < _LOBBY_ID_MIN_LENGTH:
 		return
-	_do_join()
-
-func _do_host() -> void:
-	_apply_name()
-	_set_status("Creating lobby…")
-	_set_buttons(false)
-	NetworkManager.host()
-
-func _do_join() -> void:
-	_apply_name()
-	var id_str := lobby_field.text.strip_edges()
-	if id_str.is_empty():
-		_set_status("Paste a Lobby ID to join.")
+	if not NetworkManager.steam_ready():
+		_set_status("Steam not ready.")
 		return
 	var lobby_id := int(id_str)
 	if lobby_id == 0:
-		_set_status("Invalid Lobby ID.")
 		return
 	_set_status("Joining…")
 	_set_buttons(false)
 	NetworkManager.join_lobby(lobby_id)
+
+func _do_host() -> void:
+	_set_status("Creating lobby…")
+	_set_buttons(false)
+	NetworkManager.host()
 
 func _on_lobby_ready(_lobby_id: int) -> void:
 	get_tree().change_scene_to_file("res://world/world.tscn")
@@ -97,25 +99,97 @@ func _on_connected_ok() -> void:
 func _on_connect_failed() -> void:
 	_set_status("Connection failed.")
 	_set_buttons(true)
+	lobby_field.clear()
 
 func _on_disconnected() -> void:
 	_set_status("Disconnected.")
 	_set_buttons(true)
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# ── Friends panel ─────────────────────────────────────────────────────────────
 
-func _apply_name() -> void:
-	var n := name_field.text.strip_edges()
-	if not n.is_empty():
-		NetworkManager.local_name = n
+func _refresh_friends() -> void:
+	_pending_avatars.clear()
+	for child: Node in _friends_list.get_children():
+		child.queue_free()
+
+	if not NetworkManager.steam_ready():
+		_add_friends_placeholder("Connecting to Steam…")
+		return
+
+	var count: int = Steam.getFriendCount(Steam.FRIEND_FLAG_IMMEDIATE)
+	var found: int = 0
+	for i: int in range(count):
+		var friend_id: int = Steam.getFriendByIndex(i, Steam.FRIEND_FLAG_IMMEDIATE)
+		var game_info: Dictionary = Steam.getFriendGamePlayed(friend_id)
+		if game_info.is_empty():
+			continue
+		var lobby_id: int = int(game_info.get("lobby", 0))
+		if lobby_id == 0:
+			continue
+		var app_id: int = int(game_info.get("id", game_info.get("app_id", 0)))
+		if app_id != NetworkManager.APP_ID:
+			continue
+		_add_friend_row(Steam.getFriendPersonaName(friend_id), friend_id, lobby_id)
+		found += 1
+
+	if found == 0:
+		_add_friends_placeholder("No friends in game")
+
+func _add_friend_row(friend_name: String, friend_id: int, lobby_id: int) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+
+	var avatar := TextureRect.new()
+	avatar.custom_minimum_size = Vector2(28, 28)
+	avatar.expand_mode         = TextureRect.EXPAND_IGNORE_SIZE
+	avatar.stretch_mode        = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	row.add_child(avatar)
+	_pending_avatars[friend_id] = avatar
+	Steam.getPlayerAvatar(Steam.AVATAR_SMALL, friend_id)
+
+	var lbl: Label = UIStyle.make_label(friend_name, UIStyle.SIZE_BODY, UIStyle.ON_SURFACE, false)
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl.clip_text = true
+	row.add_child(lbl)
+
+	var btn: Button = UIStyle.make_button("Join")
+	btn.pressed.connect(func() -> void: _join_friend(lobby_id))
+	row.add_child(btn)
+
+	_friends_list.add_child(row)
+
+func _add_friends_placeholder(msg: String) -> void:
+	var lbl: Label = UIStyle.make_label(msg, UIStyle.SIZE_SM, UIStyle.ON_SURFACE_DIM, false)
+	_friends_list.add_child(lbl)
+
+func _join_friend(lobby_id: int) -> void:
+	_set_status("Joining…")
+	_set_buttons(false)
+	NetworkManager.join_lobby(lobby_id)
+
+func _connect_avatar_signal() -> void:
+	if not Steam.avatar_loaded.is_connected(_on_avatar_loaded):
+		Steam.avatar_loaded.connect(_on_avatar_loaded)
+
+func _on_avatar_loaded(steam_id: int, width: int, data: PackedByteArray) -> void:
+	if not _pending_avatars.has(steam_id):
+		return
+	var img: Image = Image.create_from_data(width, width, false, Image.FORMAT_RGBA8, data)
+	var tex: ImageTexture = ImageTexture.create_from_image(img)
+	var rect: TextureRect = _pending_avatars[steam_id]
+	if is_instance_valid(rect):
+		rect.texture = tex
+	_pending_avatars.erase(steam_id)
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 func _set_status(msg: String) -> void:
 	status_label.text = msg
 
 func _set_buttons(enabled: bool) -> void:
-	solo_btn.disabled = not enabled
-	host_btn.disabled = not enabled
-	join_btn.disabled = not enabled
+	solo_btn.disabled  = not enabled
+	host_btn.disabled  = not enabled
+	lobby_field.editable = enabled
 
 # ── Styling ───────────────────────────────────────────────────────────────────
 
@@ -128,25 +202,14 @@ func _apply_style() -> void:
 
 	panel.add_theme_stylebox_override("panel", UIStyle.make_panel_style(UIStyle.SURFACE, UIStyle.SURFACE_BORDER, 10, 20.0))
 
-	UIStyle.apply_label(title_label,  UIStyle.SIZE_HEADING, UIStyle.ON_SURFACE, true)
-	UIStyle.apply_label(name_label,   UIStyle.SIZE_BODY,    UIStyle.ON_SURFACE_DIM)
-	UIStyle.apply_label(status_label, UIStyle.SIZE_SM,      UIStyle.ON_SURFACE_DIM)
+	UIStyle.apply_label(title_label,         UIStyle.SIZE_HEADING, UIStyle.ON_SURFACE,     true)
+	UIStyle.apply_label(status_label,        UIStyle.SIZE_SM,      UIStyle.ON_SURFACE_DIM)
+	UIStyle.apply_label(_friends_header_lbl, UIStyle.SIZE_SM,      UIStyle.ON_SURFACE_DIM, true)
 
-	_style_field(name_field)
-	_style_field(lobby_field)
+	UIStyle.apply_line_edit(lobby_field)
 
-	_style_button(solo_btn)
-	_style_button(host_btn)
-	_style_button(join_btn)
-
-static func _style_field(field: LineEdit) -> void:
-	field.add_theme_font_override("font", UIStyle.FONT)
-	field.add_theme_font_size_override("font_size", UIStyle.SIZE_BODY)
-	field.add_theme_color_override("font_color", UIStyle.ON_SURFACE)
-	field.add_theme_color_override("font_placeholder_color", UIStyle.ON_SURFACE_DIM)
-
-static func _style_button(btn: Button) -> void:
-	btn.add_theme_font_override("font", UIStyle.FONT_BOLD)
-	btn.add_theme_font_size_override("font_size", UIStyle.SIZE_BODY)
-	btn.add_theme_color_override("font_color", UIStyle.ON_SURFACE)
-	btn.add_theme_stylebox_override("focus", UIStyle.make_focus_style(UIStyle.PRIMARY))
+	for btn: Button in [solo_btn, host_btn]:
+		btn.add_theme_font_override("font", UIStyle.FONT_BOLD)
+		btn.add_theme_font_size_override("font_size", UIStyle.SIZE_BODY)
+		btn.add_theme_color_override("font_color", UIStyle.ON_SURFACE)
+		btn.add_theme_stylebox_override("focus", UIStyle.make_focus_style(UIStyle.PRIMARY))

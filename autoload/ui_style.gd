@@ -46,6 +46,8 @@ const FONT       := preload("res://ui/fonts/satoshi/Satoshi-Regular.ttf")
 const FONT_BOLD  := preload("res://ui/fonts/satoshi/Satoshi-Bold.ttf")
 const FONT_LIGHT := preload("res://ui/fonts/satoshi/Satoshi-Light.ttf")
 
+const FONT_MACHINE := preload("res://ui/fonts/itc-machine/ITC Machine Std Bold.otf")
+
 # ── Font sizes ─────────────────────────────────────────────────────────────────
 const SIZE_XS      := 9
 const SIZE_SM      := 11
@@ -141,6 +143,23 @@ static func make_focus_style(color: Color = PRIMARY) -> StyleBoxFlat:
 	s.set_corner_radius_all(5)
 	s.set_expand_margin_all(2)
 	return s
+
+## Create a new Button with standard font/colour wired up in one call.
+static func make_button(text: String = "") -> Button:
+	var btn := Button.new()
+	btn.text = text
+	btn.add_theme_font_override("font", FONT_BOLD)
+	btn.add_theme_font_size_override("font_size", SIZE_BODY)
+	btn.add_theme_color_override("font_color", ON_SURFACE)
+	btn.add_theme_stylebox_override("focus", make_focus_style(PRIMARY))
+	return btn
+
+## Apply standard font/colour overrides to a LineEdit.
+static func apply_line_edit(field: LineEdit) -> void:
+	field.add_theme_font_override("font", FONT)
+	field.add_theme_font_size_override("font_size", SIZE_BODY)
+	field.add_theme_color_override("font_color", ON_SURFACE)
+	field.add_theme_color_override("font_placeholder_color", ON_SURFACE_DIM)
 
 ## Apply standard world-space label styling to a Label3D.
 static func style_world_label(lbl: Label3D, size: int = SIZE_BODY * 4) -> void:
