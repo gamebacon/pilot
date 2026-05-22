@@ -11,56 +11,55 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_lobby")
 
-[node name="Panel" type="PanelContainer" parent="." unique_id=13024345]
-layout_mode = 0
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -220.0
-offset_top = -210.0
-offset_right = 220.0
-offset_bottom = 210.0
+[node name="CenterContainer" type="CenterContainer" parent="." unique_id=666666666]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 
-[node name="VBox" type="VBoxContainer" parent="Panel" unique_id=176508248]
+[node name="Panel" type="PanelContainer" parent="CenterContainer" unique_id=13024345]
+layout_mode = 2
+custom_minimum_size = Vector2(440, 0)
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/Panel" unique_id=176508248]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="Title" type="Label" parent="Panel/VBox" unique_id=357239566]
+[node name="Title" type="Label" parent="CenterContainer/Panel/VBox" unique_id=357239566]
 layout_mode = 2
 theme_override_font_sizes/font_size = 22
 text = "Base TD Co-op"
 horizontal_alignment = 1
 
-[node name="HSep0" type="HSeparator" parent="Panel/VBox" unique_id=604174465]
+[node name="HSep0" type="HSeparator" parent="CenterContainer/Panel/VBox" unique_id=604174465]
 layout_mode = 2
 
-[node name="SoloButton" type="Button" parent="Panel/VBox" unique_id=80731574]
+[node name="SoloButton" type="Button" parent="CenterContainer/Panel/VBox" unique_id=80731574]
 layout_mode = 2
 text = "Start"
 
-[node name="HSep2" type="HSeparator" parent="Panel/VBox" unique_id=1999728989]
+[node name="HSep2" type="HSeparator" parent="CenterContainer/Panel/VBox" unique_id=1999728989]
 layout_mode = 2
 
-[node name="HostButton" type="Button" parent="Panel/VBox" unique_id=2043906784]
+[node name="HostButton" type="Button" parent="CenterContainer/Panel/VBox" unique_id=2043906784]
 layout_mode = 2
 text = "Create lobby"
 
-[node name="LobbyField" type="LineEdit" parent="Panel/VBox" unique_id=578073373]
+[node name="LobbyField" type="LineEdit" parent="CenterContainer/Panel/VBox" unique_id=578073373]
 layout_mode = 2
 placeholder_text = "Existing lobby Id"
 
-[node name="HSep3" type="HSeparator" parent="Panel/VBox" unique_id=126873026]
+[node name="HSep3" type="HSeparator" parent="CenterContainer/Panel/VBox" unique_id=126873026]
 layout_mode = 2
 
-[node name="FriendsHeaderLabel" type="Label" parent="Panel/VBox" unique_id=222222222]
+[node name="FriendsHeaderLabel" type="Label" parent="CenterContainer/Panel/VBox" unique_id=222222222]
 layout_mode = 2
 text = "FRIENDS IN GAME"
 
-[node name="FriendsList" type="VBoxContainer" parent="Panel/VBox" unique_id=444444444]
+[node name="FriendsList" type="VBoxContainer" parent="CenterContainer/Panel/VBox" unique_id=444444444]
 layout_mode = 2
 theme_override_constants/separation = 4
 
-[node name="StatusLabel" type="Label" parent="Panel/VBox" unique_id=1095936264]
+[node name="StatusLabel" type="Label" parent="CenterContainer/Panel/VBox" unique_id=1095936264]
 layout_mode = 2
 autowrap_mode = 3

@@ -5,14 +5,15 @@ const UIStyle := preload("res://autoload/ui_style.gd")
 const _FRIENDS_POLL_INTERVAL: float = 6.0
 const _LOBBY_ID_MIN_LENGTH:   int   = 17
 
-@onready var panel:               PanelContainer = $Panel
-@onready var title_label:         Label          = $Panel/VBox/Title
-@onready var status_label:        Label          = $Panel/VBox/StatusLabel
-@onready var host_btn:            Button         = $Panel/VBox/HostButton
-@onready var solo_btn:            Button         = $Panel/VBox/SoloButton
-@onready var lobby_field:         LineEdit       = $Panel/VBox/LobbyField
-@onready var _friends_header_lbl: Label          = $Panel/VBox/FriendsHeaderLabel
-@onready var _friends_list:       VBoxContainer  = $Panel/VBox/FriendsList
+@onready var panel:               PanelContainer = $CenterContainer/Panel
+@onready var title_label:         Label          = $CenterContainer/Panel/VBox/Title
+@onready var status_label:        Label          = $CenterContainer/Panel/VBox/StatusLabel
+@onready var host_btn:            Button         = $CenterContainer/Panel/VBox/HostButton
+@onready var solo_btn:            Button         = $CenterContainer/Panel/VBox/SoloButton
+@onready var lobby_field:         LineEdit       = $CenterContainer/Panel/VBox/LobbyField
+@onready var _friends_sep:        HSeparator     = $CenterContainer/Panel/VBox/HSep3
+@onready var _friends_header_lbl: Label          = $CenterContainer/Panel/VBox/FriendsHeaderLabel
+@onready var _friends_list:       VBoxContainer  = $CenterContainer/Panel/VBox/FriendsList
 
 var _pending_host: bool = false
 
@@ -112,28 +113,26 @@ func _refresh_friends() -> void:
 	for child: Node in _friends_list.get_children():
 		child.queue_free()
 
-	if not NetworkManager.steam_ready():
-		_add_friends_placeholder("Connecting to Steam…")
-		return
+	var has_friends: bool = false
+	if NetworkManager.steam_ready():
+		var count: int = Steam.getFriendCount(Steam.FRIEND_FLAG_IMMEDIATE)
+		for i: int in range(count):
+			var friend_id: int = Steam.getFriendByIndex(i, Steam.FRIEND_FLAG_IMMEDIATE)
+			var game_info: Dictionary = Steam.getFriendGamePlayed(friend_id)
+			if game_info.is_empty():
+				continue
+			var lobby_id: int = int(game_info.get("lobby", 0))
+			if lobby_id == 0:
+				continue
+			var app_id: int = int(game_info.get("id", game_info.get("app_id", 0)))
+			if app_id != NetworkManager.APP_ID:
+				continue
+			_add_friend_row(Steam.getFriendPersonaName(friend_id), friend_id, lobby_id)
+			has_friends = true
 
-	var count: int = Steam.getFriendCount(Steam.FRIEND_FLAG_IMMEDIATE)
-	var found: int = 0
-	for i: int in range(count):
-		var friend_id: int = Steam.getFriendByIndex(i, Steam.FRIEND_FLAG_IMMEDIATE)
-		var game_info: Dictionary = Steam.getFriendGamePlayed(friend_id)
-		if game_info.is_empty():
-			continue
-		var lobby_id: int = int(game_info.get("lobby", 0))
-		if lobby_id == 0:
-			continue
-		var app_id: int = int(game_info.get("id", game_info.get("app_id", 0)))
-		if app_id != NetworkManager.APP_ID:
-			continue
-		_add_friend_row(Steam.getFriendPersonaName(friend_id), friend_id, lobby_id)
-		found += 1
-
-	if found == 0:
-		_add_friends_placeholder("No friends in game")
+	_friends_sep.visible        = has_friends
+	_friends_header_lbl.visible = has_friends
+	_friends_list.visible       = has_friends
 
 func _add_friend_row(friend_name: String, friend_id: int, lobby_id: int) -> void:
 	var row := HBoxContainer.new()
@@ -157,10 +156,6 @@ func _add_friend_row(friend_name: String, friend_id: int, lobby_id: int) -> void
 	row.add_child(btn)
 
 	_friends_list.add_child(row)
-
-func _add_friends_placeholder(msg: String) -> void:
-	var lbl: Label = UIStyle.make_label(msg, UIStyle.SIZE_SM, UIStyle.ON_SURFACE_DIM, false)
-	_friends_list.add_child(lbl)
 
 func _join_friend(lobby_id: int) -> void:
 	_set_status("Joining…")
