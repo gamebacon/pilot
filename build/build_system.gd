@@ -1,13 +1,16 @@
 class_name BuildSystem
 extends Node
 
-const SNAP_DIST := 0.3
-const ROT_STEP  := 90.0
-const MAX_REACH := 15.0
+const SNAP_DIST             := 0.3
+const ROT_STEP              := 90.0
+const MAX_REACH             := 15.0
+const FOUNDATION_REACH      : float = 4.0
+const FOUNDATION_MAX_HEIGHT : float = 6.0
+const FOUNDATION_SNAP_DIST  : float = 1.2
 
-var _active      := false
-var _snapping    := false
-var _place_held  := false
+var _active     := false
+var _snapping   := false
+var _place_held := false
 
 var _pieces_root: Node3D
 var _placed_root: Node3D
@@ -89,7 +92,12 @@ func _process(_delta: float) -> void:
 	_update_ghost()
 
 func _update_ghost() -> void:
-	var cam  := player.camera
+	var cam := player.camera
+
+	if _is_foundation_held():
+		_update_ghost_foundation(cam)
+		return
+
 	var from := cam.global_position
 	var dir  := -cam.global_transform.basis.z
 	var to   := from + dir * MAX_REACH
@@ -117,6 +125,11 @@ func _update_ghost() -> void:
 	if _snapping:
 		_ghost.global_position += offset
 
+	_update_ghost_material()
+
+# ── Ghost material ────────────────────────────────────────────────────────────
+
+func _update_ghost_material() -> void:
 	if _is_blocked() or (not _is_foundation_held() and not _is_free_placement() and not _snapping):
 		_ghost.material_override = _mat_blocked
 	elif _snapping:
@@ -137,6 +150,74 @@ func _is_blocked() -> bool:
 	return player.get_world_3d().direct_space_state.intersect_shape(params, 1).size() > 0
 
 # ── Snap logic ───────────────────────────────────────────────────────────────
+
+# ── Foundation ghost ─────────────────────────────────────────────────────────
+
+func _update_ghost_foundation(cam: Camera3D) -> void:
+	# Yaw only — slab stays flat and faces the player's look direction.
+	var yaw: float = cam.global_transform.basis.get_euler(EULER_ORDER_YXZ).y
+	_ghost.global_rotation = Vector3(0.0, yaw, 0.0)
+
+	# Position at a fixed distance along the full camera direction so pitch
+	# naturally raises or lowers the ghost on rugged terrain.
+	_ghost.global_position = cam.global_position + (-cam.global_transform.basis.z) * FOUNDATION_REACH
+
+	# Snap to an adjacent placed foundation if one is close enough.
+	var snap: Dictionary       = _find_foundation_grid_snap()
+	var is_snapping: bool      = not snap.is_empty()
+	if is_snapping:
+		_ghost.global_position = snap["position"]
+		_ghost.global_rotation = Vector3(0.0, snap["yaw"], 0.0)
+	_snapping = is_snapping
+	_ghost.show()
+
+	var too_high: bool    = _ghost.global_position.y > player.global_position.y + FOUNDATION_MAX_HEIGHT
+	var blocked: bool     = _is_blocked() or _is_foundation_underground() or too_high
+	if blocked:
+		_ghost.material_override = _mat_blocked
+	elif is_snapping:
+		_ghost.material_override = _mat_snap
+	else:
+		_ghost.material_override = _mat_free
+
+# Casts a ray straight down through the ghost to detect whether the terrain
+# surface is above the foundation's bottom face (i.e. it would be underground).
+func _is_foundation_underground() -> bool:
+	var center:           Vector3 = _ghost.global_position
+	var foundation_bottom: float  = center.y - _held_size.y * 0.5
+	var space := player.get_world_3d().direct_space_state
+	var query := PhysicsRayQueryParameters3D.create(
+		Vector3(center.x, center.y + 4.0, center.z),
+		Vector3(center.x, center.y - 4.0, center.z))
+	query.exclude = [player.get_rid()]
+	var hit := space.intersect_ray(query)
+	return not hit.is_empty() and (hit["position"].y as float) > foundation_bottom + 0.05
+
+# Returns {"position": Vector3, "yaw": float} for the closest open adjacent
+# grid slot, or {} if none is within FOUNDATION_SNAP_DIST.
+func _find_foundation_grid_snap() -> Dictionary:
+	var ghost_pos  := _ghost.global_position
+	var best_dist  := FOUNDATION_SNAP_DIST
+	var best       : Dictionary = {}
+	for piece: PlacedPiece in get_tree().get_nodes_in_group("placed_pieces"):
+		if not piece.is_foundation: continue
+		var pb := piece.global_transform.basis
+		# Four edge-adjacent neighbour positions in the existing foundation's local axes.
+		var candidates: Array[Vector3] = [
+			piece.global_position + pb.x * piece.size.x,
+			piece.global_position - pb.x * piece.size.x,
+			piece.global_position + pb.z * piece.size.z,
+			piece.global_position - pb.z * piece.size.z,
+		]
+		for candidate: Vector3 in candidates:
+			# Match existing foundation's Y so the grid stays level.
+			var snap_pos := Vector3(candidate.x, piece.global_position.y, candidate.z)
+			# Use flat (XZ) distance so height differences don't prevent snapping.
+			var flat_d := Vector2(ghost_pos.x - snap_pos.x, ghost_pos.z - snap_pos.z).length()
+			if flat_d < best_dist:
+				best_dist = flat_d
+				best = {"position": snap_pos, "yaw": piece.global_rotation.y}
+	return best
 
 func _find_snap_offset() -> Vector3:
 	var ghost_sockets    := _ghost_world_sockets()
@@ -177,6 +258,7 @@ func _is_free_placement() -> bool:
 func _place() -> void:
 	if not _ghost.visible or _is_blocked() or _held_id.is_empty(): return
 	if not _is_foundation_held() and not _is_free_placement() and not _snapping: return
+	if _is_foundation_held() and _ghost.material_override == _mat_blocked: return
 
 	var net_id  := _assign_net_id()
 	var world_t := _ghost.global_transform
