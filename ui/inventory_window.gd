@@ -385,8 +385,10 @@ func _rebuild_close_hint() -> void:
 		_close_hint.get_parent().remove_child(_close_hint)
 		_close_hint.queue_free()
 		_close_hint = null
-	_close_hint = UIStyle.make_badge("B" if InputHelper.is_joy() else "Esc", "Close")
-	_title_row.add_child(_close_hint)
+
+	if InputHelper.is_joy():
+		_close_hint = UIStyle.make_badge("B", "Close")
+		_title_row.add_child(_close_hint)
 
 func _on_input_device_changed(using_joy: bool) -> void:
 	if not visible: return
