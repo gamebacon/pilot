@@ -9,6 +9,9 @@ var _world_gen_counter: int = 0   # world-gen items (1 – 99_999)
 # O(1) lookup for all world items (not in any inventory).
 var _world_items: Dictionary = {}   # net_id -> PhysicalItem
 
+# Single source of truth for all placed build pieces.
+var _placed_pieces: Dictionary = {}  # net_id -> Node3D
+
 func _ready() -> void:
 	add_to_group("world")
 
@@ -49,6 +52,7 @@ func _request_players() -> void:
 	for pid in _current_ids():
 		_do_spawn.rpc_id(id, pid)
 	_do_spawn.rpc(id)
+	_rpc_receive_piece_snapshot.rpc_id(id, _build_piece_snapshot())
 
 @rpc("authority", "reliable", "call_local")
 func _do_spawn(id: int) -> void:
@@ -96,6 +100,33 @@ func _find_item(net_id: int) -> PhysicalItem:
 		_world_items.erase(net_id)
 		return null
 	return item
+
+# ── Placed piece registry ─────────────────────────────────────────────────────
+
+func register_piece(net_id: int, piece: Node3D) -> void:
+	if net_id != 0:
+		_placed_pieces[net_id] = piece
+
+func unregister_piece(net_id: int) -> Node3D:
+	var piece: Node3D = _placed_pieces.get(net_id) as Node3D
+	_placed_pieces.erase(net_id)
+	return piece if piece and is_instance_valid(piece) else null
+
+func _build_piece_snapshot() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for net_id: int in _placed_pieces:
+		var piece: Node3D = _placed_pieces[net_id] as Node3D
+		if not piece or not is_instance_valid(piece): continue
+		result.append({
+			"net_id":    net_id,
+			"item_id":   piece.get_meta("item_id", ""),
+			"transform": piece.global_transform,
+		})
+	return result
+
+@rpc("authority", "reliable")
+func _rpc_receive_piece_snapshot(snapshot: Array[Dictionary]) -> void:
+	($BuildSystem as BuildSystem).apply_piece_snapshot(snapshot)
 
 # ── Item spawn ────────────────────────────────────────────────────────────────
 

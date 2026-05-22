@@ -1,3 +1,4 @@
+class_name BuildSystem
 extends Node
 
 const SNAP_DIST := 0.3
@@ -224,7 +225,7 @@ func _remove_piece() -> void:
 	if not piece: return
 
 	var net_id := piece.net_id
-	piece.queue_free()
+	_apply_remove_local(net_id)
 
 	if NetworkManager.is_active() and net_id != 0:
 		if NetworkManager.is_server():
@@ -289,18 +290,23 @@ func _sync_place(item_id: String, world_transform: Transform3D, net_id: int) -> 
 func _apply_place_local(item_id: String, world_transform: Transform3D, net_id: int) -> void:
 	var data := ItemRegistry.get_item(item_id)
 	if not data: return
+	var world: Node = get_tree().get_first_node_in_group("world")
+	var node: Node3D
 	if data is PlaceableItemData:
 		var scene := (data as PlaceableItemData).get_placement_scene()
-		if scene:
-			var node := scene.instantiate()
-			node.set("net_id", net_id)
-			_placed_root.add_child(node)
-			node.set_deferred("global_transform", world_transform)
+		if not scene: return
+		node = scene.instantiate()
+		node.set("net_id", net_id)
+		_placed_root.add_child(node)
 	else:
-		var piece := PlacedPiece.build(data.size, data.color)
+		var piece: PlacedPiece = PlacedPiece.build(data.size, data.color)
 		piece.net_id = net_id
 		_pieces_root.add_child(piece)
-		piece.set_deferred("global_transform", world_transform)
+		node = piece
+	node.set_meta("item_id", item_id)
+	node.set_deferred("global_transform", world_transform)
+	if world:
+		world.register_piece(net_id, node)
 
 @rpc("any_peer", "reliable")
 func _request_remove(net_id: int) -> void:
@@ -316,10 +322,15 @@ func _sync_remove(net_id: int) -> void:
 	_apply_remove_local(net_id)
 
 func _apply_remove_local(net_id: int) -> void:
-	for piece in get_tree().get_nodes_in_group("placed_pieces"):
-		if (piece as PlacedPiece).net_id == net_id:
-			piece.queue_free()
-			return
+	var world: Node = get_tree().get_first_node_in_group("world")
+	if not world: return
+	var piece: Node3D = world.unregister_piece(net_id)
+	if piece:
+		piece.queue_free()
+
+func apply_piece_snapshot(snapshot: Array[Dictionary]) -> void:
+	for entry: Dictionary in snapshot:
+		_apply_place_local(entry["item_id"], entry["transform"], entry["net_id"])
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

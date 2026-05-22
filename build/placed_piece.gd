@@ -7,7 +7,7 @@ var net_id: int     = 0  # 0 = not networked
 
 # Creates a fully assembled PlacedPiece ready to add to the scene.
 static func build(p_size: Vector3, p_color: Color) -> PlacedPiece:
-	var piece := PlacedPiece.new()
+	var piece: PlacedPiece = PlacedPiece.new()
 	piece.size  = p_size
 	piece.color = p_color
 
@@ -41,7 +41,7 @@ static func _tinted_mat(base: Color) -> StandardMaterial3D:
 # ── Socket system ─────────────────────────────────────────────────────────────
 
 # 6 face centres + 8 corners = 14 attachment points in local space.
-static func sockets_for(s: Vector3) -> Array:
+static func sockets_for(s: Vector3) -> Array[Vector3]:
 	var hx := s.x * 0.5
 	var hy := s.y * 0.5
 	var hz := s.z * 0.5
@@ -58,8 +58,8 @@ static func sockets_for(s: Vector3) -> Array:
 func _ready() -> void:
 	add_to_group("placed_pieces")
 
-func get_world_sockets() -> Array:
-	var result := []
+func get_world_sockets() -> Array[Vector3]:
+	var result: Array[Vector3] = []
 	for local_pos: Vector3 in PlacedPiece.sockets_for(size):
 		result.append(global_transform * local_pos)
 	return result

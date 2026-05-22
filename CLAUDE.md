@@ -1,4 +1,4 @@
-v4
+v5
 
 # Pilot — Claude Code Context
 
@@ -10,6 +10,117 @@ Engine: Godot 4.6, Forward+, Jolt Physics. Steam multiplayer via GodotSteam + `S
 
 ---
 
+## GDScript coding conventions
+
+### Typing — always explicit, no exceptions
+
+Every variable, parameter, and function must carry a type. GDScript's type inference (`:=`) is allowed only when the right-hand side is a constructor call or a literal whose type is unambiguous. For all function calls use an explicit annotation. Typed collections must include their element type: `Array[String]`, `Array[Dictionary]`, not bare `Array`.
+
+```gdscript
+# ✅ correct
+var speed: float = 5.0
+var slot: Inventory.Slot = inventory.get_slot(idx)
+var taken: Inventory.DragStack = inventory.take_items(idx, qty)
+func get_display_name() -> String: ...
+func find_player(id: int) -> Player: ...
+func try_pickup(item: PhysicalItem) -> bool: ...
+
+# ❌ wrong — type unknown to the compiler and to the reader
+var slot := inventory.get_slot(idx)
+var taken := inventory.take_items(idx, qty)
+func get_display_name(): ...
+```
+
+`:=` is fine for literals and `new()`:
+
+```gdscript
+var count   := 0                     # int literal — OK
+var label   := Label.new()           # constructor — OK
+var drag    := Inventory.DragStack.new() # constructor — OK
+```
+
+Every function parameter must also be typed, including inner-class methods and lambdas:
+
+```gdscript
+# ✅
+func _fill(target: Inventory, stack: Inventory.DragStack) -> Inventory.DragStack:
+
+# ❌
+func _fill(target, stack):
+```
+
+### No magic numbers
+
+Every numeric constant that has a meaning must be named. Define constants at the top of the file or in a relevant class/autoload.
+
+```gdscript
+# ✅
+const SNAP_DISTANCE:      float = 0.3
+const MAX_CARRY_MASS:     float = 30.0
+const ENEMY_BASE_CAP:     int   = 3
+const SPAWN_INTERVAL_MIN: float = 1.2
+
+if distance < SNAP_DISTANCE: ...
+
+# ❌
+if distance < 0.3: ...
+enemies_alive_cap = 3 + (wave - 1) * 2
+```
+
+### Function naming
+
+Function names must communicate what the function **does** and, when it returns a value, **what it returns**.
+
+| Pattern | Use for |
+| --- | --- |
+| `get_*` | Returns a value, no side-effects (`get_active_slot() -> Slot`) |
+| `find_*` | Searches and may return null (`find_player(id) -> Player`) |
+| `is_*` / `has_*` / `can_*` | Returns `bool` (`is_full()`, `has_item(id)`, `can_place()`) |
+| `try_*` | Attempts an operation, returns `bool` success (`try_pickup(item)`) |
+| `request_*` | Sends a network request, no direct return (`request_chest_take(...)`) |
+| `_on_*` | Signal/event handler (`_on_inv_changed()`) |
+| `_build_*` | Constructs and adds UI nodes (`_build_slot(...)`) |
+| `_server_do_*` | Server-only execution path (`_server_do_pickup(...)`) |
+| `_rpc_*` | RPC target functions — never called directly (`_rpc_sync_inventory(...)`) |
+
+Avoid vague names like `update()`, `handle()`, `process()`, `do_thing()`. If you can't name it clearly, the function is probably doing too much.
+
+### Variable naming
+
+- Booleans: always `is_`, `has_`, or `can_` prefix (`is_sprinting`, `has_authority`, `can_snap`)
+- Collections: plural noun (`slots`, `enemies`, `pending_ids`)
+- Private fields: `_` prefix (`_slots`, `_world_items`, `_applying_remote`)
+- Avoid abbreviations except for universally understood ones (`idx`, `qty`, `pos`, `inv`, `id`)
+
+### Accessing engine singletons from RefCounted
+
+`RefCounted` classes (controllers, data helpers) are not Nodes and don't have `get_tree()` or `multiplayer`. Use these patterns instead:
+
+```gdscript
+# SceneTree
+var tree: SceneTree = Engine.get_main_loop() as SceneTree
+
+# MultiplayerAPI — use tree.root (a Node), NOT tree.multiplayer (doesn't exist)
+var is_server: bool = tree.root.multiplayer.is_server()
+
+# Finding nodes by group
+var world: Node = tree.get_first_node_in_group("world")
+```
+
+Always guard against `tree == null` (e.g. during unit test or tool context).
+
+---
+
+## Patterns to follow
+
+- Always fetch items via `ItemRegistry.get_item(id)`, never hardcode resource paths at runtime
+- Use `GameState.push_ui()` / `pop_ui()` for any overlay that blocks gameplay
+- Server-authoritative: gameplay decisions (spawning, removal, placement) run on server and are replicated via `@rpc("authority", ...)` or request→relay pattern
+- Player authority check: `is_multiplayer_authority()` before processing local input; guard is required in both `_unhandled_input` and `_physics_process`
+- `NetworkManager.is_active()` before any net-specific code — game must work in solo mode too
+
+---
+
 ## Entry point
 
 `ui/lobby.tscn` is the main scene. From there players host or join, then load into `world/world.tscn`.
@@ -18,17 +129,16 @@ Engine: Godot 4.6, Forward+, Jolt Physics. Steam multiplayer via GodotSteam + `S
 
 ## Autoloads (singletons)
 
-| Name             | File                          | Role                                                                   |
-| ---------------- | ----------------------------- | ---------------------------------------------------------------------- | ---------------------------- |
+| Name             | File                          | Role                                                                    |
+| ---------------- | ----------------------------- | ----------------------------------------------------------------------- |
 | `GameState`      | `autoload/game_state.gd`      | Currency, `is_building` flag, `ui_open` stack (push/pop), `debug_mode` |
-| `InputHelper`    | `autoload/input_helper.gd`    | Detects gamepad vs keyboard (`is_joy()`)                               |
-| `AudioManager`   | `autoload/audio_manager.gd`   | SFX/music bus wrapper                                                  |
-| `ItemRegistry`   | `autoload/item_registry.gd`   | Preloads all `ItemData` resources; lookup by string `id`               |
-| `ItemTooltip`    | `autoload/item_tooltip.gd`    | Floating tooltip shown on hover/controller cursor                      | TODO: this shouldn't be here |
-| `NetworkManager` | `autoload/network_manager.gd` | Steam lobby + `SteamMultiplayerPeer`; handshake, player dict           |
-| `UIStyle`        | `autoload/ui_style.gd`        | Shared fonts, colours, sizes, badge helpers for all UI                 |
+| `InputHelper`    | `autoload/input_helper.gd`    | Detects gamepad vs keyboard (`is_joy()`)                                |
+| `AudioManager`   | `autoload/audio_manager.gd`   | SFX/music bus wrapper                                                   |
+| `ItemRegistry`   | `autoload/item_registry.gd`   | Preloads all `ItemData` resources; lookup by string `id`                |
+| `ItemTooltip`    | `autoload/item_tooltip.gd`    | Floating tooltip shown on hover/controller cursor                       |
+| `NetworkManager` | `autoload/network_manager.gd` | Steam lobby + `SteamMultiplayerPeer`; handshake, player dict            |
 
-`UIStyle` is NOT in `project.godot` autoloads — it is loaded via `preload` where needed. All other five are autoloads.
+`UIStyle` (`autoload/ui_style.gd`) is NOT in `project.godot` autoloads — loaded via `preload` where needed.
 
 ---
 
@@ -88,7 +198,7 @@ player.tscn (player/player.gd : CharacterBody3D)
 - Snap: scans nearby `placed_pieces` group for socket alignment within `SNAP_DIST = 0.3 m`
 - Ghost colours: white = free, green = snapping, red = blocked
 - Placement synced via RPC: client sends `_request_place` to server, server applies locally and relays to others
-- Placed pieces are `PlacedPiece` nodes in group `placed_pieces`
+- Placed pieces are `PlacedPiece` nodes in group `placed_pieces`; `world.gd` owns `_placed_pieces` dict (net_id → Node3D) as single source of truth
 
 ### Wave spawner (`world/wave_spawner.gd`)
 
@@ -229,43 +339,10 @@ UIStyle.set_hint(container, [["@attack", "Place"], ["@exit_build", "Cancel"]])
 
 ## Input system
 
-### Rules
-
 - **Never check `event.keycode`, `event.physical_keycode`, or `event.button_index` directly in gameplay code.** All input goes through named InputMap actions.
 - Use `event.is_action_pressed("action_name")` in `_unhandled_input` / `_input`.
 - Use `Input.is_action_pressed("action_name")` for polling in `_process` / `_physics_process`.
-- All bindings live in `project.godot` `[input]` section — one place to change, everything updates.
-
-### Input actions
-
-| Action                          | Keyboard    | Gamepad       | Context           |
-| ------------------------------- | ----------- | ------------- | ----------------- |
-| `move_forward/back/left/right`  | WASD        | Left stick    | Gameplay          |
-| `look_left/right/up/down`       | —           | Right stick   | Gameplay          |
-| `jump`                          | Space       | B             | Gameplay          |
-| `sprint`                        | Shift       | R-stick click | Gameplay (toggle) |
-| `attack`                        | LMB         | R-trigger     | Gameplay          |
-| `interact`                      | RMB         | L-trigger     | Gameplay          |
-| `drop`                          | Q           | A             | Gameplay          |
-| `open_inventory`                | E           | X             | Gameplay          |
-| `build_mode`                    | B           | Y             | Gameplay          |
-| `place`                         | LMB release | R-trigger     | Build mode        |
-| `exit_build`                    | RMB release | A             | Build mode        |
-| `rotate_y/x/z`                  | R / X / Z   | D-pad         | Build mode        |
-| `reset_rotation`                | Q           | R1            | Build mode        |
-| `remove_piece`                  | F           | L1            | Build mode        |
-| `hotbar_slot_1`–`hotbar_slot_8` | 1–8         | —             | Gameplay          |
-| `hotbar_cycle_prev`             | —           | L1            | Gameplay          |
-| `hotbar_cycle_next`             | —           | R1            | Gameplay          |
-| `hotbar_row_prev`               | —           | D-pad up      | Gameplay          |
-| `hotbar_row_next`               | —           | D-pad down    | Gameplay          |
-| `craft_tab_prev`                | Page Up     | L1            | Crafting UI       |
-| `craft_tab_next`                | Page Down   | R1            | Crafting UI       |
-| `inventory_next`                | Tab         | —             | Gameplay          |
-| `debug_toggle`                  | F3          | L-stick click | Any               |
-| `ui_accept`                     | Enter       | B             | UI                |
-| `ui_cancel`                     | Escape      | A             | UI                |
-| `ui_left/right/up/down`         | Arrow keys  | D-pad         | UI navigation     |
+- All bindings live in `project.godot` `[input]` section — check there for action names.
 
 ---
 
@@ -294,128 +371,3 @@ UIStyle.set_hint(container, [["@attack", "Place"], ["@exit_build", "Cancel"]])
 - `items/resources/weapons/` — sword in wooden/stone/iron tiers
 - `items/resources/ores/` — flint, coal, copper, iron, quartz, gold, amber, diamond, obsidian
 - `world/ores/` — `OreData` deposit resources (rarity, drop item, etc.)
-
----
-
-## Patterns to follow
-
-- Always fetch items via `ItemRegistry.get_item(id)`, never hardcode resource paths at runtime
-- Use `GameState.push_ui()` / `pop_ui()` for any overlay that blocks gameplay
-- Server-authoritative: gameplay decisions (spawning, removal, placement) run on server and are replicated via `@rpc("authority", ...)` or request→relay pattern
-- Player authority check: `is_multiplayer_authority()` before processing local input; guard is required in both `_unhandled_input` and `_physics_process`
-- `NetworkManager.is_active()` before any net-specific code — game must work in solo mode too
-
----
-
-## GDScript coding conventions
-
-### Typing — always explicit, no exceptions
-
-Every variable, parameter, and function must carry a type. GDScript's type inference (`:=`) is allowed only when the right-hand side is a constructor call or a literal whose type is unambiguous. For all function calls use an explicit annotation.
-
-```gdscript
-# ✅ correct
-var speed: float = 5.0
-var slot: Inventory.Slot = inventory.get_slot(idx)
-var taken: Inventory.DragStack = inventory.take_items(idx, qty)
-func get_display_name() -> String: ...
-func find_player(id: int) -> Player: ...
-func try_pickup(item: PhysicalItem) -> bool: ...
-
-# ❌ wrong — type unknown to the compiler and to the reader
-var slot := inventory.get_slot(idx)
-var taken := inventory.take_items(idx, qty)
-func get_display_name(): ...
-```
-
-`:=` is fine for literals and `new()`:
-
-```gdscript
-var count   := 0          # int literal — OK
-var label   := Label.new() # constructor — OK
-var drag    := Inventory.DragStack.new() # constructor — OK
-```
-
-Every function parameter must also be typed, including inner-class methods and lambdas:
-
-```gdscript
-# ✅
-func _fill(target: Inventory, stack: Inventory.DragStack) -> Inventory.DragStack:
-
-# ❌
-func _fill(target, stack):
-```
-
-### No magic numbers
-
-Every numeric constant that has a meaning must be named. Define constants at the top of the file or in a relevant class/autoload.
-
-```gdscript
-# ✅
-const SNAP_DISTANCE:    float = 0.3
-const MAX_CARRY_MASS:   float = 30.0
-const ENEMY_BASE_CAP:   int   = 3
-const SPAWN_INTERVAL_MIN: float = 1.2
-
-if distance < SNAP_DISTANCE: ...
-
-# ❌
-if distance < 0.3: ...
-enemies_alive_cap = 3 + (wave - 1) * 2
-```
-
-### Function naming
-
-Function names must communicate what the function **does** and, when it returns a value, **what it returns**.
-
-| Pattern | Use for |
-| --- | --- |
-| `get_*` | Returns a value, no side-effects (`get_active_slot() -> Slot`) |
-| `find_*` | Searches and may return null (`find_player(id) -> Player`) |
-| `is_*` / `has_*` / `can_*` | Returns `bool` (`is_full()`, `has_item(id)`, `can_place()`) |
-| `try_*` | Attempts an operation, returns `bool` success (`try_pickup(item)`) |
-| `request_*` | Sends a network request, no direct return (`request_chest_take(...)`) |
-| `_on_*` | Signal/event handler (`_on_inv_changed()`) |
-| `_build_*` | Constructs and adds UI nodes (`_build_slot(...)`) |
-| `_server_do_*` | Server-only execution path (`_server_do_pickup(...)`) |
-| `_rpc_*` | RPC target functions — never called directly (`_rpc_sync_inventory(...)`) |
-
-Avoid vague names like `update()`, `handle()`, `process()`, `do_thing()`. If you can't name it clearly, the function is probably doing too much.
-
-### Variable naming
-
-- Booleans: always `is_`, `has_`, or `can_` prefix (`is_sprinting`, `has_authority`, `can_snap`)
-- Collections: plural noun (`slots`, `enemies`, `pending_ids`)
-- Private fields: `_` prefix (`_slots`, `_world_items`, `_applying_remote`)
-- Avoid abbreviations except for universally understood ones (`idx`, `qty`, `pos`, `inv`, `id`)
-
-### Accessing engine singletons from RefCounted
-
-`RefCounted` classes (controllers, data helpers) are not Nodes and don't have `get_tree()` or `multiplayer`. Use these patterns instead:
-
-```gdscript
-# SceneTree
-var tree: SceneTree = Engine.get_main_loop() as SceneTree
-
-# MultiplayerAPI — use tree.root (a Node), NOT tree.multiplayer (doesn't exist)
-var is_server: bool = tree.root.multiplayer.is_server()
-
-# Finding nodes by group
-var world: Node = tree.get_first_node_in_group("world")
-```
-
-Always guard against `tree == null` (e.g. during unit test or tool context).
-
-### Constants vs hard-coded values
-
-Any value used in more than one place, or that has a physical/gameplay meaning, is a named constant. Thresholds, capacities, distances, timings — all named.
-
-```gdscript
-# ✅ — at the top of the file or inner class
-const COLLIDE_THRESHOLD: float = 1.5
-const COLLIDE_COOLDOWN:  float = 0.3
-
-# ❌ — scattered magic numbers
-if impact < 1.5: return
-_collide_cooldown = 0.3
-```
