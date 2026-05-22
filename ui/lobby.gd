@@ -11,6 +11,7 @@ const _LOBBY_ID_MIN_LENGTH:   int   = 17
 @onready var host_btn:            Button         = $CenterContainer/Panel/VBox/HostButton
 @onready var solo_btn:            Button         = $CenterContainer/Panel/VBox/SoloButton
 @onready var lobby_field:         LineEdit       = $CenterContainer/Panel/VBox/LobbyField
+@onready var _steam_sep:          HSeparator     = $CenterContainer/Panel/VBox/HSep2
 @onready var _friends_sep:        HSeparator     = $CenterContainer/Panel/VBox/HSep3
 @onready var _friends_header_lbl: Label          = $CenterContainer/Panel/VBox/FriendsHeaderLabel
 @onready var _friends_list:       VBoxContainer  = $CenterContainer/Panel/VBox/FriendsList
@@ -37,8 +38,7 @@ func _ready() -> void:
 	if NetworkManager.steam_ready():
 		_on_steam_became_ready()
 	else:
-		_set_status("Connecting to Steam…")
-		_refresh_friends()
+		_set_steam_ui_visible(false)
 
 	solo_btn.call_deferred("grab_focus")
 
@@ -54,6 +54,7 @@ func _process(delta: float) -> void:
 		_refresh_friends()
 
 func _on_steam_became_ready() -> void:
+	_set_steam_ui_visible(true)
 	status_label.text = ""
 	_connect_avatar_signal()
 	_refresh_friends()
@@ -181,9 +182,14 @@ func _on_avatar_loaded(steam_id: int, width: int, data: PackedByteArray) -> void
 func _set_status(msg: String) -> void:
 	status_label.text = msg
 
+func _set_steam_ui_visible(is_visible: bool) -> void:
+	_steam_sep.visible  = is_visible
+	host_btn.visible    = is_visible
+	lobby_field.visible = is_visible
+
 func _set_buttons(enabled: bool) -> void:
-	solo_btn.disabled  = not enabled
-	host_btn.disabled  = not enabled
+	solo_btn.disabled    = not enabled
+	host_btn.disabled    = not enabled
 	lobby_field.editable = enabled
 
 # ── Styling ───────────────────────────────────────────────────────────────────

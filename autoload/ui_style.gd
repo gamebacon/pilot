@@ -46,8 +46,6 @@ const FONT       := preload("res://ui/fonts/satoshi/Satoshi-Regular.ttf")
 const FONT_BOLD  := preload("res://ui/fonts/satoshi/Satoshi-Bold.ttf")
 const FONT_LIGHT := preload("res://ui/fonts/satoshi/Satoshi-Light.ttf")
 
-const FONT_MACHINE := preload("res://ui/fonts/itc-machine/ITC Machine Std Bold.otf")
-
 # ── Font sizes ─────────────────────────────────────────────────────────────────
 const SIZE_XS      := 9
 const SIZE_SM      := 11

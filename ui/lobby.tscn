@@ -51,13 +51,16 @@ placeholder_text = "Existing lobby Id"
 
 [node name="HSep3" type="HSeparator" parent="CenterContainer/Panel/VBox" unique_id=126873026]
 layout_mode = 2
+visible = false
 
 [node name="FriendsHeaderLabel" type="Label" parent="CenterContainer/Panel/VBox" unique_id=222222222]
 layout_mode = 2
+visible = false
 text = "FRIENDS IN GAME"
 
 [node name="FriendsList" type="VBoxContainer" parent="CenterContainer/Panel/VBox" unique_id=444444444]
 layout_mode = 2
+visible = false
 theme_override_constants/separation = 4
 
 [node name="StatusLabel" type="Label" parent="CenterContainer/Panel/VBox" unique_id=1095936264]
