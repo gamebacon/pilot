@@ -1,13 +1,13 @@
-class_name PlacedPlank
+class_name PlacedPiece
 extends StaticBody3D
 
 var size:   Vector3 = Vector3(1.0, 1.0, 1.0)
 var color:  Color   = Color(0.7, 0.46, 0.2)
 var net_id: int     = 0  # 0 = not networked
 
-# Creates a fully assembled PlacedPlank ready to add to the scene.
-static func build(p_size: Vector3, p_color: Color) -> PlacedPlank:
-	var piece := PlacedPlank.new()
+# Creates a fully assembled PlacedPiece ready to add to the scene.
+static func build(p_size: Vector3, p_color: Color) -> PlacedPiece:
+	var piece := PlacedPiece.new()
 	piece.size  = p_size
 	piece.color = p_color
 
@@ -26,7 +26,7 @@ static func build(p_size: Vector3, p_color: Color) -> PlacedPlank:
 
 	return piece
 
-# Wood-grain tonal variation: stronger shift on R, weaker on G/B.
+# Slight tonal variation so adjacent same-material pieces are visually distinct.
 static func _tinted_mat(base: Color) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
 	var v   := randf_range(-0.07, 0.07)
@@ -56,10 +56,10 @@ static func sockets_for(s: Vector3) -> Array:
 	]
 
 func _ready() -> void:
-	add_to_group("placed_planks")
+	add_to_group("placed_pieces")
 
 func get_world_sockets() -> Array:
 	var result := []
-	for local_pos: Vector3 in PlacedPlank.sockets_for(size):
+	for local_pos: Vector3 in PlacedPiece.sockets_for(size):
 		result.append(global_transform * local_pos)
 	return result

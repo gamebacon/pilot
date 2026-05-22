@@ -85,10 +85,10 @@ player.tscn (player/player.gd : CharacterBody3D)
 ### Build system (`build/build_system.gd`)
 
 - `B` enters build mode; shows a ghost box (BoxMesh) at raycast hit point
-- Snap: scans nearby `placed_planks` group for socket alignment within `SNAP_DIST = 0.3 m`
+- Snap: scans nearby `placed_pieces` group for socket alignment within `SNAP_DIST = 0.3 m`
 - Ghost colours: white = free, green = snapping, red = blocked
 - Placement synced via RPC: client sends `_request_place` to server, server applies locally and relays to others
-- Placed pieces are `PlacedPlank` nodes in group `placed_planks`
+- Placed pieces are `PlacedPiece` nodes in group `placed_pieces`
 
 ### Wave spawner (`world/wave_spawner.gd`)
 
@@ -280,7 +280,7 @@ UIStyle.set_hint(container, [["@attack", "Place"], ["@exit_build", "Cancel"]])
 | `wave_spawner`    | `WaveSpawner` node                    |
 | `enemies`         | All live enemy bodies                 |
 | `harvestable`     | Trees, rocks, ore deposits            |
-| `placed_planks`   | All `PlacedPlank` nodes               |
+| `placed_pieces`   | All `PlacedPiece` nodes               |
 | `physical_items`  | All `PhysicalItem` nodes in the world |
 | `crafting_ui`     | `CraftingUI` node                     |
 | `inventory_hud`   | `InventoryHUD` node                   |

@@ -8,7 +8,7 @@ var _active      := false
 var _snapping    := false
 var _place_held  := false
 
-var _planks_root: Node3D
+var _pieces_root: Node3D
 var _placed_root: Node3D
 
 # Data-only: what the active slot currently holds (no node reference).
@@ -27,9 +27,9 @@ var _mat_blocked: StandardMaterial3D
 # ── Lifecycle ────────────────────────────────────────────────────────────────
 
 func _ready() -> void:
-	_planks_root      = Node3D.new()
-	_planks_root.name = "PlacedPlanks"
-	add_child(_planks_root)
+	_pieces_root      = Node3D.new()
+	_pieces_root.name = "PlacedPieces"
+	add_child(_pieces_root)
 
 	_placed_root      = Node3D.new()
 	_placed_root.name = "PlacedItems"
@@ -139,7 +139,7 @@ func _find_snap_offset() -> Vector3:
 	var ghost_sockets := _ghost_world_sockets()
 	var best_dist     := SNAP_DIST
 	var best_offset   := Vector3.ZERO
-	for piece in get_tree().get_nodes_in_group("placed_planks"):
+	for piece in get_tree().get_nodes_in_group("placed_pieces"):
 		for placed_pos: Vector3 in piece.get_world_sockets():
 			for ghost_pos: Vector3 in ghost_sockets:
 				var d := ghost_pos.distance_to(placed_pos)
@@ -151,7 +151,7 @@ func _find_snap_offset() -> Vector3:
 func _ghost_world_sockets() -> Array:
 	if _held_data is PlaceableItemData: return []
 	var result := []
-	for local_pos: Vector3 in PlacedPlank.sockets_for(_held_size):
+	for local_pos: Vector3 in PlacedPiece.sockets_for(_held_size):
 		result.append(_ghost.global_transform * local_pos)
 	return result
 
@@ -216,15 +216,15 @@ func _remove_piece() -> void:
 	if hit.is_empty(): return
 
 	var collider: Object = hit["collider"]
-	var plank: PlacedPlank = null
-	if collider is PlacedPlank:
-		plank = collider
-	elif collider != null and collider.get_parent() is PlacedPlank:
-		plank = collider.get_parent()
-	if not plank: return
+	var piece: PlacedPiece = null
+	if collider is PlacedPiece:
+		piece = collider
+	elif collider != null and collider.get_parent() is PlacedPiece:
+		piece = collider.get_parent()
+	if not piece: return
 
-	var net_id := plank.net_id
-	plank.queue_free()
+	var net_id := piece.net_id
+	piece.queue_free()
 
 	if NetworkManager.is_active() and net_id != 0:
 		if NetworkManager.is_server():
@@ -297,9 +297,9 @@ func _apply_place_local(item_id: String, world_transform: Transform3D, net_id: i
 			_placed_root.add_child(node)
 			node.set_deferred("global_transform", world_transform)
 	else:
-		var piece := PlacedPlank.build(data.size, data.color)
+		var piece := PlacedPiece.build(data.size, data.color)
 		piece.net_id = net_id
-		_planks_root.add_child(piece)
+		_pieces_root.add_child(piece)
 		piece.set_deferred("global_transform", world_transform)
 
 @rpc("any_peer", "reliable")
@@ -316,8 +316,8 @@ func _sync_remove(net_id: int) -> void:
 	_apply_remove_local(net_id)
 
 func _apply_remove_local(net_id: int) -> void:
-	for piece in get_tree().get_nodes_in_group("placed_planks"):
-		if (piece as PlacedPlank).net_id == net_id:
+	for piece in get_tree().get_nodes_in_group("placed_pieces"):
+		if (piece as PlacedPiece).net_id == net_id:
 			piece.queue_free()
 			return
 
