@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="BuildingItemData" format=3]
+
+[ext_resource type="Script" path="res://items/building_item_data.gd" id="1_bdata"]
+
+[resource]
+script = ExtResource("1_bdata")
+id = "wall"
+display_name = "Wall"
+description = "Sticks and vines woven into a flimsy wall panel."
+color = Color(0.58, 0.46, 0.26, 1)
+size = Vector3(3, 2, 1.5)
+mass = 5.0
+is_placeable = true
+piece_type = "wall"
+piece_tier = 1
+piece_hp = 50
+upgrade_to = ""

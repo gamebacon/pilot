@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="BuildingItemData" format=3]
+
+[ext_resource type="Script" path="res://items/building_item_data.gd" id="1_bdata"]
+
+[resource]
+script = ExtResource("1_bdata")
+id = "wall_stone"
+display_name = "Stone Wall"
+description = "A thick stone rampart. Walkable top surface. Snaps to foundation edges or tower faces."
+color = Color(0.55, 0.53, 0.50, 1)
+size = Vector3(3, 2, 1.5)
+mass = 30.0
+is_placeable = true
+piece_type = "wall"
+piece_tier = 3
+piece_hp = 500
+upgrade_to = ""

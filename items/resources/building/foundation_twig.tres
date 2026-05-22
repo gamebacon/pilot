@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BuildingItemData" format=3]
+
+[ext_resource type="Script" path="res://items/building_item_data.gd" id="1_bdata"]
+
+[resource]
+script = ExtResource("1_bdata")
+id = "foundation"
+display_name = "Foundation"
+description = "A rough platform of lashed sticks. Flimsy but gets the job done."
+color = Color(0.62, 0.50, 0.30, 1)
+size = Vector3(3, 0.3, 3)
+mass = 8.0
+is_placeable = true
+is_foundation = true
+can_rotate = false
+piece_type = "foundation"
+piece_tier = 1
+piece_hp = 75
+upgrade_to = ""

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BuildingItemData" format=3]
+
+[ext_resource type="Script" path="res://items/building_item_data.gd" id="1_bdata"]
+
+[resource]
+script = ExtResource("1_bdata")
+id = "tower_wood"
+display_name = "Wooden Tower"
+description = "A tall wooden tower. Sits on its own foundation cell. Walls dock into its four faces."
+color = Color(0.45, 0.30, 0.13, 1)
+size = Vector3(3, 6, 3)
+mass = 50.0
+is_placeable = true
+is_foundation = false
+can_rotate = false
+piece_type = "tower"
+piece_tier = 1
+piece_hp = 300
+upgrade_to = "tower_stone"

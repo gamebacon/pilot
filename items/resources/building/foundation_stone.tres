@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BuildingItemData" format=3]
+
+[ext_resource type="Script" path="res://items/building_item_data.gd" id="1_bdata"]
+
+[resource]
+script = ExtResource("1_bdata")
+id = "foundation_stone"
+display_name = "Stone Foundation"
+description = "A heavy stone platform. Grid-locked. Everything snaps to it."
+color = Color(0.50, 0.48, 0.46, 1)
+size = Vector3(3, 0.3, 3)
+mass = 40.0
+is_placeable = true
+is_foundation = true
+can_rotate = false
+free_placement = false
+piece_type = "foundation"
+piece_tier = 3
+piece_hp = 600
