@@ -1,3 +1,5 @@
+v4
+
 # Pilot — Claude Code Context
 
 ## What this is
@@ -302,3 +304,118 @@ UIStyle.set_hint(container, [["@attack", "Place"], ["@exit_build", "Cancel"]])
 - Server-authoritative: gameplay decisions (spawning, removal, placement) run on server and are replicated via `@rpc("authority", ...)` or request→relay pattern
 - Player authority check: `is_multiplayer_authority()` before processing local input; guard is required in both `_unhandled_input` and `_physics_process`
 - `NetworkManager.is_active()` before any net-specific code — game must work in solo mode too
+
+---
+
+## GDScript coding conventions
+
+### Typing — always explicit, no exceptions
+
+Every variable, parameter, and function must carry a type. GDScript's type inference (`:=`) is allowed only when the right-hand side is a constructor call or a literal whose type is unambiguous. For all function calls use an explicit annotation.
+
+```gdscript
+# ✅ correct
+var speed: float = 5.0
+var slot: Inventory.Slot = inventory.get_slot(idx)
+var taken: Inventory.DragStack = inventory.take_items(idx, qty)
+func get_display_name() -> String: ...
+func find_player(id: int) -> Player: ...
+func try_pickup(item: PhysicalItem) -> bool: ...
+
+# ❌ wrong — type unknown to the compiler and to the reader
+var slot := inventory.get_slot(idx)
+var taken := inventory.take_items(idx, qty)
+func get_display_name(): ...
+```
+
+`:=` is fine for literals and `new()`:
+
+```gdscript
+var count   := 0          # int literal — OK
+var label   := Label.new() # constructor — OK
+var drag    := Inventory.DragStack.new() # constructor — OK
+```
+
+Every function parameter must also be typed, including inner-class methods and lambdas:
+
+```gdscript
+# ✅
+func _fill(target: Inventory, stack: Inventory.DragStack) -> Inventory.DragStack:
+
+# ❌
+func _fill(target, stack):
+```
+
+### No magic numbers
+
+Every numeric constant that has a meaning must be named. Define constants at the top of the file or in a relevant class/autoload.
+
+```gdscript
+# ✅
+const SNAP_DISTANCE:    float = 0.3
+const MAX_CARRY_MASS:   float = 30.0
+const ENEMY_BASE_CAP:   int   = 3
+const SPAWN_INTERVAL_MIN: float = 1.2
+
+if distance < SNAP_DISTANCE: ...
+
+# ❌
+if distance < 0.3: ...
+enemies_alive_cap = 3 + (wave - 1) * 2
+```
+
+### Function naming
+
+Function names must communicate what the function **does** and, when it returns a value, **what it returns**.
+
+| Pattern | Use for |
+| --- | --- |
+| `get_*` | Returns a value, no side-effects (`get_active_slot() -> Slot`) |
+| `find_*` | Searches and may return null (`find_player(id) -> Player`) |
+| `is_*` / `has_*` / `can_*` | Returns `bool` (`is_full()`, `has_item(id)`, `can_place()`) |
+| `try_*` | Attempts an operation, returns `bool` success (`try_pickup(item)`) |
+| `request_*` | Sends a network request, no direct return (`request_chest_take(...)`) |
+| `_on_*` | Signal/event handler (`_on_inv_changed()`) |
+| `_build_*` | Constructs and adds UI nodes (`_build_slot(...)`) |
+| `_server_do_*` | Server-only execution path (`_server_do_pickup(...)`) |
+| `_rpc_*` | RPC target functions — never called directly (`_rpc_sync_inventory(...)`) |
+
+Avoid vague names like `update()`, `handle()`, `process()`, `do_thing()`. If you can't name it clearly, the function is probably doing too much.
+
+### Variable naming
+
+- Booleans: always `is_`, `has_`, or `can_` prefix (`is_sprinting`, `has_authority`, `can_snap`)
+- Collections: plural noun (`slots`, `enemies`, `pending_ids`)
+- Private fields: `_` prefix (`_slots`, `_world_items`, `_applying_remote`)
+- Avoid abbreviations except for universally understood ones (`idx`, `qty`, `pos`, `inv`, `id`)
+
+### Accessing engine singletons from RefCounted
+
+`RefCounted` classes (controllers, data helpers) are not Nodes and don't have `get_tree()` or `multiplayer`. Use these patterns instead:
+
+```gdscript
+# SceneTree
+var tree: SceneTree = Engine.get_main_loop() as SceneTree
+
+# MultiplayerAPI — use tree.root (a Node), NOT tree.multiplayer (doesn't exist)
+var is_server: bool = tree.root.multiplayer.is_server()
+
+# Finding nodes by group
+var world: Node = tree.get_first_node_in_group("world")
+```
+
+Always guard against `tree == null` (e.g. during unit test or tool context).
+
+### Constants vs hard-coded values
+
+Any value used in more than one place, or that has a physical/gameplay meaning, is a named constant. Thresholds, capacities, distances, timings — all named.
+
+```gdscript
+# ✅ — at the top of the file or inner class
+const COLLIDE_THRESHOLD: float = 1.5
+const COLLIDE_COOLDOWN:  float = 0.3
+
+# ❌ — scattered magic numbers
+if impact < 1.5: return
+_collide_cooldown = 0.3
+```

@@ -119,13 +119,14 @@ func _update_context_hints() -> void:
 	var has_placeable: bool = false
 	var has_multi: bool     = false
 	var has_item_in_hand: bool = false
-	var active_item = inv.active()
+	var active_slot := inv.active_slot_data()
+	var active_data := active_slot.get_data() as ItemData
 
 	if not inv.is_empty():
-		has_multi = inv.has_multiple_types()
-		if active_item:
+		has_multi = inv.occupied_hotbar_slots() > 1
+		if active_data:
 			has_item_in_hand = true
-			has_placeable = active_item.item_data.is_placeable
+			has_placeable = active_data.is_placeable
 	var has_joy: bool = InputHelper.is_joy()
 	var key := "%s|%d|%d|%d|%d" % [InputHelper.action_label("drop"), int(has_placeable), int(has_multi), int(has_joy), int(has_item_in_hand)]
 	if key != _last_context_key:

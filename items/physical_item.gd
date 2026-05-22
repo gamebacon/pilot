@@ -2,7 +2,7 @@ extends RigidBody3D
 class_name PhysicalItem
 
 @export var item_data: ItemData
-var net_id: int = 0  # assigned when spawned in multiplayer
+var net_id: int = 0   # assigned when spawned in multiplayer
 
 ## Current durability for tool/weapon items. -1 means no durability (not a tool).
 var current_durability: int = -1

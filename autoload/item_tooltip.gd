@@ -1,8 +1,7 @@
 extends Node
 
-## Singleton tooltip for ItemData. Any ItemSlotWidget shows this automatically.
-## Call show_for() to display, hide() to dismiss.
-## Pass an anchor Control to pin the tooltip beside a specific widget (controller nav).
+## Singleton tooltip for ItemData.
+## show_for(data, net_ids, durability, anchor) — net_ids shown in debug mode only.
 
 var _panel:  Panel         = null
 var _vbox:   VBoxContainer = null
@@ -14,11 +13,11 @@ func _ready() -> void:
 	add_child(layer)
 	_build(layer)
 
-func show_for(data: ItemData, physical: Array = [], anchor: Control = null) -> void:
-	if not data:
-		return
+func show_for(data: ItemData, net_ids: Array[int] = [], durability: int = -1,
+		anchor: Control = null) -> void:
+	if not data: return
 	_anchor = anchor
-	_populate(data, physical)
+	_populate(data, net_ids, durability)
 	_panel.visible = true
 
 func hide() -> void:
@@ -27,8 +26,7 @@ func hide() -> void:
 	_anchor = null
 
 func _process(_d: float) -> void:
-	if not _panel or not _panel.visible:
-		return
+	if not _panel or not _panel.visible: return
 	if _anchor and is_instance_valid(_anchor):
 		_position_near(_anchor)
 	else:
@@ -59,7 +57,7 @@ func _position_near(ctrl: Control) -> void:
 
 # ── Content ────────────────────────────────────────────────────────────────────
 
-func _populate(data: ItemData, physical: Array) -> void:
+func _populate(data: ItemData, net_ids: Array[int], durability: int) -> void:
 	for c in _vbox.get_children():
 		c.queue_free()
 
@@ -80,25 +78,33 @@ func _populate(data: ItemData, physical: Array) -> void:
 		desc.add_theme_color_override("font_color", UIStyle.ON_BACKGROUND_DIM)
 		_vbox.add_child(desc)
 
+	var sep := HSeparator.new()
+	sep.add_theme_constant_override("separation", 4)
+	_vbox.add_child(sep)
+
+	if data.mass > 0.0:      _stat("Mass",  "%.1f kg" % data.mass)
+	if data.carry_stack > 1: _stat("Stack", "×%d"     % data.carry_stack)
+	if data.price > 0:       _stat("Value", "$%d"      % data.price)
+
+	if data is ToolItemData:
+		var td  := data as ToolItemData
+		var cur := durability if durability >= 0 else td.durability_max
+		_stat("Type",       td.tool_type.capitalize())
+		_stat("Tier",       td.level_name)
+		_stat("Durability", "%d / %d" % [cur, td.durability_max])
+		if td.attack_damage  > 0.0: _stat("Attack",  "%.0f dmg" % td.attack_damage)
+		if td.harvest_damage > 0.0: _stat("Harvest", "%.0f dmg" % td.harvest_damage)
+
 	if GameState.debug_mode:
-		var sep := HSeparator.new()
-		sep.add_theme_constant_override("separation", 4)
-		_vbox.add_child(sep)
-
-		if data.mass > 0.0:      _stat("Mass",  "%.1f kg" % data.mass)
-		if data.carry_stack > 1: _stat("Stack", "×%d"     % data.carry_stack)
-		if data.price > 0:       _stat("Value", "$%d"      % data.price)
-
-		if data is ToolItemData:
-			var td  := data as ToolItemData
-			var cur := td.durability_max
-			if not physical.is_empty() and is_instance_valid(physical[0]):
-				cur = (physical[0] as PhysicalItem).current_durability
-			_stat("Type",       td.tool_type.capitalize())
-			_stat("Tier",       td.level_name)
-			_stat("Durability", "%d / %d" % [cur, td.durability_max])
-			if td.attack_damage  > 0.0: _stat("Attack",  "%.0f dmg" % td.attack_damage)
-			if td.harvest_damage > 0.0: _stat("Harvest", "%.0f dmg" % td.harvest_damage)
+		var dbg_sep := HSeparator.new()
+		dbg_sep.add_theme_constant_override("separation", 4)
+		_vbox.add_child(dbg_sep)
+		if net_ids.is_empty():
+			_stat("net_id", "— (no ids)")
+		else:
+			for i in net_ids.size():
+				var nid_str := str(net_ids[i]) if net_ids[i] != 0 else "0  ⚠ untracked"
+				_stat("[%d] net_id" % i, nid_str)
 
 func _stat(label: String, value: String) -> void:
 	var row := HBoxContainer.new()
@@ -122,7 +128,8 @@ func _stat(label: String, value: String) -> void:
 
 func _build(layer: CanvasLayer) -> void:
 	_panel = Panel.new()
-	_panel.add_theme_stylebox_override("panel", UIStyle.make_panel_style(UIStyle.SURFACE, UIStyle.SURFACE_BORDER, 6, 10))
+	_panel.add_theme_stylebox_override("panel",
+		UIStyle.make_panel_style(UIStyle.SURFACE, UIStyle.SURFACE_BORDER, 6, 10))
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_panel.visible      = false
 	layer.add_child(_panel)

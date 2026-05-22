@@ -547,7 +547,8 @@ func _maybe_spawn_log(root: Node3D, rng: RandomNumberGenerator) -> void:
 		return
 	var log := ITEM_SCENE.instantiate() as PhysicalItem
 	log.item_data = ItemRegistry.get_item("wood_log")
-	log.position  = Vector3(rng.randf_range(-1.2, 1.2), 0.4, rng.randf_range(-1.2, 1.2))
+	log.net_id    = get_tree().get_first_node_in_group("world").assign_world_gen_id()
+	log.position   = Vector3(rng.randf_range(-1.2, 1.2), 0.4, rng.randf_range(-1.2, 1.2))
 	log.rotation.y = rng.randf_range(0.0, TAU)
 	root.add_child(log)
 

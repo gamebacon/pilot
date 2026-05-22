@@ -7,6 +7,9 @@ var _chest_ui: Node = null
 
 func _ready() -> void:
 	add_to_group("chests")
+	# net_id is set by the build system before add_child, so propagate it now.
+	if net_id != 0:
+		inventory.container_net_id = net_id
 
 func get_interact_hint(_player: Node) -> String:
 	return InputHelper.action_label("interact") + "  Open Chest"

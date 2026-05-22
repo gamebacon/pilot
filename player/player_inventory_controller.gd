@@ -1,81 +1,73 @@
 class_name PlayerInventoryController
 extends InventoryController
 
-## Shift-click transfer rules for the player's inventory.
+## Shift-click transfer for the player inventory.
 ##
-## Single-inventory mode (player_inv == null):
-##   Main grid  → try hotbar first, then remaining main slots.
-##   Hotbar     → try main grid.
+## Dual mode (player_inv set, e.g. chest):
+##   External slot → fill player_inv.
+##   Player slot   → fill inv (external).
 ##
-## Dual-inventory mode (player_inv set, e.g. chest window):
-##   External slot → try to fill player_inv.
-##   Player slot   → try to fill inv (external).
+## Single mode (player_inv == null):
+##   Main grid ↔ hotbar within inv.
 
-func quick_transfer(items: Array[PhysicalItem], from_pos: int, from_inv: Inventory = null) -> Array[PhysicalItem]:
+func quick_transfer(stack: Inventory.DragStack, from_pos: int,
+		from_inv: Inventory = null) -> Inventory.DragStack:
 	if player_inv != null:
-		# Dual mode: move to the OTHER inventory.
-		if from_inv == player_inv:
-			return _fill_into(inv, items)
-		else:
-			return _fill_into(player_inv, items)
-	# Single mode: hotbar ↔ main within player inv.
+		# Shift-click from player_inv → push into external inv, and vice versa.
+		return _fill_into(inv if from_inv == player_inv else player_inv, stack)
 	if from_pos < Inventory.MAIN_SLOTS:
-		return _fill_hotbar(items)
-	return _fill_main(items)
+		return _fill_hotbar(stack)
+	return _fill_main(stack)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-## Fill [items] into [target], stacking first then using empty slots.
-func _fill_into(target: Inventory, items: Array[PhysicalItem]) -> Array[PhysicalItem]:
-	if items.is_empty() or target == null:
-		return items
-	var rem: Array[PhysicalItem] = items.duplicate()
-	var data := rem[0].item_data
+func _fill_into(target: Inventory, stack: Inventory.DragStack) -> Inventory.DragStack:
+	if stack == null or stack.is_empty() or target == null:
+		return stack
+	var remainder: Inventory.DragStack = stack.duplicate_stack()
 	for i in target.capacity:
-		if rem.is_empty(): return []
-		var s := target.get_slot(i)
-		if not s.is_empty() and s.item_data.id == data.id and not s.is_full():
-			rem = target.place_items(i, rem)
+		if remainder.is_empty(): return Inventory.DragStack.new()
+		var slot := target.get_slot(i)
+		if not slot.is_empty() and slot.item_id == remainder.item_id and not slot.is_full():
+			remainder = target.place_items(i, remainder)
 	for i in target.capacity:
-		if rem.is_empty(): return []
+		if remainder.is_empty(): return Inventory.DragStack.new()
 		if target.get_slot(i).is_empty():
-			rem = target.place_items(i, rem)
-	return rem
+			remainder = target.place_items(i, remainder)
+	return remainder
 
-func _fill_hotbar(items: Array[PhysicalItem]) -> Array[PhysicalItem]:
-	var rem: Array[PhysicalItem] = items.duplicate()
-	if rem.is_empty() or not inv: return rem
-	var data := rem[0].item_data
-	# Stack into matching hotbar slots first (active row preferred).
+func _fill_hotbar(stack: Inventory.DragStack) -> Inventory.DragStack:
+	if stack == null or stack.is_empty() or not inv:
+		return stack
+	var remainder: Inventory.DragStack = stack.duplicate_stack()
 	for r in Inventory.HOTBAR_ROWS:
 		var row := (inv.active_hotbar_row + r) % Inventory.HOTBAR_ROWS
 		for c in Inventory.HOTBAR_COLS:
-			if rem.is_empty(): return []
-			var idx := Inventory.MAIN_SLOTS + row * Inventory.HOTBAR_COLS + c
-			var s := inv.get_slot(idx)
-			if not s.is_empty() and s.item_data.id == data.id and not s.is_full():
-				rem = inv.place_items(idx, rem)
-	# Then empty hotbar slots.
+			if remainder.is_empty(): return Inventory.DragStack.new()
+			var idx  := Inventory.MAIN_SLOTS + row * Inventory.HOTBAR_COLS + c
+			var slot := inv.get_slot(idx)
+			if not slot.is_empty() and slot.item_id == remainder.item_id and not slot.is_full():
+				remainder = inv.place_items(idx, remainder)
 	for r in Inventory.HOTBAR_ROWS:
 		var row := (inv.active_hotbar_row + r) % Inventory.HOTBAR_ROWS
 		for c in Inventory.HOTBAR_COLS:
-			if rem.is_empty(): return []
+			if remainder.is_empty(): return Inventory.DragStack.new()
 			var idx := Inventory.MAIN_SLOTS + row * Inventory.HOTBAR_COLS + c
 			if inv.get_slot(idx).is_empty():
-				rem = inv.place_items(idx, rem)
-	return rem
+				remainder = inv.place_items(idx, remainder)
+	return remainder
 
-func _fill_main(items: Array[PhysicalItem]) -> Array[PhysicalItem]:
-	var rem: Array[PhysicalItem] = items.duplicate()
-	if rem.is_empty() or not inv: return rem
-	var data := rem[0].item_data
+func _fill_main(stack: Inventory.DragStack) -> Inventory.DragStack:
+	if stack == null or stack.is_empty() or not inv:
+		return stack
+	var remainder: Inventory.DragStack = stack.duplicate_stack()
 	for i in Inventory.MAIN_SLOTS:
-		if rem.is_empty(): return []
-		var s := inv.get_slot(i)
-		if not s.is_empty() and s.item_data.id == data.id and not s.is_full():
-			rem = inv.place_items(i, rem)
+		if remainder.is_empty(): return Inventory.DragStack.new()
+		var slot := inv.get_slot(i)
+		if not slot.is_empty() and slot.item_id == remainder.item_id and not slot.is_full():
+			remainder = inv.place_items(i, remainder)
 	for i in Inventory.MAIN_SLOTS:
-		if rem.is_empty(): return []
+		if remainder.is_empty(): return Inventory.DragStack.new()
 		if inv.get_slot(i).is_empty():
-			rem = inv.place_items(i, rem)
-	return rem
+			remainder = inv.place_items(i, remainder)
+	return remainder

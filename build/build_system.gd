@@ -6,14 +6,16 @@ const MAX_REACH := 15.0
 
 var _active      := false
 var _snapping    := false
-var _place_held  := false  # hysteresis gate: arm ≥ 0.9, disarm ≤ 0.1
-var _planks_root:  Node3D
-var _placed_root:  Node3D
-var _net_counter := 0
+var _place_held  := false
 
-var _held_item: PhysicalItem = null
-var _held_data: ItemData     = null
-var _held_size: Vector3      = Vector3.ONE
+var _planks_root: Node3D
+var _placed_root: Node3D
+
+# Data-only: what the active slot currently holds (no node reference).
+var _held_id:     String = ""
+var _held_data:   ItemData = null
+var _held_size:   Vector3 = Vector3.ONE
+var _held_net_id: int     = 0
 
 var player: Player = null
 @onready var _ghost: MeshInstance3D = $Ghost
@@ -44,12 +46,9 @@ func _ready() -> void:
 # ── Input ────────────────────────────────────────────────────────────────────
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not _active:
-		return
-
+	if not _active: return
 	if event.is_action_pressed("rotate") and not event.is_echo():
 		_ghost.global_rotate(Vector3.UP, deg_to_rad(ROT_STEP))
-
 	if event.is_action_pressed("exit_build"):
 		_exit()
 
@@ -67,18 +66,21 @@ func _process(_delta: float) -> void:
 		if _active: _exit()
 		else:       _enter()
 
-	if not _active:
-		return
-	# Keep held item in sync with whatever the player cycles to.
-	var active := player.inventory.active()
-	if active != null and active != _held_item:
-		_hold(active)
+	if not _active: return
+
+	# Sync held data with the player's active slot.
+	var slot := player.inventory.active_slot_data()
+	var cur_id := slot.item_id if slot else ""
+	if cur_id != _held_id:
+		if cur_id.is_empty():
+			_exit(); return
+		_hold_from_slot(slot)
 		_refresh_ghost_for_held()
+
 	if Input.is_action_just_pressed("attack") and not _place_held:
 		_place_held = true
 		_place()
-		if not _active:
-			return
+		if not _active: return
 	elif _place_held and Input.get_action_raw_strength("attack") <= 0.1:
 		_place_held = false
 	_update_ghost()
@@ -95,9 +97,7 @@ func _update_ghost() -> void:
 	var hit := space.intersect_ray(query)
 
 	if hit.is_empty():
-		_ghost.hide()
-		return
-
+		_ghost.hide(); return
 	_ghost.show()
 
 	var basis := _ghost.global_transform.basis
@@ -139,7 +139,6 @@ func _find_snap_offset() -> Vector3:
 	var ghost_sockets := _ghost_world_sockets()
 	var best_dist     := SNAP_DIST
 	var best_offset   := Vector3.ZERO
-
 	for piece in get_tree().get_nodes_in_group("placed_planks"):
 		for placed_pos: Vector3 in piece.get_world_sockets():
 			for ghost_pos: Vector3 in ghost_sockets:
@@ -147,12 +146,10 @@ func _find_snap_offset() -> Vector3:
 				if d < best_dist:
 					best_dist   = d
 					best_offset = placed_pos - ghost_pos
-
 	return best_offset
 
 func _ghost_world_sockets() -> Array:
-	if _held_data is PlaceableItemData:
-		return []
+	if _held_data is PlaceableItemData: return []
 	var result := []
 	for local_pos: Vector3 in PlacedPlank.sockets_for(_held_size):
 		result.append(_ghost.global_transform * local_pos)
@@ -161,41 +158,47 @@ func _ghost_world_sockets() -> Array:
 # ── Placement ────────────────────────────────────────────────────────────────
 
 func _place() -> void:
-	if not _ghost.visible or _is_blocked() or _held_item == null:
-		return
+	if not _ghost.visible or _is_blocked() or _held_id.is_empty(): return
 
 	var net_id  := _assign_net_id()
 	var world_t := _ghost.global_transform
 
-	_apply_place_local(_held_data.id, world_t, net_id)
+	_apply_place_local(_held_id, world_t, net_id)
 
-	_held_item.play_place_sound()
+	if player.inventory.active_slot_data():
+		# play sound via the held visual if it exists, else silent
+		if player._held_visual:
+			player._held_visual.play_place_sound()
 	_rumble(0.0, 0.7, 0.12)
 
 	if NetworkManager.is_active() and _held_data:
 		if NetworkManager.is_server():
-			_sync_place.rpc(_held_data.id, world_t, net_id)
+			_sync_place.rpc(_held_id, world_t, net_id)
 		else:
-			_request_place.rpc_id(1, _held_data.id, world_t, net_id)
+			_request_place.rpc_id(1, _held_id, world_t, net_id)
 
 	_consume_held()
 
 func _consume_held() -> void:
-	if GameState.debug_mode:
-		return  # keep item, keep placing indefinitely
-	player.inventory.remove(_held_item)
-	if NetworkManager.is_active() and _held_item.net_id != 0:
+	if GameState.debug_mode: return
+
+	var drag: Inventory.DragStack = player.inventory.remove_active_one()
+	if not drag.is_empty() and NetworkManager.is_active() and _held_net_id != 0:
 		var world := get_tree().get_first_node_in_group("world")
 		if world:
-			world.sync_item_consume(_held_item.net_id)
-	_held_item.queue_free()
-	_held_item = null
+			# Notify other peers that this net_id left all inventories.
+			# (No world copy existed; just ensure remote HUDs refresh cleanly.)
+			pass
 
-	var next_item := player.inventory.active()
-	if next_item == null:
+	_held_id     = ""
+	_held_data   = null
+	_held_net_id = 0
+
+	var slot: Inventory.Slot = player.inventory.active_slot_data()
+	if slot == null or slot.is_empty():
 		_exit()
 	else:
-		_hold(next_item)
+		_hold_from_slot(slot)
 		_refresh_ghost_for_held()
 
 # ── Remove placed piece ───────────────────────────────────────────────────────
@@ -210,9 +213,7 @@ func _remove_piece() -> void:
 	var query := PhysicsRayQueryParameters3D.create(from, to)
 	query.exclude = [player.get_rid()]
 	var hit := space.intersect_ray(query)
-
-	if hit.is_empty():
-		return
+	if hit.is_empty(): return
 
 	var collider: Object = hit["collider"]
 	var plank: PlacedPlank = null
@@ -220,9 +221,7 @@ func _remove_piece() -> void:
 		plank = collider
 	elif collider != null and collider.get_parent() is PlacedPlank:
 		plank = collider.get_parent()
-
-	if not plank:
-		return
+	if not plank: return
 
 	var net_id := plank.net_id
 	plank.queue_free()
@@ -235,16 +234,16 @@ func _remove_piece() -> void:
 
 # ── Held item management ─────────────────────────────────────────────────────
 
-func _hold(item: PhysicalItem) -> void:
-	_held_item = item
-	_held_data = item.item_data
-	_held_size = _held_data.size if _held_data else Vector3.ONE
+func _hold_from_slot(slot: Inventory.Slot) -> void:
+	_held_id     = slot.item_id
+	_held_data   = slot.get_data()
+	_held_size   = _held_data.size if _held_data else Vector3.ONE
+	_held_net_id = slot.active_net_id()
 
 func _refresh_ghost_for_held() -> void:
 	var box := BoxMesh.new()
 	box.size = _held_size
 	_ghost.mesh = box
-
 	var c := _held_data.color if _held_data else Color(1, 1, 1)
 	_mat_free = _ghost_mat(Color(c.r, c.g, c.b, 0.5))
 	_ghost.material_override = _mat_free
@@ -252,37 +251,31 @@ func _refresh_ghost_for_held() -> void:
 # ── Mode enter / exit ─────────────────────────────────────────────────────────
 
 func _enter() -> void:
-	if not player or GameState.is_building:
-		return
-	var active_item := player.inventory.active()
-	if not active_item:
-		return
+	if not player or GameState.is_building: return
+	var slot := player.inventory.active_slot_data()
+	if slot == null or slot.is_empty(): return
 	GameState.is_building = true
-
-	_hold(active_item)
+	_hold_from_slot(slot)
 	_refresh_ghost_for_held()
-
 	_active = true
 	_ghost.show()
 
 func _exit() -> void:
 	GameState.is_building = false
-	_active    = false
-	_held_item = null
-	_held_data = null
+	_active      = false
+	_held_id     = ""
+	_held_data   = null
+	_held_net_id = 0
 	_ghost.hide()
 
 # ── Multiplayer ───────────────────────────────────────────────────────────────
 
 func _assign_net_id() -> int:
-	_net_counter += 1
-	var my_id := 1 if not NetworkManager.is_active() else multiplayer.get_unique_id()
-	return my_id * 100000 + _net_counter
+	return get_tree().get_first_node_in_group("world").assign_item_id()
 
 @rpc("any_peer", "reliable")
 func _request_place(item_id: String, world_transform: Transform3D, net_id: int) -> void:
-	if not NetworkManager.is_server():
-		return
+	if not NetworkManager.is_server(): return
 	var sender_id := multiplayer.get_remote_sender_id()
 	_apply_place_local(item_id, world_transform, net_id)
 	for pid in NetworkManager.players.keys():
@@ -295,8 +288,7 @@ func _sync_place(item_id: String, world_transform: Transform3D, net_id: int) -> 
 
 func _apply_place_local(item_id: String, world_transform: Transform3D, net_id: int) -> void:
 	var data := ItemRegistry.get_item(item_id)
-	if not data:
-		return
+	if not data: return
 	if data is PlaceableItemData:
 		var scene := (data as PlaceableItemData).get_placement_scene()
 		if scene:
@@ -312,8 +304,7 @@ func _apply_place_local(item_id: String, world_transform: Transform3D, net_id: i
 
 @rpc("any_peer", "reliable")
 func _request_remove(net_id: int) -> void:
-	if not NetworkManager.is_server():
-		return
+	if not NetworkManager.is_server(): return
 	var sender_id := multiplayer.get_remote_sender_id()
 	_apply_remove_local(net_id)
 	for pid in NetworkManager.players.keys():
@@ -330,12 +321,11 @@ func _apply_remove_local(net_id: int) -> void:
 			piece.queue_free()
 			return
 
-# ── Ghost material ────────────────────────────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────────────────────
 
 func _rumble(weak: float, strong: float, duration: float) -> void:
 	var pads := Input.get_connected_joypads()
-	if pads.is_empty():
-		return
+	if pads.is_empty(): return
 	Input.start_joy_vibration(pads[0], weak, strong, duration)
 
 func _ghost_mat(color: Color) -> StandardMaterial3D:

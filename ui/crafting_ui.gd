@@ -238,24 +238,30 @@ func _make_recipe_row(recipe: CraftingRecipe, inv: Dictionary) -> Control:
 func _on_craft(recipe: CraftingRecipe) -> void:
 	if not _player: return
 	if not GameState.debug_mode:
-		var inv := _count_inventory()
 		for ing_id: String in recipe.ingredients:
-			if inv.get(ing_id, 0) < (recipe.ingredients[ing_id] as int): return
+			if _player.inventory.count_id(ing_id) < (recipe.ingredients[ing_id] as int): return
 		for ing_id: String in recipe.ingredients:
-			for i in (recipe.ingredients[ing_id] as int):
-				_remove_one(ing_id)
+			for _i in (recipe.ingredients[ing_id] as int):
+				_player.inventory.remove_one_by_id(ing_id)
 	var result_data := ItemRegistry.get_item(recipe.result_id)
 	if result_data:
-		for i in recipe.result_count:
-			var item := ITEM_SCENE.instantiate() as PhysicalItem
-			item.item_data = result_data
-			get_tree().current_scene.add_child(item)
-			item.global_position = _player.global_position + Vector3(0, 0.6, 0)
-			if not _player.pick_up(item):
-				item.scale           = Vector3.ONE
-				item.collision_layer = 1
-				item.collision_mask  = 1
-				item.freeze          = false
+		var world := get_tree().get_first_node_in_group("world")
+		for _i in recipe.result_count:
+			var net_id := 0
+			if world and NetworkManager.is_active():
+				net_id = world.assign_item_id()
+			var dur := (result_data as ToolItemData).durability_max if result_data is ToolItemData else -1
+			if not _player.inventory.add(recipe.result_id, net_id, dur):
+				# Inventory full — spawn in world
+				var spawn_pos : Vector3 = _player.global_position + Vector3(0, 0.6, 0)
+				if world:
+					world.request_spawn_item(recipe.result_id, spawn_pos)
+				else:
+					var item := ITEM_SCENE.instantiate() as PhysicalItem
+					item.item_data = result_data
+					item.current_durability = dur
+					get_tree().current_scene.add_child(item)
+					item.global_position = spawn_pos
 	var scroll_pos := _scroll.scroll_vertical
 	_refresh()
 	_scroll.scroll_vertical = scroll_pos
@@ -290,7 +296,7 @@ func _update_ctrl_cursor() -> void:
 			get_viewport().gui_get_focus_owner().release_focus()
 		var slot := el as ItemSlotWidget
 		slot.set_cursor(true)
-		if slot.item_data: ItemTooltip.show_for(slot.item_data, [], slot)
+		if slot.item_data: ItemTooltip.show_for(slot.item_data, slot._net_ids, slot._durability, slot)
 		else: ItemTooltip.hide()
 	elif el is Button:
 		(el as Button).grab_focus()
@@ -301,15 +307,8 @@ func _update_ctrl_cursor() -> void:
 func _count_inventory() -> Dictionary:
 	var counts := {}
 	if not _player: return counts
-	for item in _player.inventory.items:
-		if item.item_data:
-			counts[item.item_data.id] = counts.get(item.item_data.id, 0) + 1
+	for i in Inventory.TOTAL_SLOTS:
+		var slot : Inventory.Slot = _player.inventory.get_slot(i)
+		if not slot.is_empty():
+			counts[slot.item_id] = counts.get(slot.item_id, 0) + slot.quantity
 	return counts
-
-func _remove_one(item_id: String) -> void:
-	for item in _player.inventory.items:
-		if item.item_data and item.item_data.id == item_id:
-			_player.inventory.remove(item)
-			item.queue_free()
-			_player._reposition_carried()
-			return

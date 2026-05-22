@@ -1,7 +1,7 @@
 extends InventoryWindow
 class_name ChestUI
 
-const CHEST_ROWS := 3
+const CHEST_ROWS := 4
 
 var _chest: Node = null
 
@@ -9,7 +9,7 @@ func _window_title()  -> String: return "CHEST"
 func _window_layout() -> Layout: return Layout.CENTERED
 
 func _make_controller() -> InventoryController:
-	return PlayerInventoryController.new()
+	return ChestInventoryController.new()
 
 func open_chest(chest_node: Node, player: Node) -> void:
 	_chest = chest_node
@@ -32,15 +32,27 @@ func _on_opened() -> void:
 		return
 	_inv        = _chest.inventory
 	_player_inv = _player.inventory
-	_controller.inv        = _inv
-	_controller.player_inv = _player_inv
+	var c := _controller as ChestInventoryController
+	c.chest_net_id = _chest.inventory.container_net_id
+	c.inv          = _inv
+	c.player_inv   = _player_inv
 	if not _inv.changed.is_connected(_on_inv_changed):
 		_inv.changed.connect(_on_inv_changed)
 	if not _player_inv.changed.is_connected(_on_inv_changed):
 		_player_inv.changed.connect(_on_inv_changed)
+	if NetworkManager.is_active():
+		var world := get_tree().get_first_node_in_group("world")
+		if world and not world.chest_take_denied.is_connected(c.on_take_denied):
+			world.chest_take_denied.connect(c.on_take_denied)
 	_refresh()
 
 func _on_closed() -> void:
+	if NetworkManager.is_active():
+		var world := get_tree().get_first_node_in_group("world")
+		if world:
+			var c := _controller as ChestInventoryController
+			if world.chest_take_denied.is_connected(c.on_take_denied):
+				world.chest_take_denied.disconnect(c.on_take_denied)
 	if _inv and _inv.changed.is_connected(_on_inv_changed):
 		_inv.changed.disconnect(_on_inv_changed)
 	if _player_inv and _player_inv.changed.is_connected(_on_inv_changed):
