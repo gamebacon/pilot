@@ -4,9 +4,9 @@ extends Node
 const SNAP_DIST            := 0.3
 const ROT_STEP             := 90.0
 const MAX_REACH            : float = 15.0
-const FOUNDATION_REACH     : float = 4.0
-const FOUNDATION_MAX_HEIGHT: float = 6.0
-const FOUNDATION_SNAP_DIST : float = 1.2
+const FOUNDATION_REACH    : float = 4.0
+const FOUNDATION_MAX_HOVER: float = 2.0   # max gap between foundation bottom and terrain
+const FOUNDATION_SNAP_DIST: float = 1.2
 
 var _active     := false
 var _snapping   := false
@@ -147,8 +147,7 @@ func _update_ghost_foundation(cam: Camera3D) -> void:
 	_snapping = is_snapping
 	_ghost.show()
 
-	var too_high: bool = _ghost.global_position.y > player.global_position.y + FOUNDATION_MAX_HEIGHT
-	var blocked: bool  = _is_blocked() or _is_foundation_underground() or too_high
+	var blocked: bool = _is_blocked() or _foundation_ground_invalid()
 	if blocked:
 		_ghost.material_override = _mat_blocked
 	elif is_snapping:
@@ -156,18 +155,39 @@ func _update_ghost_foundation(cam: Camera3D) -> void:
 	else:
 		_ghost.material_override = _mat_free
 
-# Blocks placement if the terrain surface is above the foundation's bottom face,
-# meaning it would be partially buried.
-func _is_foundation_underground() -> bool:
+# Single downward raycast that enforces three ground rules:
+#   1. Underground  — terrain surface is above the foundation's bottom face.
+#   2. Too high     — foundation bottom is more than FOUNDATION_MAX_HOVER above terrain.
+#   3. Stacking     — the first thing below is another placed piece (foundation on foundation).
+# Returns true when placement should be blocked.
+func _foundation_ground_invalid() -> bool:
 	var center:            Vector3 = _ghost.global_position
 	var foundation_bottom: float   = center.y - _held_size.y * 0.5
 	var space: PhysicsDirectSpaceState3D   = player.get_world_3d().direct_space_state
 	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(
 		Vector3(center.x, center.y + 4.0, center.z),
-		Vector3(center.x, center.y - 4.0, center.z))
+		Vector3(center.x, center.y - 8.0, center.z))
 	query.exclude = [player.get_rid()]
 	var hit: Dictionary = space.intersect_ray(query)
-	return not hit.is_empty() and (hit["position"].y as float) > foundation_bottom + 0.05
+
+	if hit.is_empty():
+		return true  # nothing below at all — floating in void
+
+	# Stacking: another placed piece is directly below.
+	if hit["collider"] is PlacedPiece:
+		return true
+
+	var terrain_y: float = hit["position"].y as float
+
+	# Underground: terrain surface pokes above foundation bottom.
+	if terrain_y > foundation_bottom + 0.05:
+		return true
+
+	# Too high: foundation is hovering more than FOUNDATION_MAX_HOVER above terrain.
+	if foundation_bottom - terrain_y > FOUNDATION_MAX_HOVER:
+		return true
+
+	return false
 
 # Returns the snapped {position, yaw} for the nearest open grid slot adjacent to
 # any placed foundation, or an empty dict if nothing is within FOUNDATION_SNAP_DIST.
