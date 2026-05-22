@@ -17,9 +17,11 @@ static func all() -> Array[CraftingRecipe]:
 	return [
 		# Materials
 		_wooden_plank(),
-		_wooden_foundation(),
-		_wooden_wall(),
 		_chest(),
+		# Building — twig tier
+		_foundation_twig(),
+		_wall_twig(),
+		_tower_twig(),
 		# Tools
 		_axe_wooden(),
 		_axe_stone(),
@@ -51,22 +53,31 @@ static func _wooden_plank() -> CraftingRecipe:
 	r.tab            = "materials"
 	return r
 
-static func _wooden_foundation() -> CraftingRecipe:
-	var r            := CraftingRecipe.new()
-	r.display_name   = "Wooden Foundation"
-	r.result_id      = "wooden_foundation"
-	r.result_count   = 1
-	r.ingredients    = {"wooden_plank": 4}
-	r.tab            = "materials"
+static func _foundation_twig() -> CraftingRecipe:
+	var r          := CraftingRecipe.new()
+	r.display_name  = "Foundation"
+	r.result_id     = "foundation"
+	r.result_count  = 1
+	r.ingredients   = {"wood_log": 2}
+	r.tab           = "materials"
 	return r
 
-static func _wooden_wall() -> CraftingRecipe:
-	var r            := CraftingRecipe.new()
-	r.display_name   = "Wooden Wall"
-	r.result_id      = "wooden_wall"
-	r.result_count   = 1
-	r.ingredients    = {"wooden_plank": 3}
-	r.tab            = "materials"
+static func _wall_twig() -> CraftingRecipe:
+	var r          := CraftingRecipe.new()
+	r.display_name  = "Wall"
+	r.result_id     = "wall"
+	r.result_count  = 1
+	r.ingredients   = {"wood_log": 1}
+	r.tab           = "materials"
+	return r
+
+static func _tower_twig() -> CraftingRecipe:
+	var r          := CraftingRecipe.new()
+	r.display_name  = "Tower"
+	r.result_id     = "tower"
+	r.result_count  = 1
+	r.ingredients   = {"wood_log": 4}
+	r.tab           = "materials"
 	return r
 
 static func _chest() -> CraftingRecipe:

@@ -9,8 +9,10 @@ const _MATERIALS: Array = [
 	preload("res://items/resources/stone.tres"),
 	preload("res://items/resources/wood_log.tres"),
 	preload("res://items/resources/wooden_plank.tres"),
-	preload("res://items/resources/wooden_wall.tres"),
-	preload("res://items/resources/wooden_foundation.tres"),
+	# Building pieces — twig tier (only craftable tier for now)
+	preload("res://items/resources/building/foundation_twig.tres"),
+	preload("res://items/resources/building/wall_twig.tres"),
+	preload("res://items/resources/building/tower_twig.tres"),
 	# Tools
 	preload("res://items/resources/tools/axe_wooden.tres"),
 	preload("res://items/resources/tools/axe_stone.tres"),

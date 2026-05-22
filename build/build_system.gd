@@ -1,21 +1,25 @@
 class_name BuildSystem
 extends Node
 
-const SNAP_DIST            := 0.3
-const ROT_STEP             := 90.0
-const MAX_REACH            : float = 15.0
-const FOUNDATION_REACH    : float = 4.0
-const FOUNDATION_MAX_HOVER: float = 2.0   # max gap between foundation bottom and terrain
-const FOUNDATION_SNAP_DIST: float = 1.2
+const ROT_STEP:              float = 90.0
+const MAX_REACH:             float = 15.0
+# Foundation placement constants (camera-relative system).
+const FOUNDATION_REACH:      float = 4.0   # fixed camera-forward distance for slab placement
+const FOUNDATION_MAX_HOVER:  float = 2.0   # max gap between foundation bottom and terrain
+const FOUNDATION_SNAP_DIST:  float = 1.2   # XZ snap radius to adjacent placed foundations
+const FOUNDATION_MAX_SINK:   float = 0.5   # how deep the foundation bottom can go below terrain
+# Wall / tower placement constant.
+const BUILDING_SNAP_DIST:    float = 2.0   # XZ radius to snap onto a foundation centre
 
-var _active     := false
-var _snapping   := false
-var _place_held := false
+var _active:     bool = false
+var _snapping:   bool = false
+var _place_held: bool = false
+
+var _building_rot_offset: float = 0.0  # player's R-key offset on top of snapped foundation yaw
 
 var _pieces_root: Node3D
 var _placed_root: Node3D
 
-# Data-only snapshot of the active inventory slot — no node reference.
 var _held_id:     String   = ""
 var _held_data:   ItemData = null
 var _held_size:   Vector3  = Vector3.ONE
@@ -27,6 +31,7 @@ var player: Player = null
 var _mat_free:    StandardMaterial3D
 var _mat_snap:    StandardMaterial3D
 var _mat_blocked: StandardMaterial3D
+
 
 # ── Lifecycle ────────────────────────────────────────────────────────────────
 
@@ -53,7 +58,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not _active: return
 	if event.is_action_pressed("rotate") and not event.is_echo():
 		if _held_data != null and _held_data.can_rotate:
-			_ghost.global_rotate(Vector3.UP, deg_to_rad(ROT_STEP))
+			if _is_building_piece():
+				# Accumulate offset; ghost rotation is applied each frame in _update_ghost_building.
+				_building_rot_offset += deg_to_rad(ROT_STEP)
+			else:
+				_ghost.global_rotate(Vector3.UP, deg_to_rad(ROT_STEP))
 	if event.is_action_pressed("exit_build"):
 		_exit()
 
@@ -73,7 +82,6 @@ func _process(_delta: float) -> void:
 
 	if not _active: return
 
-	# Exit if the active slot switched to a non-placeable item.
 	var slot: Inventory.Slot = player.inventory.active_slot_data()
 	var cur_id: String = slot.item_id if slot else ""
 	if cur_id != _held_id:
@@ -92,9 +100,12 @@ func _process(_delta: float) -> void:
 
 	_update_ghost()
 
+# ── Ghost update ──────────────────────────────────────────────────────────────
+
 func _update_ghost() -> void:
 	var cam: Camera3D = player.camera
 
+	# Foundations use a camera-relative path — no terrain raycast needed.
 	if _is_foundation_held():
 		_update_ghost_foundation(cam)
 		return
@@ -111,31 +122,20 @@ func _update_ghost() -> void:
 		_ghost.hide(); return
 	_ghost.show()
 
-	var basis: Basis   = _ghost.global_transform.basis
-	var hh:    Vector3 = _held_size * 0.5
-	var half_extent: float = (
-		abs(basis.x.dot(hit.normal)) * hh.x +
-		abs(basis.y.dot(hit.normal)) * hh.y +
-		abs(basis.z.dot(hit.normal)) * hh.z
-	)
-	_ghost.global_position = hit.position + hit.normal * half_extent
+	if _is_building_piece():
+		_update_ghost_building(hit)
+	else:
+		_update_ghost_free(hit)
 
-	var offset: Vector3 = _find_snap_offset()
-	_snapping = offset != Vector3.ZERO
-	if _snapping:
-		_ghost.global_position += offset
-
-	_update_ghost_material()
-
-# ── Foundation ghost ──────────────────────────────────────────────────────────
+# ── Foundation ghost (your original system) ───────────────────────────────────
 
 func _update_ghost_foundation(cam: Camera3D) -> void:
-	# Yaw only — slab stays flat and faces where the player is looking.
+	# Yaw only — slab stays flat regardless of camera pitch.
 	var yaw: float = cam.global_transform.basis.get_euler(EULER_ORDER_YXZ).y
 	_ghost.global_rotation = Vector3(0.0, yaw, 0.0)
 
-	# Fixed distance along the full camera direction; pitch naturally moves it
-	# up or down to compensate for rugged terrain.
+	# Float at fixed distance along the camera forward direction so pitch
+	# naturally compensates for slopes.
 	_ghost.global_position = cam.global_position + (-cam.global_transform.basis.z) * FOUNDATION_REACH
 
 	# Snap to an adjacent placed foundation when one is close enough.
@@ -155,14 +155,14 @@ func _update_ghost_foundation(cam: Camera3D) -> void:
 	else:
 		_ghost.material_override = _mat_free
 
-# Single downward raycast that enforces three ground rules:
-#   1. Underground  — terrain surface is above the foundation's bottom face.
-#   2. Too high     — foundation bottom is more than FOUNDATION_MAX_HOVER above terrain.
-#   3. Stacking     — the first thing below is another placed piece (foundation on foundation).
-# Returns true when placement should be blocked.
+## Enforces three ground rules for foundation placement:
+##   1. Underground  — terrain surface is above the foundation's bottom face.
+##   2. Too high     — foundation bottom is more than FOUNDATION_MAX_HOVER above terrain.
+##   3. Stacking     — something directly below is another placed piece.
 func _foundation_ground_invalid() -> bool:
 	var center:            Vector3 = _ghost.global_position
 	var foundation_bottom: float   = center.y - _held_size.y * 0.5
+
 	var space: PhysicsDirectSpaceState3D   = player.get_world_3d().direct_space_state
 	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(
 		Vector3(center.x, center.y + 4.0, center.z),
@@ -171,30 +171,28 @@ func _foundation_ground_invalid() -> bool:
 	var hit: Dictionary = space.intersect_ray(query)
 
 	if hit.is_empty():
-		return true  # nothing below at all — floating in void
+		return true
 
-	# Stacking: another placed piece is directly below.
 	if hit["collider"] is PlacedPiece:
 		return true
 
 	var terrain_y: float = hit["position"].y as float
 
-	# Underground: terrain surface pokes above foundation bottom.
-	if terrain_y > foundation_bottom + 0.05:
+	if terrain_y > foundation_bottom + FOUNDATION_MAX_SINK:
 		return true
 
-	# Too high: foundation is hovering more than FOUNDATION_MAX_HOVER above terrain.
 	if foundation_bottom - terrain_y > FOUNDATION_MAX_HOVER:
 		return true
 
 	return false
 
-# Returns the snapped {position, yaw} for the nearest open grid slot adjacent to
-# any placed foundation, or an empty dict if nothing is within FOUNDATION_SNAP_DIST.
+## Returns {position, yaw} for the nearest open grid slot adjacent to any placed
+## foundation, or an empty Dictionary if nothing is within FOUNDATION_SNAP_DIST.
 func _find_foundation_grid_snap() -> Dictionary:
 	var ghost_pos: Vector3    = _ghost.global_position
 	var best_dist: float      = FOUNDATION_SNAP_DIST
 	var best:      Dictionary = {}
+
 	for piece: PlacedPiece in get_tree().get_nodes_in_group("placed_pieces"):
 		if not piece.is_foundation: continue
 		var pb: Basis = piece.global_transform.basis
@@ -212,47 +210,73 @@ func _find_foundation_grid_snap() -> Dictionary:
 			if flat_d < best_dist:
 				best_dist = flat_d
 				best = {"position": snap_pos, "yaw": piece.global_rotation.y}
+
 	return best
 
-# ── Wall / piece snap ─────────────────────────────────────────────────────────
+# ── Building ghost (walls, towers) ───────────────────────────────────────────
 
-# Finds the closest socket pair between the ghost and any placed foundation,
-# returns a world-space offset to apply to the ghost position.
-func _find_snap_offset() -> Vector3:
-	var ghost_sockets: Array[Vector3] = _ghost_world_sockets()
-	var best_dist:     float          = SNAP_DIST
-	var best_offset:   Vector3        = Vector3.ZERO
-	var ghost_center:  Vector3        = _ghost.global_position
+func _update_ghost_building(hit: Dictionary) -> void:
+	# Start at the raycast surface so the ghost is always visible.
+	var hh: Vector3 = _held_size * 0.5
+	_ghost.global_position = hit.position + hit.normal * hh.y
+
+	# Snap XZ+Y to the nearest foundation centre and inherit its yaw.
+	var snap: Dictionary = _find_foundation_center_snap()
+	_snapping = not snap.is_empty()
+
+	if _snapping:
+		_ghost.global_position = snap["position"]
+		_ghost.global_rotation = Vector3(0.0, (snap["yaw"] as float) + _building_rot_offset, 0.0)
+
+	if _is_blocked() or not _snapping:
+		_ghost.material_override = _mat_blocked
+	else:
+		_ghost.material_override = _mat_snap
+
+## Returns {position, yaw} for the nearest foundation within BUILDING_SNAP_DIST,
+## or an empty Dictionary when nothing is close enough.
+func _find_foundation_center_snap() -> Dictionary:
+	var ghost_xz:  Vector2   = Vector2(_ghost.global_position.x, _ghost.global_position.z)
+	var best_dist: float     = BUILDING_SNAP_DIST
+	var best:      Dictionary = {}
+
 	for piece: PlacedPiece in get_tree().get_nodes_in_group("placed_pieces"):
 		if not piece.is_foundation: continue
-		if piece.global_position.distance_to(ghost_center) > MAX_REACH + piece.size.length() * 0.5:
-			continue
-		for placed_pos: Vector3 in piece.get_world_sockets():
-			for ghost_pos: Vector3 in ghost_sockets:
-				var d: float = ghost_pos.distance_to(placed_pos)
-				if d < best_dist:
-					best_dist   = d
-					best_offset = placed_pos - ghost_pos
-	return best_offset
+		var piece_xz: Vector2 = Vector2(piece.global_position.x, piece.global_position.z)
+		var d: float = ghost_xz.distance_to(piece_xz)
+		if d < best_dist:
+			best_dist = d
+			var top_y: float = piece.global_position.y + piece.size.y * 0.5
+			best = {
+				"position": Vector3(piece.global_position.x, top_y + _held_size.y * 0.5, piece.global_position.z),
+				"yaw":      piece.global_rotation.y,
+			}
 
-func _ghost_world_sockets() -> Array[Vector3]:
-	if _held_data is PlaceableItemData: return []
-	var result: Array[Vector3] = []
-	for local_pos: Vector3 in PlacedPiece.sockets_for(_held_size):
-		result.append(_ghost.global_transform * local_pos)
-	return result
+	return best
 
-# ── Placement predicates ──────────────────────────────────────────────────────
+# ── Free ghost (chests, interactables) ───────────────────────────────────────
 
-func _is_foundation_held() -> bool:
-	return _held_data != null and _held_data.is_foundation
+func _update_ghost_free(hit: Dictionary) -> void:
+	var basis: Basis   = _ghost.global_transform.basis
+	var hh:    Vector3 = _held_size * 0.5
+	var half_extent: float = (
+		abs(basis.x.dot(hit.normal)) * hh.x +
+		abs(basis.y.dot(hit.normal)) * hh.y +
+		abs(basis.z.dot(hit.normal)) * hh.z
+	)
+	_ghost.global_position = hit.position + hit.normal * half_extent
+	_snapping = true  # free-placement items are always valid
 
-func _is_free_placement() -> bool:
-	return _held_data != null and _held_data.free_placement
+	if _is_blocked():
+		_ghost.material_override = _mat_blocked
+	else:
+		_ghost.material_override = _mat_free
+
+# ── Overlap check ─────────────────────────────────────────────────────────────
 
 func _is_blocked() -> bool:
-	var shape: BoxShape3D = BoxShape3D.new()
-	shape.size = _held_size
+	var shape:  BoxShape3D                    = BoxShape3D.new()
+	shape.size  = _held_size
 	var params: PhysicsShapeQueryParameters3D = PhysicsShapeQueryParameters3D.new()
 	params.shape     = shape
 	params.transform = _ghost.global_transform
@@ -260,20 +284,15 @@ func _is_blocked() -> bool:
 	params.exclude   = [player.get_rid()]
 	return player.get_world_3d().direct_space_state.intersect_shape(params, 1).size() > 0
 
-func _update_ghost_material() -> void:
-	if _is_blocked() or (not _is_free_placement() and not _snapping):
-		_ghost.material_override = _mat_blocked
-	elif _snapping:
-		_ghost.material_override = _mat_snap
-	else:
-		_ghost.material_override = _mat_free
-
 # ── Placement ────────────────────────────────────────────────────────────────
 
 func _place() -> void:
 	if not _ghost.visible or _held_id.is_empty(): return
+
 	if _is_foundation_held():
 		if _ghost.material_override == _mat_blocked: return
+	elif _is_building_piece():
+		if not _snapping or _is_blocked(): return
 	else:
 		if _is_blocked(): return
 		if not _is_free_placement() and not _snapping: return
@@ -283,7 +302,7 @@ func _place() -> void:
 
 	_apply_place_local(_held_id, world_t, net_id)
 
-	if player.inventory.active_slot_data() and player._held_visual:
+	if player._held_visual:
 		player._held_visual.play_place_sound()
 	_rumble(0.0, 0.7, 0.12)
 
@@ -323,7 +342,7 @@ func _remove_piece() -> void:
 	var hit: Dictionary = space.intersect_ray(query)
 	if hit.is_empty(): return
 
-	var collider: Object    = hit["collider"]
+	var collider: Object      = hit["collider"]
 	var piece:    PlacedPiece = null
 	if collider is PlacedPiece:
 		piece = collider as PlacedPiece
@@ -340,20 +359,32 @@ func _remove_piece() -> void:
 		else:
 			_request_remove.rpc_id(1, net_id)
 
-# ── Held item management ──────────────────────────────────────────────────────
+# ── Predicates ────────────────────────────────────────────────────────────────
+
+func _is_building_piece() -> bool:
+	return _held_data is BuildingItemData and not (_held_data as BuildingItemData).piece_type.is_empty()
+
+func _is_foundation_held() -> bool:
+	return _held_data != null and _held_data.is_foundation
+
+func _is_free_placement() -> bool:
+	return _held_data != null and _held_data.free_placement
+
+# ── Held item management ─────────────────────────────────────────────────────
 
 func _hold_from_slot(slot: Inventory.Slot) -> void:
-	_held_id     = slot.item_id
-	_held_data   = slot.get_data()
-	_held_size   = _held_data.size if _held_data else Vector3.ONE
-	_held_net_id = slot.active_net_id()
+	_held_id              = slot.item_id
+	_held_data            = slot.get_data()
+	_held_size            = _held_data.size if _held_data else Vector3.ONE
+	_held_net_id          = slot.active_net_id()
+	_building_rot_offset  = 0.0
 
 func _refresh_ghost_for_held() -> void:
-	var box: BoxMesh     = BoxMesh.new()
-	box.size             = _held_size
-	_ghost.mesh          = box
-	var c: Color         = _held_data.color if _held_data else Color(1.0, 1.0, 1.0)
-	_mat_free            = _ghost_mat(Color(c.r, c.g, c.b, 0.5))
+	var box: BoxMesh = BoxMesh.new()
+	box.size         = _held_size
+	_ghost.mesh      = box
+	var c: Color     = _held_data.color if _held_data else Color(1.0, 1.0, 1.0)
+	_mat_free        = _ghost_mat(Color(c.r, c.g, c.b, 0.5))
 	_ghost.material_override = _mat_free
 
 # ── Mode enter / exit ─────────────────────────────────────────────────────────
@@ -371,11 +402,13 @@ func _enter() -> void:
 	_ghost.show()
 
 func _exit() -> void:
-	GameState.is_building = false
-	_active      = false
-	_held_id     = ""
-	_held_data   = null
-	_held_net_id = 0
+	GameState.is_building    = false
+	_active                  = false
+	_snapping                = false
+	_held_id                 = ""
+	_held_data               = null
+	_held_net_id             = 0
+	_building_rot_offset     = 0.0
 	_ghost.hide()
 
 # ── Multiplayer ───────────────────────────────────────────────────────────────
@@ -399,8 +432,9 @@ func _sync_place(item_id: String, world_transform: Transform3D, net_id: int) -> 
 func _apply_place_local(item_id: String, world_transform: Transform3D, net_id: int) -> void:
 	var data: ItemData = ItemRegistry.get_item(item_id)
 	if not data: return
-	var world: Node  = get_tree().get_first_node_in_group("world")
+	var world: Node = get_tree().get_first_node_in_group("world")
 	var node: Node3D
+
 	if data is PlaceableItemData:
 		var scene: PackedScene = (data as PlaceableItemData).get_placement_scene()
 		if not scene: return
@@ -411,8 +445,15 @@ func _apply_place_local(item_id: String, world_transform: Transform3D, net_id: i
 		var piece: PlacedPiece = PlacedPiece.build(data.size, data.color)
 		piece.net_id        = net_id
 		piece.is_foundation = data.is_foundation
+		if data is BuildingItemData:
+			var bdata: BuildingItemData = data as BuildingItemData
+			piece.piece_type = bdata.piece_type
+			piece.piece_tier = bdata.piece_tier
+			piece.max_hp     = bdata.piece_hp
+			piece.current_hp = bdata.piece_hp
 		_pieces_root.add_child(piece)
 		node = piece
+
 	node.set_meta("item_id", item_id)
 	node.set_deferred("global_transform", world_transform)
 	if world:
@@ -453,5 +494,5 @@ func _ghost_mat(color: Color) -> StandardMaterial3D:
 	var m: StandardMaterial3D = StandardMaterial3D.new()
 	m.albedo_color = color
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.shading_mode  = BaseMaterial3D.SHADING_MODE_UNSHADED
 	return m
