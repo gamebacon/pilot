@@ -9,6 +9,6 @@ display_name = "Wooden Wall"
 price = 0
 description = "A solid wall panel. Place it to defend the core."
 color = Color(0.52, 0.35, 0.15, 1)
-size = Vector3(2, 2, 0.15)
+size = Vector3(3, 2.5, 0.15)
 mass = 6.0
 is_placeable = true

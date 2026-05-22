@@ -49,7 +49,8 @@ func _ready() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not _active: return
 	if event.is_action_pressed("rotate") and not event.is_echo():
-		_ghost.global_rotate(Vector3.UP, deg_to_rad(ROT_STEP))
+		if _held_data != null and _held_data.can_rotate:
+			_ghost.global_rotate(Vector3.UP, deg_to_rad(ROT_STEP))
 	if event.is_action_pressed("exit_build"):
 		_exit()
 
@@ -73,7 +74,8 @@ func _process(_delta: float) -> void:
 	var slot := player.inventory.active_slot_data()
 	var cur_id := slot.item_id if slot else ""
 	if cur_id != _held_id:
-		if cur_id.is_empty():
+		var cur_data: ItemData = slot.get_data() if slot else null
+		if cur_id.is_empty() or cur_data == null or not cur_data.is_placeable:
 			_exit(); return
 		_hold_from_slot(slot)
 		_refresh_ghost_for_held()
@@ -115,7 +117,7 @@ func _update_ghost() -> void:
 	if _snapping:
 		_ghost.global_position += offset
 
-	if _is_blocked():
+	if _is_blocked() or (not _is_foundation_held() and not _is_free_placement() and not _snapping):
 		_ghost.material_override = _mat_blocked
 	elif _snapping:
 		_ghost.material_override = _mat_snap
@@ -137,10 +139,18 @@ func _is_blocked() -> bool:
 # ── Snap logic ───────────────────────────────────────────────────────────────
 
 func _find_snap_offset() -> Vector3:
-	var ghost_sockets := _ghost_world_sockets()
-	var best_dist     := SNAP_DIST
-	var best_offset   := Vector3.ZERO
-	for piece in get_tree().get_nodes_in_group("placed_pieces"):
+	var ghost_sockets    := _ghost_world_sockets()
+	var best_dist        := SNAP_DIST
+	var best_offset      := Vector3.ZERO
+	var ghost_center     := _ghost.global_position
+	var require_foundation := not _is_foundation_held()
+	for piece: PlacedPiece in get_tree().get_nodes_in_group("placed_pieces"):
+		if require_foundation and not piece.is_foundation:
+			continue
+		# Reject pieces whose closest possible socket is beyond snap range.
+		var max_piece_reach: float = MAX_REACH + piece.size.length() * 0.5
+		if piece.global_position.distance_to(ghost_center) > max_piece_reach:
+			continue
 		for placed_pos: Vector3 in piece.get_world_sockets():
 			for ghost_pos: Vector3 in ghost_sockets:
 				var d := ghost_pos.distance_to(placed_pos)
@@ -158,8 +168,15 @@ func _ghost_world_sockets() -> Array:
 
 # ── Placement ────────────────────────────────────────────────────────────────
 
+func _is_foundation_held() -> bool:
+	return _held_data != null and _held_data.is_foundation
+
+func _is_free_placement() -> bool:
+	return _held_data != null and _held_data.free_placement
+
 func _place() -> void:
 	if not _ghost.visible or _is_blocked() or _held_id.is_empty(): return
+	if not _is_foundation_held() and not _is_free_placement() and not _snapping: return
 
 	var net_id  := _assign_net_id()
 	var world_t := _ghost.global_transform
@@ -255,6 +272,8 @@ func _enter() -> void:
 	if not player or GameState.is_building: return
 	var slot := player.inventory.active_slot_data()
 	if slot == null or slot.is_empty(): return
+	var data: ItemData = slot.get_data()
+	if data == null or not data.is_placeable: return
 	GameState.is_building = true
 	_hold_from_slot(slot)
 	_refresh_ghost_for_held()
@@ -300,7 +319,8 @@ func _apply_place_local(item_id: String, world_transform: Transform3D, net_id: i
 		_placed_root.add_child(node)
 	else:
 		var piece: PlacedPiece = PlacedPiece.build(data.size, data.color)
-		piece.net_id = net_id
+		piece.net_id       = net_id
+		piece.is_foundation = data.is_foundation
 		_pieces_root.add_child(piece)
 		node = piece
 	node.set_meta("item_id", item_id)

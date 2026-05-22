@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="ItemData" format=3 uid="uid://bmxj8g407s8bd"]
+
+[ext_resource type="Script" uid="uid://qoy77nbg6xgn" path="res://items/item_data.gd" id="1_itemdata"]
+
+[resource]
+script = ExtResource("1_itemdata")
+id = "wooden_foundation"
+display_name = "Wooden Foundation"
+price = 0
+description = "A flat wooden platform. All other building pieces must be placed on a foundation."
+color = Color(0.55, 0.38, 0.18, 1)
+size = Vector3(3, 0.25, 3)
+mass = 12.0
+is_placeable = true
+is_foundation = true
+can_rotate = false

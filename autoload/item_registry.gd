@@ -10,6 +10,7 @@ const _MATERIALS: Array = [
 	preload("res://items/resources/wood_log.tres"),
 	preload("res://items/resources/wooden_plank.tres"),
 	preload("res://items/resources/wooden_wall.tres"),
+	preload("res://items/resources/wooden_foundation.tres"),
 	# Tools
 	preload("res://items/resources/tools/axe_wooden.tres"),
 	preload("res://items/resources/tools/axe_stone.tres"),

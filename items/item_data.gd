@@ -29,6 +29,17 @@ class_name ItemData
 # Placeable items — can be placed in the world via build mode
 @export var is_placeable: bool = false
 
+# Foundations can be placed freely on terrain; all other building pieces require
+# snapping to an existing placed piece.
+@export var is_foundation: bool = false
+
+# Whether the player can rotate this piece in build mode.
+@export var can_rotate: bool = true
+
+# Interactables (chests, crafting tables, etc.) that can be set down anywhere
+# without needing a foundation underneath.
+@export var free_placement: bool = false
+
 ## Scale applied to the PhysicalItem node while held in the player's hand.
 ## Leave at 0.0 to auto-calculate: largest dimension is normalised to 0.40 m.
 @export var held_scale: float = 0.0

@@ -12,14 +12,16 @@ grow_vertical = 2
 script = ExtResource("1_lobby")
 
 [node name="CenterContainer" type="CenterContainer" parent="." unique_id=666666666]
-layout_mode = 3
+layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="Panel" type="PanelContainer" parent="CenterContainer" unique_id=13024345]
-layout_mode = 2
 custom_minimum_size = Vector2(440, 0)
+layout_mode = 2
 
 [node name="VBox" type="VBoxContainer" parent="CenterContainer/Panel" unique_id=176508248]
 layout_mode = 2
@@ -50,17 +52,17 @@ layout_mode = 2
 placeholder_text = "Existing lobby Id"
 
 [node name="HSep3" type="HSeparator" parent="CenterContainer/Panel/VBox" unique_id=126873026]
-layout_mode = 2
 visible = false
+layout_mode = 2
 
 [node name="FriendsHeaderLabel" type="Label" parent="CenterContainer/Panel/VBox" unique_id=222222222]
-layout_mode = 2
 visible = false
+layout_mode = 2
 text = "FRIENDS IN GAME"
 
 [node name="FriendsList" type="VBoxContainer" parent="CenterContainer/Panel/VBox" unique_id=444444444]
-layout_mode = 2
 visible = false
+layout_mode = 2
 theme_override_constants/separation = 4
 
 [node name="StatusLabel" type="Label" parent="CenterContainer/Panel/VBox" unique_id=1095936264]

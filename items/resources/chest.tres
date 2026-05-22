@@ -1,15 +1,16 @@
-[gd_resource type="Resource" script_class="PlaceableItemData" format=3 uid="uid://chest_item_001"]
+[gd_resource type="Resource" script_class="PlaceableItemData" format=3 uid="uid://dour5hfef88lt"]
 
-[ext_resource type="Script" path="res://items/placeable_item_data.gd" id="1_placeable"]
+[ext_resource type="Script" uid="uid://cmy8kcnaqiroe" path="res://items/placeable_item_data.gd" id="1_placeable"]
 
 [resource]
 script = ExtResource("1_placeable")
+placement_scene_path = "res://world/chest.tscn"
 id = "chest"
 display_name = "Chest"
 description = "A sturdy wooden chest. Place it and store your loot."
 color = Color(0.55, 0.35, 0.12, 1)
-size = Vector3(1.0, 0.7, 0.6)
+size = Vector3(1, 0.7, 0.6)
 mass = 5.0
 carry_stack = 1
 is_placeable = true
-placement_scene_path = "res://world/chest.tscn"
+free_placement = true

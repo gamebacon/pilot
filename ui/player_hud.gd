@@ -97,16 +97,20 @@ func _on_debug_mode_changed(enabled: bool) -> void:
 func _update_context_hints() -> void:
 	# ── Build-place mode hints ─────────────────────────────────────────────────
 	if GameState.is_building:
-		var key := "build"
+		var build_slot : Inventory.Slot = _player.inventory.active_slot_data()
+		var build_data : ItemData = build_slot.get_data() if build_slot else null
+		var rotatable: bool = build_data != null and build_data.can_rotate
+		var key := "build|%s" % str(rotatable)
 		if key != _last_context_key:
 			_last_context_key = key
-			var pairs := [
-				["interact",    "Place"],
-				["rotate",  "Rotate"],
-				["exit_build","Cancel"],
+			var pairs: Array[Array] = [
+				["interact", "Place"],
+				["exit_build", "Cancel"],
 			]
+			if rotatable:
+				pairs.insert(1, ["rotate", "Rotate"])
 			var rows: Array[Control] = []
-			for p in pairs:
+			for p: Array in pairs:
 				var row: Control = UIStyle.make_prompt(p[0], p[1])
 				row.size_flags_horizontal = Control.SIZE_SHRINK_END
 				rows.append(row)
