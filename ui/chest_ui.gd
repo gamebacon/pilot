@@ -77,7 +77,7 @@ func _refresh() -> void:
 			_slots[i].set_cursor(i == cur)
 	var sv: Inventory = _controller.sinv(cur)
 	if sv:
-		var slot: Inventory.Slot = sv.get_slot(_controller.sidx(cur))
+		var slot: Inventory.ItemStack = sv.get_slot(_controller.sidx(cur))
 		if not slot.is_empty() and cur < _slots.size() and _slots[cur] != null:
 			ItemTooltip.show_for(slot.get_data(), slot.net_ids, slot.durability, _slots[cur])
 		else:

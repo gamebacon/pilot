@@ -21,19 +21,19 @@ func _world() -> Node:
 
 # ── Overrides ─────────────────────────────────────────────────────────────────
 
-func _take_from(sv: Inventory, si: int, qty: int) -> Inventory.DragStack:
+func _take_from(sv: Inventory, si: int, qty: int) -> Inventory.ItemStack:
 	if not _is_chest(sv):
 		return sv.take_items(si, qty)
-	var taken: Inventory.DragStack = sv.take_items(si, qty)
+	var taken: Inventory.ItemStack = sv.take_items(si, qty)
 	if not taken.is_empty():
 		var w := _world()
 		if w: w.request_chest_take(chest_net_id, si, qty)
 	return taken
 
-func _place_into(sv: Inventory, si: int, d: Inventory.DragStack) -> Inventory.DragStack:
+func _place_into(sv: Inventory, si: int, d: Inventory.ItemStack) -> Inventory.ItemStack:
 	if not _is_chest(sv):
 		return sv.place_items(si, d)
-	var leftover: Inventory.DragStack = sv.place_items(si, d)
+	var leftover: Inventory.ItemStack = sv.place_items(si, d)
 	var qty_placed := d.quantity - (leftover.quantity if leftover and not leftover.is_empty() else 0)
 	if qty_placed > 0:
 		var w := _world()
@@ -42,22 +42,22 @@ func _place_into(sv: Inventory, si: int, d: Inventory.DragStack) -> Inventory.Dr
 					d.net_ids.slice(0, qty_placed), d.durability)
 	return leftover
 
-func quick_transfer(stack: Inventory.DragStack, from_pos: int,
-		from_inv: Inventory = null) -> Inventory.DragStack:
+func quick_transfer(stack: Inventory.ItemStack, from_pos: int,
+		from_inv: Inventory = null) -> Inventory.ItemStack:
 	# Shift-click FROM player inv → chest: must route each placement through server.
 	if player_inv != null and from_inv == player_inv and _is_chest(inv):
 		return _fill_into_chest(stack)
 	return super.quick_transfer(stack, from_pos, from_inv)
 
-func _fill_into_chest(stack: Inventory.DragStack) -> Inventory.DragStack:
-	var remainder: Inventory.DragStack = stack.duplicate_stack()
+func _fill_into_chest(stack: Inventory.ItemStack) -> Inventory.ItemStack:
+	var remainder: Inventory.ItemStack = stack.duplicate_stack()
 	for i in inv.capacity:
-		if remainder.is_empty(): return Inventory.DragStack.new()
+		if remainder.is_empty(): return Inventory.ItemStack.new()
 		var slot := inv.get_slot(i)
 		if not slot.is_empty() and slot.item_id == remainder.item_id and not slot.is_full():
 			remainder = _place_into(inv, i, remainder)
 	for i in inv.capacity:
-		if remainder.is_empty(): return Inventory.DragStack.new()
+		if remainder.is_empty(): return Inventory.ItemStack.new()
 		if inv.get_slot(i).is_empty():
 			remainder = _place_into(inv, i, remainder)
 	return remainder
@@ -66,9 +66,9 @@ func shift_click_transfer(sv: Inventory, si: int, qty: int, from_pos: int) -> vo
 	if not _is_chest(sv):
 		super.shift_click_transfer(sv, si, qty, from_pos)
 		return
-	var taken: Inventory.DragStack = _take_from(sv, si, qty)
+	var taken: Inventory.ItemStack = _take_from(sv, si, qty)
 	if taken.is_empty(): return
-	var leftover: Inventory.DragStack = quick_transfer(taken, from_pos, sv)
+	var leftover: Inventory.ItemStack = quick_transfer(taken, from_pos, sv)
 	if leftover and not leftover.is_empty():
 		# Return excess to the chest via server (player inventory was full).
 		var w := _world()

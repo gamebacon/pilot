@@ -112,10 +112,10 @@ func _handle_input(event: InputEvent) -> bool:
 			if c.drag == null or c.drag.is_empty():
 				var sv: Inventory = c.sinv(c.cursor)
 				if sv:
-					var src: Inventory.Slot = sv.get_slot(c.sidx(c.cursor))
+					var src: Inventory.ItemStack = sv.get_slot(c.sidx(c.cursor))
 					if not src.is_empty():
 						c.drag = c._take_from(sv, c.sidx(c.cursor), src.quantity) \
-								as Inventory.DragStack
+								as Inventory.ItemStack
 						c.drag_changed.emit()
 			if c.drag and not c.drag.is_empty():
 				c.double_click_collect(c.drag.item_id, _slot_count)
@@ -137,7 +137,7 @@ func _handle_input(event: InputEvent) -> bool:
 		if c.drag == null or c.drag.is_empty():
 			var sv: Inventory = c.sinv(c.cursor)
 			if sv:
-				var slot: Inventory.Slot = sv.get_slot(c.sidx(c.cursor))
+				var slot: Inventory.ItemStack = sv.get_slot(c.sidx(c.cursor))
 				if not slot.is_empty():
 					c.shift_click_transfer(sv, c.sidx(c.cursor), slot.quantity, c.cursor)
 		return true
@@ -331,7 +331,7 @@ func _build_slot(parent: Control, pos: int, slots: Array = []) -> ItemSlotWidget
 				if sv:
 					var src := sv.get_slot(c.sidx(i2))
 					if not src.is_empty():
-						c.drag = c._take_from(sv, c.sidx(i2), src.quantity) as Inventory.DragStack
+						c.drag = c._take_from(sv, c.sidx(i2), src.quantity) as Inventory.ItemStack
 						if c.drag and not c.drag.is_empty():
 							_drag_panel.visible = true
 							_drag_root.position = _get_drag_pos()

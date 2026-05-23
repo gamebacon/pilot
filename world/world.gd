@@ -315,7 +315,7 @@ func _server_do_chest_place(chest_net_id: int, slot_idx: int, item_id: String,
 		qty: int, net_ids: Array, durability: int) -> void:
 	var inv := _find_synced_inventory(chest_net_id)
 	if not inv: return
-	var d := Inventory.DragStack.new()
+	var d := Inventory.ItemStack.new()
 	d.item_id = item_id; d.quantity = qty; d.net_ids = net_ids.duplicate(); d.durability = durability
 	inv.place_items(slot_idx, d)    # changed → _on_net_changed → sync broadcast
 

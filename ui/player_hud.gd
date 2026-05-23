@@ -97,7 +97,7 @@ func _on_debug_mode_changed(enabled: bool) -> void:
 func _update_context_hints() -> void:
 	# ── Build-place mode hints ─────────────────────────────────────────────────
 	if GameState.is_building:
-		var build_slot : Inventory.Slot = _player.inventory.active_slot_data()
+		var build_slot : Inventory.ItemStack = _player.inventory.active_slot_data()
 		var build_data : ItemData = build_slot.get_data() if build_slot else null
 		var rotatable: bool = build_data != null and build_data.can_rotate
 		var key := "build|%s" % str(rotatable)

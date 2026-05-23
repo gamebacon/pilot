@@ -263,7 +263,7 @@ func pick_up(item: PhysicalItem) -> bool:
 # ── Drop ──────────────────────────────────────────────────────────────────────
 
 func drop_active() -> void:
-	var drag: Inventory.DragStack = inventory.remove_active_one()
+	var drag: Inventory.ItemStack = inventory.remove_active_one()
 	if drag.is_empty(): return
 	_eject_data(drag.item_id, drag.net_ids[0] if not drag.net_ids.is_empty() else 0,
 		drag.durability, -transform.basis.z * 3.0 + Vector3(0, 1, 0))
@@ -330,7 +330,7 @@ func _try_attack() -> void:
 
 	if target.is_in_group("enemies"):
 		var dmg  := 25.0
-		var slot: Inventory.Slot = inventory.active_slot_data()
+		var slot: Inventory.ItemStack = inventory.active_slot_data()
 		if not slot.is_empty():
 			var data := slot.get_data()
 			if data is ToolItemData:

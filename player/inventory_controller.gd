@@ -34,7 +34,7 @@ func reset_cursor() -> void:
 
 # ── Drag state ────────────────────────────────────────────────────────────────
 
-var drag: Inventory.DragStack = null
+var drag: Inventory.ItemStack = null
 
 const DCLICK_MS     := 250
 var last_click_slot := -1
@@ -63,15 +63,15 @@ func sidx(pos: int) -> int:
 # ── Inventory mutation virtuals ───────────────────────────────────────────────
 # Subclasses (e.g. ChestInventoryController) override these to intercept mutations.
 
-func _take_from(sv: Inventory, si: int, qty: int) -> Inventory.DragStack:
+func _take_from(sv: Inventory, si: int, qty: int) -> Inventory.ItemStack:
 	return sv.take_items(si, qty)
 
-func _place_into(sv: Inventory, si: int, d: Inventory.DragStack) -> Inventory.DragStack:
+func _place_into(sv: Inventory, si: int, d: Inventory.ItemStack) -> Inventory.ItemStack:
 	return sv.place_items(si, d)
 
 func shift_click_transfer(sv: Inventory, si: int, qty: int, from_pos: int) -> void:
-	var taken    := _take_from(sv, si, qty)
-	var leftover := quick_transfer(taken, from_pos, sv)
+	var taken: Inventory.ItemStack    = _take_from(sv, si, qty)
+	var leftover: Inventory.ItemStack = quick_transfer(taken, from_pos, sv)
 	sv.add_drag(leftover)
 
 # ── Permission virtuals ───────────────────────────────────────────────────────
@@ -82,9 +82,9 @@ func can_insert(_pos: int, _item_data: ItemData) -> bool:
 func can_take(_pos: int) -> bool:
 	return true
 
-## Shift-click handler. Returns leftover DragStack.
-func quick_transfer(stack: Inventory.DragStack, _from_pos: int,
-		_from_inv: Inventory = null) -> Inventory.DragStack:
+## Shift-click handler. Returns leftover ItemStack.
+func quick_transfer(stack: Inventory.ItemStack, _from_pos: int,
+		_from_inv: Inventory = null) -> Inventory.ItemStack:
 	return stack
 
 # ── Drag helpers ──────────────────────────────────────────────────────────────
@@ -105,7 +105,7 @@ func cancel_drag() -> void:
 func drop_one(player: Player) -> void:
 	clear_split()
 	if drag == null or drag.is_empty(): return
-	var one: Inventory.DragStack = drag.pop_one()
+	var one: Inventory.ItemStack = drag.pop_one()
 	if not one.is_empty() and player:
 		var nid := one.net_ids[0] if not one.net_ids.is_empty() else 0
 		player.drop_item_data(one.item_id, nid, one.durability)
@@ -117,7 +117,7 @@ func drop_all(player: Player) -> void:
 	clear_split()
 	if drag == null or drag.is_empty(): return
 	while drag and not drag.is_empty():
-		var one: Inventory.DragStack = drag.pop_one()
+		var one: Inventory.ItemStack = drag.pop_one()
 		if player:
 			var nid := one.net_ids[0] if not one.net_ids.is_empty() else 0
 			player.drop_item_data(one.item_id, nid, one.durability)
@@ -135,15 +135,15 @@ func left_activate(pos: int) -> void:
 
 	if drag == null or drag.is_empty():
 		if not slot.is_empty() and can_take(pos):
-			drag = _take_from(sv, si, slot.quantity) as Inventory.DragStack
+			drag = _take_from(sv, si, slot.quantity) as Inventory.ItemStack
 	else:
 		if slot.is_empty() or slot.item_id == drag.item_id:
 			if can_insert(pos, drag.get_data()):
-				var leftover: Inventory.DragStack = _place_into(sv, si, drag)
+				var leftover: Inventory.ItemStack = _place_into(sv, si, drag)
 				drag = leftover if not leftover.is_empty() else null
 		elif can_take(pos) and can_insert(pos, drag.get_data()):
-			var swapped:  Inventory.DragStack = _take_from(sv, si, slot.quantity)
-			var leftover: Inventory.DragStack = _place_into(sv, si, drag)
+			var swapped:  Inventory.ItemStack = _take_from(sv, si, slot.quantity)
+			var leftover: Inventory.ItemStack = _place_into(sv, si, drag)
 			swapped.merge(leftover)
 			drag = swapped if not swapped.is_empty() else null
 
@@ -159,12 +159,12 @@ func right_activate(pos: int) -> void:
 
 	if drag == null or drag.is_empty():
 		if not slot.is_empty() and can_take(pos):
-			drag = _take_from(sv, si, (slot.quantity + 1) / 2) as Inventory.DragStack
+			drag = _take_from(sv, si, (slot.quantity + 1) / 2) as Inventory.ItemStack
 	else:
 		if not slot.is_full() and (slot.is_empty() or slot.item_id == drag.item_id) \
 				and can_insert(pos, drag.get_data()):
-			var one:      Inventory.DragStack = drag.pop_one()
-			var leftover: Inventory.DragStack = _place_into(sv, si, one)
+			var one:      Inventory.ItemStack = drag.pop_one()
+			var leftover: Inventory.ItemStack = _place_into(sv, si, one)
 			drag.merge(leftover)
 			if drag == null or drag.is_empty(): drag = null
 
@@ -183,7 +183,7 @@ func double_click_collect(item_id: String, total_slots: int) -> void:
 		var slot := sv.get_slot(sidx(pos))
 		if not slot.is_empty() and slot.item_id == item_id:
 			var n                          := max_stack - (drag.quantity if drag else 0)
-			var taken: Inventory.DragStack  = _take_from(sv, sidx(pos), n)
+			var taken: Inventory.ItemStack  = _take_from(sv, sidx(pos), n)
 			if drag == null: drag = taken
 			else: drag.merge(taken)
 	drag_changed.emit()
@@ -209,14 +209,14 @@ func on_slot_enter(pos: int) -> void:
 			var init  := psinv.get_slot(sidx(ps))
 			if (init.is_empty() or init.item_id == drag.item_id) \
 					and not init.is_full() and can_insert(ps, drag_data):
-				var one: Inventory.DragStack = drag.pop_one()
+				var one: Inventory.ItemStack = drag.pop_one()
 				drag.merge(_place_into(psinv, sidx(ps), one))
 		if not drag.is_empty():
 			var rsinv := sinv(pos)
 			var rs    := rsinv.get_slot(sidx(pos))
 			if (rs.is_empty() or rs.item_id == drag.item_id) \
 					and not rs.is_full() and can_insert(pos, drag_data):
-				var one: Inventory.DragStack = drag.pop_one()
+				var one: Inventory.ItemStack = drag.pop_one()
 				drag.merge(_place_into(rsinv, sidx(pos), one))
 		if drag == null or drag.is_empty(): drag = null
 		drag_changed.emit()
@@ -228,7 +228,7 @@ func on_slot_enter(pos: int) -> void:
 		for slot_pos in split_slots:
 			var qty: int = lmb_placed.get(slot_pos, 0)
 			if qty > 0:
-				var reclaimed: Inventory.DragStack = _take_from(sinv(slot_pos), sidx(slot_pos), qty)
+				var reclaimed: Inventory.ItemStack = _take_from(sinv(slot_pos), sidx(slot_pos), qty)
 				if drag == null: drag = reclaimed
 				else: drag.merge(reclaimed)
 		lmb_placed.clear()
@@ -242,7 +242,7 @@ func on_slot_enter(pos: int) -> void:
 			if (ls.is_empty() or ls.item_id == drag.item_id) \
 					and can_insert(slot_pos, drag.get_data()):
 				var n := mini(per_slot, drag.quantity)
-				var chunk := Inventory.DragStack.new()
+				var chunk := Inventory.ItemStack.new()
 				chunk.item_id    = drag.item_id
 				chunk.durability = drag.durability
 				for _ii in n:
@@ -250,7 +250,7 @@ func on_slot_enter(pos: int) -> void:
 					chunk.quantity += 1
 					chunk.net_ids.append(drag.net_ids.pop_back() if not drag.net_ids.is_empty() else 0)
 					drag.quantity -= 1
-				var leftover: Inventory.DragStack = _place_into(lsinv, sidx(slot_pos), chunk)
+				var leftover: Inventory.ItemStack = _place_into(lsinv, sidx(slot_pos), chunk)
 				drag.merge(leftover)
 				lmb_placed[slot_pos] = chunk.quantity - leftover.quantity
 		split_slots.append(pos)
@@ -269,8 +269,8 @@ func commit_split() -> void:
 			var slot := sv.get_slot(sidx(slot_pos))
 			if (slot.is_empty() or slot.item_id == drag.item_id) \
 					and not slot.is_full() and can_insert(slot_pos, drag.get_data()):
-				var one:      Inventory.DragStack = drag.pop_one()
-				var leftover: Inventory.DragStack = _place_into(sv, sidx(slot_pos), one)
+				var one:      Inventory.ItemStack = drag.pop_one()
+				var leftover: Inventory.ItemStack = _place_into(sv, sidx(slot_pos), one)
 				drag.merge(leftover)
 	if drag == null or drag.is_empty(): drag = null
 	drag_changed.emit()

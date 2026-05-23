@@ -24,15 +24,15 @@ var container_net_id: int = 0:
 
 var _applying_remote: bool = false
 
-# ── Slot ──────────────────────────────────────────────────────────────────────
+# ── ItemStack — unified slot/drag type ────────────────────────────────────────
 
-class Slot:
-	var item_id:   String       = ""
-	var quantity:  int          = 0
-	var durability: int         = -1
-	var net_ids:   Array[int]   = []
+class ItemStack:
+	var item_id:   String     = ""
+	var quantity:  int        = 0
+	var durability: int       = -1
+	var net_ids:   Array[int] = []
 
-	func is_empty() -> bool: return item_id.is_empty()
+	func is_empty() -> bool: return item_id.is_empty() or quantity <= 0
 
 	func get_data() -> ItemData:
 		if item_id.is_empty(): return null
@@ -49,27 +49,13 @@ class Slot:
 	func active_net_id() -> int:
 		return net_ids[0] if not net_ids.is_empty() else 0
 
-# ── DragStack — item(s) detached from any slot, used by drag-and-drop ─────────
-
-class DragStack:
-	var item_id:    String     = ""
-	var quantity:   int        = 0
-	var net_ids:    Array[int] = []
-	var durability: int        = -1
-
-	func is_empty() -> bool: return item_id.is_empty() or quantity <= 0
-
-	func get_data() -> ItemData:
-		if item_id.is_empty(): return null
-		return ItemRegistry.get_item(item_id)
-
-	## Remove one item from this stack and return it as a new DragStack of qty=1.
-	func pop_one() -> DragStack:
-		if is_empty(): return DragStack.new()
-		var one      := DragStack.new()
-		one.item_id   = item_id
+	## Remove one item from this stack and return it as a new ItemStack of qty=1.
+	func pop_one() -> ItemStack:
+		if is_empty(): return ItemStack.new()
+		var one       := ItemStack.new()
+		one.item_id    = item_id
 		one.durability = durability
-		one.quantity  = 1
+		one.quantity   = 1
 		if not net_ids.is_empty():
 			one.net_ids.append(net_ids.pop_back())
 		quantity -= 1
@@ -79,8 +65,8 @@ class DragStack:
 			net_ids.clear()
 		return one
 
-	## Append another DragStack into this one (mutates self).
-	func merge(other: DragStack) -> void:
+	## Append another ItemStack into this one (mutates self).
+	func merge(other: ItemStack) -> void:
 		if other == null or other.is_empty(): return
 		if is_empty():
 			item_id    = other.item_id
@@ -88,8 +74,8 @@ class DragStack:
 		quantity += other.quantity
 		net_ids.append_array(other.net_ids)
 
-	func duplicate_stack() -> DragStack:
-		var d      := DragStack.new()
+	func duplicate_stack() -> ItemStack:
+		var d      := ItemStack.new()
 		d.item_id   = item_id
 		d.quantity  = quantity
 		d.net_ids   = net_ids.duplicate()
@@ -98,12 +84,12 @@ class DragStack:
 
 # ── State ─────────────────────────────────────────────────────────────────────
 
-var _slots: Array[Slot] = []
+var _slots: Array[ItemStack] = []
 
 func _ready() -> void:
 	_slots.resize(TOTAL_SLOTS)
 	for i in TOTAL_SLOTS:
-		_slots[i] = Slot.new()
+		_slots[i] = ItemStack.new()
 	changed.connect(_on_net_changed)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -116,7 +102,7 @@ var active_index: int:
 
 # ── Active slot queries ───────────────────────────────────────────────────────
 
-func active_slot_data() -> Slot:
+func active_slot_data() -> ItemStack:
 	return _slots[_active_abs()]
 
 func active_item_id() -> String:
@@ -208,54 +194,54 @@ func add(item_id: String, net_id: int = 0, durability: int = -1) -> bool:
 			changed.emit(); return true
 	return false
 
-func _slot_add(s: Slot, item_id: String, net_id: int, durability: int) -> void:
+func _slot_add(s: ItemStack, item_id: String, net_id: int, durability: int) -> void:
 	s.item_id   = item_id
 	s.quantity  += 1
 	s.net_ids.append(net_id)
 	if durability >= 0: s.durability = durability
 
-## Remove one item from the active slot. Returns a DragStack (may be empty).
-func remove_active_one() -> DragStack:
-	var drag: DragStack = _take_one_from(_slots[_active_abs()])
-	if not drag.is_empty(): changed.emit()
-	return drag
+## Remove one item from the active slot. Returns an ItemStack (may be empty).
+func remove_active_one() -> ItemStack:
+	var taken: ItemStack = _take_one_from(_slots[_active_abs()])
+	if not taken.is_empty(): changed.emit()
+	return taken
 
-## Remove one item matching [id] from any slot. Returns a DragStack (may be empty).
-func remove_one_by_id(id: String) -> DragStack:
+## Remove one item matching [id] from any slot. Returns an ItemStack (may be empty).
+func remove_one_by_id(id: String) -> ItemStack:
 	for s in _slots:
 		if s.item_id == id:
-			var drag: DragStack = _take_one_from(s)
-			if not drag.is_empty(): changed.emit()
-			return drag
-	return DragStack.new()
+			var taken: ItemStack = _take_one_from(s)
+			if not taken.is_empty(): changed.emit()
+			return taken
+	return ItemStack.new()
 
-func _take_one_from(s: Slot) -> DragStack:
-	if s.is_empty(): return DragStack.new()
-	var drag      := DragStack.new()
-	drag.item_id   = s.item_id
-	drag.durability = s.durability
-	drag.quantity  = 1
+func _take_one_from(s: ItemStack) -> ItemStack:
+	if s.is_empty(): return ItemStack.new()
+	var taken      := ItemStack.new()
+	taken.item_id   = s.item_id
+	taken.durability = s.durability
+	taken.quantity  = 1
 	if not s.net_ids.is_empty():
-		drag.net_ids.append(s.net_ids.pop_back())
+		taken.net_ids.append(s.net_ids.pop_back())
 	s.quantity -= 1
 	if s.quantity <= 0:
 		s.item_id    = ""
 		s.quantity   = 0
 		s.durability = -1
 		s.net_ids.clear()
-	return drag
+	return taken
 
-## Take up to [qty] items from slot [idx]. Returns a DragStack.
-func take_items(idx: int, qty: int) -> DragStack:
+## Take up to [qty] items from slot [idx]. Returns an ItemStack.
+func take_items(idx: int, qty: int) -> ItemStack:
 	var s := _slots[idx]
-	if s.is_empty() or qty <= 0: return DragStack.new()
-	var n    := mini(qty, s.quantity)
-	var drag := DragStack.new()
-	drag.item_id    = s.item_id
-	drag.durability = s.durability
+	if s.is_empty() or qty <= 0: return ItemStack.new()
+	var n     := mini(qty, s.quantity)
+	var stack := ItemStack.new()
+	stack.item_id    = s.item_id
+	stack.durability = s.durability
 	for _i in n:
-		drag.quantity += 1
-		drag.net_ids.append(s.net_ids.pop_back() if not s.net_ids.is_empty() else 0)
+		stack.quantity += 1
+		stack.net_ids.append(s.net_ids.pop_back() if not s.net_ids.is_empty() else 0)
 	s.quantity -= n
 	if s.quantity <= 0:
 		s.item_id    = ""
@@ -263,40 +249,40 @@ func take_items(idx: int, qty: int) -> DragStack:
 		s.durability = -1
 		s.net_ids.clear()
 	changed.emit()
-	return drag
+	return stack
 
-## Place a DragStack into slot [idx]. Returns any leftover as a DragStack.
-func place_items(idx: int, drag: DragStack) -> DragStack:
-	if drag == null or drag.is_empty(): return DragStack.new()
+## Place an ItemStack into slot [idx]. Returns any leftover as an ItemStack.
+func place_items(idx: int, stack: ItemStack) -> ItemStack:
+	if stack == null or stack.is_empty(): return ItemStack.new()
 	var s := _slots[idx]
-	if not s.is_empty() and s.item_id != drag.item_id:
-		return drag.duplicate_stack()
-	var data := ItemRegistry.get_item(drag.item_id)
+	if not s.is_empty() and s.item_id != stack.item_id:
+		return stack.duplicate_stack()
+	var data := ItemRegistry.get_item(stack.item_id)
 	var cap  := data.carry_stack if data else 1
 	var placed := 0
-	for i in drag.quantity:
+	for i in stack.quantity:
 		if s.quantity >= cap: break
-		s.item_id   = drag.item_id
+		s.item_id   = stack.item_id
 		s.quantity  += 1
-		s.net_ids.append(drag.net_ids[i] if i < drag.net_ids.size() else 0)
-		if drag.durability >= 0: s.durability = drag.durability
+		s.net_ids.append(stack.net_ids[i] if i < stack.net_ids.size() else 0)
+		if stack.durability >= 0: s.durability = stack.durability
 		placed += 1
 	if placed > 0: changed.emit()
-	if placed == drag.quantity: return DragStack.new()
-	var leftover      := DragStack.new()
-	leftover.item_id   = drag.item_id
-	leftover.durability = drag.durability
-	for i in range(placed, drag.quantity):
+	if placed == stack.quantity: return ItemStack.new()
+	var leftover      := ItemStack.new()
+	leftover.item_id   = stack.item_id
+	leftover.durability = stack.durability
+	for i in range(placed, stack.quantity):
 		leftover.quantity += 1
-		if i < drag.net_ids.size(): leftover.net_ids.append(drag.net_ids[i])
+		if i < stack.net_ids.size(): leftover.net_ids.append(stack.net_ids[i])
 	return leftover
 
-## Add all items in a DragStack back to inventory using normal priority.
-func add_drag(drag) -> void:   # drag: DragStack
-	if drag == null or drag.is_empty(): return
-	for i in drag.quantity:
-		var nid: int = drag.net_ids[i] if i < drag.net_ids.size() else 0
-		add(drag.item_id, nid, drag.durability)
+## Add all items in an ItemStack back to inventory using normal priority.
+func add_drag(stack: ItemStack) -> void:
+	if stack == null or stack.is_empty(): return
+	for i in stack.quantity:
+		var nid: int = stack.net_ids[i] if i < stack.net_ids.size() else 0
+		add(stack.item_id, nid, stack.durability)
 
 ## Decrement durability of the active slot. Returns true when the tool breaks.
 func use_active_durability(amount: int = 1) -> bool:
@@ -336,13 +322,13 @@ func set_active_hotbar_row(row: int) -> void:
 
 # ── Slot access ───────────────────────────────────────────────────────────────
 
-func get_slot(idx: int) -> Slot:
+func get_slot(idx: int) -> ItemStack:
 	return _slots[idx]
 
-func get_hotbar_slot(r: int, c: int) -> Slot:
+func get_hotbar_slot(r: int, c: int) -> ItemStack:
 	return _slots[MAIN_SLOTS + r * HOTBAR_COLS + c]
 
-func get_main_slot(r: int, c: int) -> Slot:
+func get_main_slot(r: int, c: int) -> ItemStack:
 	return _slots[r * COLS + c]
 
 # ── Multiplayer container sync ────────────────────────────────────────────────
@@ -367,7 +353,7 @@ func _net_encode() -> Array:
 func apply_remote_state(slots_data: Array) -> void:
 	_applying_remote = true
 	for i in _slots.size():
-		_slots[i] = Slot.new()
+		_slots[i] = ItemStack.new()
 	for i in mini(slots_data.size(), _slots.size()):
 		var entry: Array = slots_data[i]
 		if entry.size() < 4: continue

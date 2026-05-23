@@ -10,8 +10,8 @@ extends InventoryController
 ## Single mode (player_inv == null):
 ##   Main grid ↔ hotbar within inv.
 
-func quick_transfer(stack: Inventory.DragStack, from_pos: int,
-		from_inv: Inventory = null) -> Inventory.DragStack:
+func quick_transfer(stack: Inventory.ItemStack, from_pos: int,
+		from_inv: Inventory = null) -> Inventory.ItemStack:
 	if player_inv != null:
 		# Shift-click from player_inv → push into external inv, and vice versa.
 		return _fill_into(inv if from_inv == player_inv else player_inv, stack)
@@ -21,29 +21,29 @@ func quick_transfer(stack: Inventory.DragStack, from_pos: int,
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-func _fill_into(target: Inventory, stack: Inventory.DragStack) -> Inventory.DragStack:
+func _fill_into(target: Inventory, stack: Inventory.ItemStack) -> Inventory.ItemStack:
 	if stack == null or stack.is_empty() or target == null:
 		return stack
-	var remainder: Inventory.DragStack = stack.duplicate_stack()
+	var remainder: Inventory.ItemStack = stack.duplicate_stack()
 	for i in target.capacity:
-		if remainder.is_empty(): return Inventory.DragStack.new()
+		if remainder.is_empty(): return Inventory.ItemStack.new()
 		var slot := target.get_slot(i)
 		if not slot.is_empty() and slot.item_id == remainder.item_id and not slot.is_full():
 			remainder = target.place_items(i, remainder)
 	for i in target.capacity:
-		if remainder.is_empty(): return Inventory.DragStack.new()
+		if remainder.is_empty(): return Inventory.ItemStack.new()
 		if target.get_slot(i).is_empty():
 			remainder = target.place_items(i, remainder)
 	return remainder
 
-func _fill_hotbar(stack: Inventory.DragStack) -> Inventory.DragStack:
+func _fill_hotbar(stack: Inventory.ItemStack) -> Inventory.ItemStack:
 	if stack == null or stack.is_empty() or not inv:
 		return stack
-	var remainder: Inventory.DragStack = stack.duplicate_stack()
+	var remainder: Inventory.ItemStack = stack.duplicate_stack()
 	for r in Inventory.HOTBAR_ROWS:
 		var row := (inv.active_hotbar_row + r) % Inventory.HOTBAR_ROWS
 		for c in Inventory.HOTBAR_COLS:
-			if remainder.is_empty(): return Inventory.DragStack.new()
+			if remainder.is_empty(): return Inventory.ItemStack.new()
 			var idx  := Inventory.MAIN_SLOTS + row * Inventory.HOTBAR_COLS + c
 			var slot := inv.get_slot(idx)
 			if not slot.is_empty() and slot.item_id == remainder.item_id and not slot.is_full():
@@ -51,23 +51,23 @@ func _fill_hotbar(stack: Inventory.DragStack) -> Inventory.DragStack:
 	for r in Inventory.HOTBAR_ROWS:
 		var row := (inv.active_hotbar_row + r) % Inventory.HOTBAR_ROWS
 		for c in Inventory.HOTBAR_COLS:
-			if remainder.is_empty(): return Inventory.DragStack.new()
+			if remainder.is_empty(): return Inventory.ItemStack.new()
 			var idx := Inventory.MAIN_SLOTS + row * Inventory.HOTBAR_COLS + c
 			if inv.get_slot(idx).is_empty():
 				remainder = inv.place_items(idx, remainder)
 	return remainder
 
-func _fill_main(stack: Inventory.DragStack) -> Inventory.DragStack:
+func _fill_main(stack: Inventory.ItemStack) -> Inventory.ItemStack:
 	if stack == null or stack.is_empty() or not inv:
 		return stack
-	var remainder: Inventory.DragStack = stack.duplicate_stack()
+	var remainder: Inventory.ItemStack = stack.duplicate_stack()
 	for i in Inventory.MAIN_SLOTS:
-		if remainder.is_empty(): return Inventory.DragStack.new()
+		if remainder.is_empty(): return Inventory.ItemStack.new()
 		var slot := inv.get_slot(i)
 		if not slot.is_empty() and slot.item_id == remainder.item_id and not slot.is_full():
 			remainder = inv.place_items(i, remainder)
 	for i in Inventory.MAIN_SLOTS:
-		if remainder.is_empty(): return Inventory.DragStack.new()
+		if remainder.is_empty(): return Inventory.ItemStack.new()
 		if inv.get_slot(i).is_empty():
 			remainder = inv.place_items(i, remainder)
 	return remainder

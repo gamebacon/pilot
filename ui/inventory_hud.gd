@@ -92,8 +92,8 @@ func _handle_input(event: InputEvent) -> bool:
 					var hot := _inv.get_slot(hotbar_idx)
 					if not hov.is_empty() and not hot.is_empty() \
 							and hov.item_id == hot.item_id and not hot.is_full():
-						var taken:    Inventory.DragStack = _inv.take_items(hs, hov.quantity)
-						var leftover: Inventory.DragStack = _inv.place_items(hotbar_idx, taken)
+						var taken:    Inventory.ItemStack = _inv.take_items(hs, hov.quantity)
+						var leftover: Inventory.ItemStack = _inv.place_items(hotbar_idx, taken)
 						_inv.add_drag(leftover)
 					else:
 						_inv.swap_slots(hs, hotbar_idx)
@@ -106,7 +106,7 @@ func _handle_input(event: InputEvent) -> bool:
 			and (_controller.drag == null or _controller.drag.is_empty()) and _inv:
 		var slot := _inv.get_slot(hs)
 		if not slot.is_empty():
-			var taken: Inventory.DragStack = _inv.take_items(hs, 1)
+			var taken: Inventory.ItemStack = _inv.take_items(hs, 1)
 			if not taken.is_empty():
 				var player := get_tree().get_first_node_in_group("player") as Player
 				if player:
@@ -133,7 +133,7 @@ func _refresh() -> void:
 	for i: int in _slots.size():
 		if _slots[i] != null:
 			_slots[i].set_cursor(i == cur)
-	var slot: Inventory.Slot = _inv.get_slot(cur)
+	var slot: Inventory.ItemStack = _inv.get_slot(cur)
 	if not slot.is_empty() and cur < _slots.size() and _slots[cur] != null:
 		ItemTooltip.show_for(slot.get_data(), slot.net_ids, slot.durability, _slots[cur])
 	else:

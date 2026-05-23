@@ -83,7 +83,7 @@ func _process(_delta: float) -> void:
 
 	if not _active: return
 
-	var slot: Inventory.Slot = player.inventory.active_slot_data()
+	var slot: Inventory.ItemStack = player.inventory.active_slot_data()
 	var cur_id: String = slot.item_id if slot else ""
 	if cur_id != _held_id:
 		var cur_data: ItemData = slot.get_data() if slot else null
@@ -335,7 +335,7 @@ func _consume_held() -> void:
 	_held_data   = null
 	_held_net_id = 0
 
-	var slot: Inventory.Slot = player.inventory.active_slot_data()
+	var slot: Inventory.ItemStack = player.inventory.active_slot_data()
 	if slot == null or slot.is_empty():
 		_exit()
 	else:
@@ -385,7 +385,7 @@ func _is_free_placement() -> bool:
 
 # ── Held item management ─────────────────────────────────────────────────────
 
-func _hold_from_slot(slot: Inventory.Slot) -> void:
+func _hold_from_slot(slot: Inventory.ItemStack) -> void:
 	_held_id              = slot.item_id
 	_held_data            = slot.get_data()
 	_held_size            = _held_data.size if _held_data else Vector3.ONE
@@ -403,7 +403,7 @@ func _refresh_ghost_for_held() -> void:
 
 func _enter() -> void:
 	if not player or GameState.is_building: return
-	var slot: Inventory.Slot = player.inventory.active_slot_data()
+	var slot: Inventory.ItemStack = player.inventory.active_slot_data()
 	if slot == null or slot.is_empty(): return
 	var data: ItemData = slot.get_data()
 	if data == null or not data.is_placeable: return

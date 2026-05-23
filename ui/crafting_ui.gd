@@ -307,7 +307,7 @@ func _count_inventory() -> Dictionary:
 	var counts := {}
 	if not _player: return counts
 	for i in Inventory.TOTAL_SLOTS:
-		var slot : Inventory.Slot = _player.inventory.get_slot(i)
+		var slot : Inventory.ItemStack = _player.inventory.get_slot(i)
 		if not slot.is_empty():
 			counts[slot.item_id] = counts.get(slot.item_id, 0) + slot.quantity
 	return counts
