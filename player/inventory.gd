@@ -1,6 +1,7 @@
 class_name Inventory
 extends Node
 
+## Default layout — player inventory. Other inventories override via @export.
 const COLS         := 8
 const ROWS         := 3
 const HOTBAR_COLS  := COLS
@@ -11,9 +12,22 @@ const TOTAL_SLOTS  := MAIN_SLOTS + HOTBAR_SLOTS
 
 signal changed
 
-var capacity: int = TOTAL_SLOTS   # kept for InventoryController compat
+## Per-instance layout — set via inspector for scene-based nodes, or assign
+## before add_child() for programmatic inventories. Derived values are computed
+## in _ready().
+@export var cols:        int = COLS
+@export var rows:        int = ROWS
+@export var hotbar_cols: int = HOTBAR_COLS
+@export var hotbar_rows: int = HOTBAR_ROWS
+
+## Derived — read-only after _ready().
+var main_slots:   int
+var hotbar_slots: int
+var total_slots:  int
+var capacity:     int   # alias for total_slots, kept for InventoryController compat
+
 var active_hotbar_row: int = 0
-var active_slot: int       = 0
+var active_slot:       int = 0
 
 var container_net_id: int = 0:
 	set(v):
@@ -27,10 +41,10 @@ var _applying_remote: bool = false
 # ── ItemStack — unified slot/drag type ────────────────────────────────────────
 
 class ItemStack:
-	var item_id:   String     = ""
-	var quantity:  int        = 0
-	var durability: int       = -1
-	var net_ids:   Array[int] = []
+	var item_id:    String     = ""
+	var quantity:   int        = 0
+	var durability: int        = -1
+	var net_ids:    Array[int] = []
 
 	func is_empty() -> bool: return item_id.is_empty() or quantity <= 0
 
@@ -75,10 +89,10 @@ class ItemStack:
 		net_ids.append_array(other.net_ids)
 
 	func duplicate_stack() -> ItemStack:
-		var d      := ItemStack.new()
-		d.item_id   = item_id
-		d.quantity  = quantity
-		d.net_ids   = net_ids.duplicate()
+		var d       := ItemStack.new()
+		d.item_id    = item_id
+		d.quantity   = quantity
+		d.net_ids    = net_ids.duplicate()
 		d.durability = durability
 		return d
 
@@ -87,15 +101,19 @@ class ItemStack:
 var _slots: Array[ItemStack] = []
 
 func _ready() -> void:
-	_slots.resize(TOTAL_SLOTS)
-	for i in TOTAL_SLOTS:
+	main_slots   = rows * cols
+	hotbar_slots = hotbar_rows * hotbar_cols
+	total_slots  = main_slots + hotbar_slots
+	capacity     = total_slots
+	_slots.resize(total_slots)
+	for i in total_slots:
 		_slots[i] = ItemStack.new()
 	changed.connect(_on_net_changed)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 func _active_abs() -> int:
-	return MAIN_SLOTS + active_hotbar_row * HOTBAR_COLS + active_slot
+	return main_slots + active_hotbar_row * hotbar_cols + active_slot
 
 var active_index: int:
 	get: return _active_abs()
@@ -154,8 +172,8 @@ func used_slots() -> int:
 
 func occupied_hotbar_slots() -> int:
 	var n := 0
-	for i in HOTBAR_SLOTS:
-		if not _slots[MAIN_SLOTS + i].is_empty(): n += 1
+	for i in hotbar_slots:
+		if not _slots[main_slots + i].is_empty(): n += 1
 	return n
 
 func size() -> int:
@@ -165,30 +183,30 @@ func size() -> int:
 
 # ── Mutations ─────────────────────────────────────────────────────────────────
 
-## Add one item by data. Returns true if it fit, false if inventory was full.
+## Add one item by id. Returns true if it fit, false if inventory was full.
 func add(item_id: String, net_id: int = 0, durability: int = -1) -> bool:
 	# 1. Stack into existing hotbar
-	for r in HOTBAR_ROWS:
-		for c in HOTBAR_COLS:
-			var s := _slots[MAIN_SLOTS + r * HOTBAR_COLS + c]
+	for r in hotbar_rows:
+		for c in hotbar_cols:
+			var s := _slots[main_slots + r * hotbar_cols + c]
 			if not s.is_empty() and s.can_add(item_id):
 				_slot_add(s, item_id, net_id, durability)
 				changed.emit(); return true
 	# 2. Stack into existing main
-	for i in MAIN_SLOTS:
+	for i in main_slots:
 		if not _slots[i].is_empty() and _slots[i].can_add(item_id):
 			_slot_add(_slots[i], item_id, net_id, durability)
 			changed.emit(); return true
 	# 3. Empty hotbar (prefer active row)
-	for r in HOTBAR_ROWS:
-		var row := (active_hotbar_row + r) % HOTBAR_ROWS
-		for c in HOTBAR_COLS:
-			var s := _slots[MAIN_SLOTS + row * HOTBAR_COLS + c]
+	for r in hotbar_rows:
+		var row := (active_hotbar_row + r) % hotbar_rows
+		for c in hotbar_cols:
+			var s := _slots[main_slots + row * hotbar_cols + c]
 			if s.is_empty():
 				_slot_add(s, item_id, net_id, durability)
 				changed.emit(); return true
 	# 4. Empty main
-	for i in MAIN_SLOTS:
+	for i in main_slots:
 		if _slots[i].is_empty():
 			_slot_add(_slots[i], item_id, net_id, durability)
 			changed.emit(); return true
@@ -217,10 +235,10 @@ func remove_one_by_id(id: String) -> ItemStack:
 
 func _take_one_from(s: ItemStack) -> ItemStack:
 	if s.is_empty(): return ItemStack.new()
-	var taken      := ItemStack.new()
-	taken.item_id   = s.item_id
+	var taken       := ItemStack.new()
+	taken.item_id    = s.item_id
 	taken.durability = s.durability
-	taken.quantity  = 1
+	taken.quantity   = 1
 	if not s.net_ids.is_empty():
 		taken.net_ids.append(s.net_ids.pop_back())
 	s.quantity -= 1
@@ -257,8 +275,8 @@ func place_items(idx: int, stack: ItemStack) -> ItemStack:
 	var s := _slots[idx]
 	if not s.is_empty() and s.item_id != stack.item_id:
 		return stack.duplicate_stack()
-	var data := ItemRegistry.get_item(stack.item_id)
-	var cap  := data.carry_stack if data else 1
+	var data  := ItemRegistry.get_item(stack.item_id)
+	var cap   := data.carry_stack if data else 1
 	var placed := 0
 	for i in stack.quantity:
 		if s.quantity >= cap: break
@@ -269,8 +287,8 @@ func place_items(idx: int, stack: ItemStack) -> ItemStack:
 		placed += 1
 	if placed > 0: changed.emit()
 	if placed == stack.quantity: return ItemStack.new()
-	var leftover      := ItemStack.new()
-	leftover.item_id   = stack.item_id
+	var leftover       := ItemStack.new()
+	leftover.item_id    = stack.item_id
 	leftover.durability = stack.durability
 	for i in range(placed, stack.quantity):
 		leftover.quantity += 1
@@ -303,22 +321,22 @@ func swap_slots(a: int, b: int) -> void:
 # ── Navigation ────────────────────────────────────────────────────────────────
 
 func cycle_next() -> void:
-	active_slot = (active_slot + 1) % HOTBAR_COLS; changed.emit()
+	active_slot = (active_slot + 1) % hotbar_cols; changed.emit()
 
 func cycle_prev() -> void:
-	active_slot = (active_slot - 1 + HOTBAR_COLS) % HOTBAR_COLS; changed.emit()
+	active_slot = (active_slot - 1 + hotbar_cols) % hotbar_cols; changed.emit()
 
 func next_hotbar_row() -> void:
-	active_hotbar_row = (active_hotbar_row + 1) % HOTBAR_ROWS; changed.emit()
+	active_hotbar_row = (active_hotbar_row + 1) % hotbar_rows; changed.emit()
 
 func prev_hotbar_row() -> void:
-	active_hotbar_row = (active_hotbar_row - 1 + HOTBAR_ROWS) % HOTBAR_ROWS; changed.emit()
+	active_hotbar_row = (active_hotbar_row - 1 + hotbar_rows) % hotbar_rows; changed.emit()
 
 func set_active_hotbar_slot(col: int) -> void:
-	active_slot = clamp(col, 0, HOTBAR_COLS - 1); changed.emit()
+	active_slot = clamp(col, 0, hotbar_cols - 1); changed.emit()
 
 func set_active_hotbar_row(row: int) -> void:
-	active_hotbar_row = clamp(row, 0, HOTBAR_ROWS - 1); changed.emit()
+	active_hotbar_row = clamp(row, 0, hotbar_rows - 1); changed.emit()
 
 # ── Slot access ───────────────────────────────────────────────────────────────
 
@@ -326,10 +344,10 @@ func get_slot(idx: int) -> ItemStack:
 	return _slots[idx]
 
 func get_hotbar_slot(r: int, c: int) -> ItemStack:
-	return _slots[MAIN_SLOTS + r * HOTBAR_COLS + c]
+	return _slots[main_slots + r * hotbar_cols + c]
 
 func get_main_slot(r: int, c: int) -> ItemStack:
-	return _slots[r * COLS + c]
+	return _slots[r * cols + c]
 
 # ── Multiplayer container sync ────────────────────────────────────────────────
 
@@ -345,9 +363,10 @@ func _net_encode() -> Array:
 	var data := []
 	for s in _slots:
 		if s.is_empty():
-			data.append(["", 0, [], -1])
+			data.append({"id": "", "qty": 0, "nets": [], "dur": -1})
 		else:
-			data.append([s.item_id, s.quantity, s.net_ids.duplicate(), s.durability])
+			data.append({"id": s.item_id, "qty": s.quantity,
+					"nets": s.net_ids.duplicate(), "dur": s.durability})
 	return data
 
 func apply_remote_state(slots_data: Array) -> void:
@@ -355,15 +374,14 @@ func apply_remote_state(slots_data: Array) -> void:
 	for i in _slots.size():
 		_slots[i] = ItemStack.new()
 	for i in mini(slots_data.size(), _slots.size()):
-		var entry: Array = slots_data[i]
-		if entry.size() < 4: continue
-		var iid: String = entry[0]
+		var entry: Dictionary = slots_data[i]
+		var iid: String = entry.get("id", "")
 		if iid.is_empty(): continue
-		var s      := _slots[i]
-		s.item_id   = iid
-		s.quantity  = entry[1]
-		s.durability = entry[3]
-		for nid in entry[2]:
+		var s       := _slots[i]
+		s.item_id    = iid
+		s.quantity   = entry.get("qty", 0)
+		s.durability = entry.get("dur", -1)
+		for nid in entry.get("nets", []):
 			s.net_ids.append(int(nid))
 	changed.emit()
 	_applying_remote = false
