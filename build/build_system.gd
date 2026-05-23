@@ -15,7 +15,8 @@ var _active:     bool = false
 var _snapping:   bool = false
 var _place_held: bool = false
 
-var _building_rot_offset: float = 0.0  # player's R-key offset on top of snapped foundation yaw
+var _building_rot_offset:       float   = 0.0  # player's R-key offset on top of snapped foundation yaw
+var _foundation_stretched_h:    float   = 0.0  # actual placed height this frame (may exceed data.size.y)
 
 var _pieces_root: Node3D
 var _placed_root: Node3D
@@ -46,7 +47,7 @@ func _ready() -> void:
 
 	_mat_snap    = _ghost_mat(Color(0.25, 0.90, 0.35, 0.55))
 	_mat_blocked = _ghost_mat(Color(0.90, 0.20, 0.20, 0.55))
-	_mat_free    = _ghost_mat(Color(1.0,  1.0,  1.0,  0.50))
+	_mat_free    = _ghost_mat(Color(0.20, 0.60, 0.95, 0.50))
 
 	_ghost.cast_shadow       = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_ghost.material_override = _mat_free
@@ -134,8 +135,7 @@ func _update_ghost_foundation(cam: Camera3D) -> void:
 	var yaw: float = cam.global_transform.basis.get_euler(EULER_ORDER_YXZ).y
 	_ghost.global_rotation = Vector3(0.0, yaw, 0.0)
 
-	# Float at fixed distance along the camera forward direction so pitch
-	# naturally compensates for slopes.
+	# Float at fixed distance along the camera forward direction.
 	_ghost.global_position = cam.global_position + (-cam.global_transform.basis.z) * FOUNDATION_REACH
 
 	# Snap to an adjacent placed foundation when one is close enough.
@@ -145,45 +145,51 @@ func _update_ghost_foundation(cam: Camera3D) -> void:
 		_ghost.global_position = snap["position"]
 		_ghost.global_rotation = Vector3(0.0, snap["yaw"] as float, 0.0)
 	_snapping = is_snapping
-	_ghost.show()
 
-	var blocked: bool = _is_blocked() or _foundation_ground_invalid()
-	if blocked:
+	# Stretch the bottom face down to terrain — top face stays at current position.
+	# When snapping, match the adjacent foundation's top face exactly so they stay level.
+	var top_y: float = snap["top_y"] as float if is_snapping else _ghost.global_position.y + _held_size.y * 0.5
+	var terrain_y:   float = _sample_terrain_y(_ghost.global_position)
+	var stretched_h: float = max(_held_size.y, top_y - terrain_y)
+	_foundation_stretched_h       = stretched_h
+	_ghost.global_position.y      = terrain_y + stretched_h * 0.5
+	(_ghost.mesh as BoxMesh).size = Vector3(_held_size.x, stretched_h, _held_size.z)
+
+	if _foundation_ground_invalid():
+		_ghost.show()
 		_ghost.material_override = _mat_blocked
-	elif is_snapping:
-		_ghost.material_override = _mat_snap
-	else:
-		_ghost.material_override = _mat_free
+		return
+	_ghost.show()
+	_ghost.material_override = _mat_snap if is_snapping else _mat_free
 
-## Enforces three ground rules for foundation placement:
-##   1. Underground  — terrain surface is above the foundation's bottom face.
-##   2. Too high     — foundation bottom is more than FOUNDATION_MAX_HOVER above terrain.
-##   3. Stacking     — something directly below is another placed piece.
-func _foundation_ground_invalid() -> bool:
-	var center:            Vector3 = _ghost.global_position
-	var foundation_bottom: float   = center.y - _held_size.y * 0.5
-
+## Shoots a ray straight down from the given XZ and returns the terrain Y.
+## Returns a fallback that produces minimum stretch if nothing is found.
+func _sample_terrain_y(at: Vector3) -> float:
 	var space: PhysicsDirectSpaceState3D   = player.get_world_3d().direct_space_state
 	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(
-		Vector3(center.x, center.y + 4.0, center.z),
-		Vector3(center.x, center.y - 8.0, center.z))
+		Vector3(at.x, at.y + 10.0, at.z),
+		Vector3(at.x, at.y - 30.0, at.z))
 	query.exclude = [player.get_rid()]
 	var hit: Dictionary = space.intersect_ray(query)
+	if hit.is_empty() or hit["collider"] is PlacedPiece:
+		return at.y - _held_size.y * 0.5
+	return hit["position"].y as float
 
+## Returns true if placement should be blocked:
+##   - No terrain found below.
+##   - Another placed piece is directly below (no stacking foundations).
+func _foundation_ground_invalid() -> bool:
+	var center: Vector3 = _ghost.global_position
+	var space:  PhysicsDirectSpaceState3D   = player.get_world_3d().direct_space_state
+	var query:  PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(
+		Vector3(center.x, center.y + 4.0, center.z),
+		Vector3(center.x, center.y - _foundation_stretched_h - 2.0, center.z))
+	query.exclude = [player.get_rid()]
+	var hit: Dictionary = space.intersect_ray(query)
 	if hit.is_empty():
 		return true
-
 	if hit["collider"] is PlacedPiece:
 		return true
-
-	var terrain_y: float = hit["position"].y as float
-
-	if terrain_y > foundation_bottom + FOUNDATION_MAX_SINK:
-		return true
-
-	if foundation_bottom - terrain_y > FOUNDATION_MAX_HOVER:
-		return true
-
 	return false
 
 ## Returns {position, yaw} for the nearest open grid slot adjacent to any placed
@@ -203,13 +209,16 @@ func _find_foundation_grid_snap() -> Dictionary:
 			piece.global_position - pb.z * piece.size.z,
 		]
 		for candidate: Vector3 in candidates:
-			# Lock Y to the existing foundation so the grid stays level.
 			var snap_pos: Vector3 = Vector3(candidate.x, piece.global_position.y, candidate.z)
 			# XZ-only distance so slope height differences don't block snapping.
 			var flat_d: float = Vector2(ghost_pos.x - snap_pos.x, ghost_pos.z - snap_pos.z).length()
 			if flat_d < best_dist:
 				best_dist = flat_d
-				best = {"position": snap_pos, "yaw": piece.global_rotation.y}
+				best = {
+					"position": snap_pos,
+					"yaw":      piece.global_rotation.y,
+					"top_y":    piece.global_position.y + piece.size.y * 0.5,
+				}
 
 	return best
 
@@ -228,10 +237,10 @@ func _update_ghost_building(hit: Dictionary) -> void:
 		_ghost.global_position = snap["position"]
 		_ghost.global_rotation = Vector3(0.0, (snap["yaw"] as float) + _building_rot_offset, 0.0)
 
-	if _is_blocked() or not _snapping:
+	if _is_blocked():
 		_ghost.material_override = _mat_blocked
-	else:
-		_ghost.material_override = _mat_snap
+		return
+	_ghost.material_override = _mat_snap if _snapping else _mat_free
 
 ## Returns {position, yaw} for the nearest foundation within BUILDING_SNAP_DIST,
 ## or an empty Dictionary when nothing is close enough.
@@ -269,8 +278,8 @@ func _update_ghost_free(hit: Dictionary) -> void:
 
 	if _is_blocked():
 		_ghost.material_override = _mat_blocked
-	else:
-		_ghost.material_override = _mat_free
+		return
+	_ghost.material_override = _mat_free
 
 # ── Overlap check ─────────────────────────────────────────────────────────────
 
@@ -283,6 +292,7 @@ func _is_blocked() -> bool:
 	params.margin    = -0.02
 	params.exclude   = [player.get_rid()]
 	return player.get_world_3d().direct_space_state.intersect_shape(params, 1).size() > 0
+
 
 # ── Placement ────────────────────────────────────────────────────────────────
 
@@ -297,10 +307,13 @@ func _place() -> void:
 		if _is_blocked(): return
 		if not _is_free_placement() and not _snapping: return
 
-	var net_id:  int         = _assign_net_id()
-	var world_t: Transform3D = _ghost.global_transform
+	var net_id:     int         = _assign_net_id()
+	var world_t:    Transform3D = _ghost.global_transform
+	var place_size: Vector3     = _held_size
+	if _is_foundation_held():
+		place_size = Vector3(_held_size.x, _foundation_stretched_h, _held_size.z)
 
-	_apply_place_local(_held_id, world_t, net_id)
+	_apply_place_local(_held_id, world_t, net_id, place_size)
 
 	if player._held_visual:
 		player._held_visual.play_place_sound()
@@ -308,9 +321,9 @@ func _place() -> void:
 
 	if NetworkManager.is_active() and _held_data:
 		if NetworkManager.is_server():
-			_sync_place.rpc(_held_id, world_t, net_id)
+			_sync_place.rpc(_held_id, world_t, net_id, place_size)
 		else:
-			_request_place.rpc_id(1, _held_id, world_t, net_id)
+			_request_place.rpc_id(1, _held_id, world_t, net_id, place_size)
 
 	_consume_held()
 
@@ -383,8 +396,7 @@ func _refresh_ghost_for_held() -> void:
 	var box: BoxMesh = BoxMesh.new()
 	box.size         = _held_size
 	_ghost.mesh      = box
-	var c: Color     = _held_data.color if _held_data else Color(1.0, 1.0, 1.0)
-	_mat_free        = _ghost_mat(Color(c.r, c.g, c.b, 0.5))
+	_mat_free        = _ghost_mat(Color(0.20, 0.60, 0.95, 0.50))
 	_ghost.material_override = _mat_free
 
 # ── Mode enter / exit ─────────────────────────────────────────────────────────
@@ -417,19 +429,21 @@ func _assign_net_id() -> int:
 	return get_tree().get_first_node_in_group("world").assign_item_id()
 
 @rpc("any_peer", "reliable")
-func _request_place(item_id: String, world_transform: Transform3D, net_id: int) -> void:
+func _request_place(item_id: String, world_transform: Transform3D, net_id: int, actual_size: Vector3) -> void:
 	if not NetworkManager.is_server(): return
 	var sender_id: int = multiplayer.get_remote_sender_id()
-	_apply_place_local(item_id, world_transform, net_id)
+	_apply_place_local(item_id, world_transform, net_id, actual_size)
 	for pid: int in NetworkManager.players.keys():
 		if pid != 1 and pid != sender_id:
-			_sync_place.rpc_id(pid, item_id, world_transform, net_id)
+			_sync_place.rpc_id(pid, item_id, world_transform, net_id, actual_size)
 
 @rpc("authority", "reliable")
-func _sync_place(item_id: String, world_transform: Transform3D, net_id: int) -> void:
-	_apply_place_local(item_id, world_transform, net_id)
+func _sync_place(item_id: String, world_transform: Transform3D, net_id: int, actual_size: Vector3) -> void:
+	_apply_place_local(item_id, world_transform, net_id, actual_size)
 
-func _apply_place_local(item_id: String, world_transform: Transform3D, net_id: int) -> void:
+## `actual_size` overrides `data.size` — used for foundations whose height
+## is stretched to terrain at placement time.
+func _apply_place_local(item_id: String, world_transform: Transform3D, net_id: int, actual_size: Vector3 = Vector3.ZERO) -> void:
 	var data: ItemData = ItemRegistry.get_item(item_id)
 	if not data: return
 	var world: Node = get_tree().get_first_node_in_group("world")
@@ -442,7 +456,8 @@ func _apply_place_local(item_id: String, world_transform: Transform3D, net_id: i
 		node.set("net_id", net_id)
 		_placed_root.add_child(node)
 	else:
-		var piece: PlacedPiece = PlacedPiece.build(data.size, data.color)
+		var use_size: Vector3  = actual_size if actual_size != Vector3.ZERO else data.size
+		var piece: PlacedPiece = PlacedPiece.build(use_size, data.color)
 		piece.net_id        = net_id
 		piece.is_foundation = data.is_foundation
 		if data is BuildingItemData:
@@ -481,7 +496,8 @@ func _apply_remove_local(net_id: int) -> void:
 
 func apply_piece_snapshot(snapshot: Array[Dictionary]) -> void:
 	for entry: Dictionary in snapshot:
-		_apply_place_local(entry["item_id"], entry["transform"], entry["net_id"])
+		var sz: Vector3 = entry.get("size", Vector3.ZERO) as Vector3
+		_apply_place_local(entry["item_id"], entry["transform"], entry["net_id"], sz)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
