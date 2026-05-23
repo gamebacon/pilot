@@ -108,7 +108,7 @@ func drop_one(player: Player) -> void:
 	var one: Inventory.ItemStack = drag.pop_one()
 	if not one.is_empty() and player:
 		var nid := one.net_ids[0] if not one.net_ids.is_empty() else 0
-		player.drop_item_data(one.item_id, nid, one.durability)
+		player.drop_item_data(one.item_id, nid, one.get_durability())
 	if drag == null or drag.is_empty(): drag = null
 	drag_changed.emit()
 	needs_refresh.emit()
@@ -120,7 +120,7 @@ func drop_all(player: Player) -> void:
 		var one: Inventory.ItemStack = drag.pop_one()
 		if player:
 			var nid := one.net_ids[0] if not one.net_ids.is_empty() else 0
-			player.drop_item_data(one.item_id, nid, one.durability)
+			player.drop_item_data(one.item_id, nid, one.get_durability())
 	drag = null
 	drag_changed.emit()
 	needs_refresh.emit()
@@ -243,8 +243,8 @@ func on_slot_enter(pos: int) -> void:
 					and can_insert(slot_pos, drag.get_data()):
 				var n := mini(per_slot, drag.quantity)
 				var chunk := Inventory.ItemStack.new()
-				chunk.item_id    = drag.item_id
-				chunk.durability = drag.durability
+				chunk.item_id  = drag.item_id
+				chunk.metadata = drag.metadata.duplicate()
 				for _ii in n:
 					if drag.is_empty(): break
 					chunk.quantity += 1

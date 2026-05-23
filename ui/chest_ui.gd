@@ -79,7 +79,7 @@ func _refresh() -> void:
 	if sv:
 		var slot: Inventory.ItemStack = sv.get_slot(_controller.sidx(cur))
 		if not slot.is_empty() and cur < _slots.size() and _slots[cur] != null:
-			ItemTooltip.show_for(slot.get_data(), slot.net_ids, slot.durability, _slots[cur])
+			ItemTooltip.show_for(slot.get_data(), slot.net_ids, slot.get_durability(), _slots[cur])
 		else:
 			ItemTooltip.hide()
 	else:

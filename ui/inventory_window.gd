@@ -377,7 +377,7 @@ func _build_slot(parent: Control, pos: int, slots: Array = []) -> ItemSlotWidget
 			if sv:
 				var slot := sv.get_slot(_controller.sidx(i2))
 				if not slot.is_empty():
-					ItemTooltip.show_for(slot.get_data(), slot.net_ids, slot.durability)
+					ItemTooltip.show_for(slot.get_data(), slot.net_ids, slot.get_durability())
 				else:
 					ItemTooltip.hide()
 	)
@@ -430,7 +430,7 @@ func _refresh() -> void:
 		var sv := _controller.sinv(pos)
 		if not sv: continue
 		var slot := sv.get_slot(_controller.sidx(pos))
-		_slots[pos].set_item(slot.get_data(), slot.quantity, slot.net_ids, slot.durability)
+		_slots[pos].set_item(slot.get_data(), slot.quantity, slot.net_ids, slot.get_durability())
 	# Keep tooltip in sync when slot contents change under the cursor
 	var hs := _controller.hovered_slot
 	if hs >= 0 and hs < _slots.size() and _slots[hs] != null \
@@ -439,7 +439,7 @@ func _refresh() -> void:
 		if sv:
 			var slot := sv.get_slot(_controller.sidx(hs))
 			if not slot.is_empty():
-				ItemTooltip.show_for(slot.get_data(), slot.net_ids, slot.durability)
+				ItemTooltip.show_for(slot.get_data(), slot.net_ids, slot.get_durability())
 			else:
 				ItemTooltip.hide()
 

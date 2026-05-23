@@ -38,13 +38,19 @@ var container_net_id: int = 0:
 
 var _applying_remote: bool = false
 
-# ── ItemStack — unified slot/drag type ────────────────────────────────────────
+# ── ItemStack ─────────────────────────────────────────────────────────────────
+## Unified type for both slot storage and drag-and-drop state.
+## Per-instance data (durability, quality, enchantments, etc.) lives in
+## [metadata] so new properties never require field additions here.
 
 class ItemStack:
-	var item_id:    String     = ""
-	var quantity:   int        = 0
-	var durability: int        = -1
-	var net_ids:    Array[int] = []
+	var item_id:  String     = ""
+	var quantity: int        = 0
+	var net_ids:  Array[int] = []
+	## Arbitrary per-instance data. Well-known keys:
+	##   "dur"     int   — current durability (-1 sentinel = no durability system)
+	##   "quality" int   — future item quality tier
+	var metadata: Dictionary = {}
 
 	func is_empty() -> bool: return item_id.is_empty() or quantity <= 0
 
@@ -63,18 +69,31 @@ class ItemStack:
 	func active_net_id() -> int:
 		return net_ids[0] if not net_ids.is_empty() else 0
 
-	## Remove one item from this stack and return it as a new ItemStack of qty=1.
+	# ── Durability helpers ─────────────────────────────────────────────────────
+
+	func get_durability() -> int:
+		return metadata.get("dur", -1)
+
+	func has_durability() -> bool:
+		return metadata.has("dur")
+
+	func set_durability(v: int) -> void:
+		metadata["dur"] = v
+
+	# ── Stack operations ───────────────────────────────────────────────────────
+
+	## Remove one item and return it as a new ItemStack of qty=1.
 	func pop_one() -> ItemStack:
 		if is_empty(): return ItemStack.new()
-		var one       := ItemStack.new()
-		one.item_id    = item_id
-		one.durability = durability
-		one.quantity   = 1
+		var one      := ItemStack.new()
+		one.item_id   = item_id
+		one.metadata  = metadata.duplicate()
+		one.quantity  = 1
 		if not net_ids.is_empty():
 			one.net_ids.append(net_ids.pop_back())
 		quantity -= 1
 		if quantity <= 0:
-			item_id  = ""
+			item_id = ""
 			quantity = 0
 			net_ids.clear()
 		return one
@@ -83,17 +102,17 @@ class ItemStack:
 	func merge(other: ItemStack) -> void:
 		if other == null or other.is_empty(): return
 		if is_empty():
-			item_id    = other.item_id
-			durability = other.durability
+			item_id  = other.item_id
+			metadata = other.metadata.duplicate()
 		quantity += other.quantity
 		net_ids.append_array(other.net_ids)
 
 	func duplicate_stack() -> ItemStack:
-		var d       := ItemStack.new()
-		d.item_id    = item_id
-		d.quantity   = quantity
-		d.net_ids    = net_ids.duplicate()
-		d.durability = durability
+		var d      := ItemStack.new()
+		d.item_id   = item_id
+		d.quantity  = quantity
+		d.net_ids   = net_ids.duplicate()
+		d.metadata  = metadata.duplicate()
 		return d
 
 # ── State ─────────────────────────────────────────────────────────────────────
@@ -130,7 +149,7 @@ func active_net_id() -> int:
 	return _slots[_active_abs()].active_net_id()
 
 func active_durability() -> int:
-	return _slots[_active_abs()].durability
+	return _slots[_active_abs()].get_durability()
 
 # ── General queries ───────────────────────────────────────────────────────────
 
@@ -184,39 +203,46 @@ func size() -> int:
 # ── Mutations ─────────────────────────────────────────────────────────────────
 
 ## Add one item by id. Returns true if it fit, false if inventory was full.
+## [durability] is a convenience shorthand — pass -1 for items with no durability.
+## Add one item by id. [durability] is a convenience shorthand — pass -1 for
+## items with no durability. Returns true if it fit, false if inventory was full.
 func add(item_id: String, net_id: int = 0, durability: int = -1) -> bool:
-	# 1. Stack into existing hotbar
+	var meta: Dictionary = {}
+	if durability >= 0: meta["dur"] = durability
+	var s := _find_priority_slot(item_id)
+	if s == null: return false
+	_slot_add(s, item_id, net_id, meta)
+	changed.emit()
+	return true
+
+## Find best slot for [item_id] respecting hotbar-first priority.
+## Returns null if inventory is full.
+func _find_priority_slot(item_id: String) -> ItemStack:
+	# 1. Existing hotbar stack
 	for r in hotbar_rows:
 		for c in hotbar_cols:
 			var s := _slots[main_slots + r * hotbar_cols + c]
-			if not s.is_empty() and s.can_add(item_id):
-				_slot_add(s, item_id, net_id, durability)
-				changed.emit(); return true
-	# 2. Stack into existing main
+			if not s.is_empty() and s.can_add(item_id): return s
+	# 2. Existing main stack
 	for i in main_slots:
-		if not _slots[i].is_empty() and _slots[i].can_add(item_id):
-			_slot_add(_slots[i], item_id, net_id, durability)
-			changed.emit(); return true
+		var s := _slots[i]
+		if not s.is_empty() and s.can_add(item_id): return s
 	# 3. Empty hotbar (prefer active row)
 	for r in hotbar_rows:
 		var row := (active_hotbar_row + r) % hotbar_rows
 		for c in hotbar_cols:
 			var s := _slots[main_slots + row * hotbar_cols + c]
-			if s.is_empty():
-				_slot_add(s, item_id, net_id, durability)
-				changed.emit(); return true
+			if s.is_empty(): return s
 	# 4. Empty main
 	for i in main_slots:
-		if _slots[i].is_empty():
-			_slot_add(_slots[i], item_id, net_id, durability)
-			changed.emit(); return true
-	return false
+		if _slots[i].is_empty(): return _slots[i]
+	return null
 
-func _slot_add(s: ItemStack, item_id: String, net_id: int, durability: int) -> void:
-	s.item_id   = item_id
-	s.quantity  += 1
+func _slot_add(s: ItemStack, item_id: String, net_id: int, meta: Dictionary) -> void:
+	s.item_id  = item_id
+	s.quantity += 1
 	s.net_ids.append(net_id)
-	if durability >= 0: s.durability = durability
+	if not meta.is_empty(): s.metadata = meta.duplicate()
 
 ## Remove one item from the active slot. Returns an ItemStack (may be empty).
 func remove_active_one() -> ItemStack:
@@ -235,17 +261,17 @@ func remove_one_by_id(id: String) -> ItemStack:
 
 func _take_one_from(s: ItemStack) -> ItemStack:
 	if s.is_empty(): return ItemStack.new()
-	var taken       := ItemStack.new()
-	taken.item_id    = s.item_id
-	taken.durability = s.durability
-	taken.quantity   = 1
+	var taken     := ItemStack.new()
+	taken.item_id  = s.item_id
+	taken.metadata = s.metadata.duplicate()
+	taken.quantity = 1
 	if not s.net_ids.is_empty():
 		taken.net_ids.append(s.net_ids.pop_back())
 	s.quantity -= 1
 	if s.quantity <= 0:
-		s.item_id    = ""
-		s.quantity   = 0
-		s.durability = -1
+		s.item_id  = ""
+		s.quantity = 0
+		s.metadata = {}
 		s.net_ids.clear()
 	return taken
 
@@ -255,16 +281,16 @@ func take_items(idx: int, qty: int) -> ItemStack:
 	if s.is_empty() or qty <= 0: return ItemStack.new()
 	var n     := mini(qty, s.quantity)
 	var stack := ItemStack.new()
-	stack.item_id    = s.item_id
-	stack.durability = s.durability
+	stack.item_id  = s.item_id
+	stack.metadata = s.metadata.duplicate()
 	for _i in n:
 		stack.quantity += 1
 		stack.net_ids.append(s.net_ids.pop_back() if not s.net_ids.is_empty() else 0)
 	s.quantity -= n
 	if s.quantity <= 0:
-		s.item_id    = ""
-		s.quantity   = 0
-		s.durability = -1
+		s.item_id  = ""
+		s.quantity = 0
+		s.metadata = {}
 		s.net_ids.clear()
 	changed.emit()
 	return stack
@@ -280,36 +306,39 @@ func place_items(idx: int, stack: ItemStack) -> ItemStack:
 	var placed := 0
 	for i in stack.quantity:
 		if s.quantity >= cap: break
-		s.item_id   = stack.item_id
-		s.quantity  += 1
+		s.item_id  = stack.item_id
+		s.metadata = stack.metadata.duplicate()
+		s.quantity += 1
 		s.net_ids.append(stack.net_ids[i] if i < stack.net_ids.size() else 0)
-		if stack.durability >= 0: s.durability = stack.durability
 		placed += 1
 	if placed > 0: changed.emit()
 	if placed == stack.quantity: return ItemStack.new()
-	var leftover       := ItemStack.new()
-	leftover.item_id    = stack.item_id
-	leftover.durability = stack.durability
+	var leftover      := ItemStack.new()
+	leftover.item_id   = stack.item_id
+	leftover.metadata  = stack.metadata.duplicate()
 	for i in range(placed, stack.quantity):
 		leftover.quantity += 1
 		if i < stack.net_ids.size(): leftover.net_ids.append(stack.net_ids[i])
 	return leftover
 
-## Add all items in an ItemStack back to inventory using normal priority.
+## Add all items in an ItemStack back to inventory preserving full metadata.
 func add_drag(stack: ItemStack) -> void:
 	if stack == null or stack.is_empty(): return
 	for i in stack.quantity:
 		var nid: int = stack.net_ids[i] if i < stack.net_ids.size() else 0
-		add(stack.item_id, nid, stack.durability)
+		var s := _find_priority_slot(stack.item_id)
+		if s == null: return   # inventory full
+		_slot_add(s, stack.item_id, nid, stack.metadata)
+		changed.emit()
 
 ## Decrement durability of the active slot. Returns true when the tool breaks.
 func use_active_durability(amount: int = 1) -> bool:
 	var s := _slots[_active_abs()]
-	if s.durability < 0: return false
-	s.durability -= amount
-	if s.durability <= 0: s.durability = 0
+	if not s.has_durability(): return false
+	var new_dur := maxi(0, s.get_durability() - amount)
+	s.set_durability(new_dur)
 	changed.emit()
-	return s.durability <= 0
+	return new_dur <= 0
 
 func swap_slots(a: int, b: int) -> void:
 	if a == b: return
@@ -363,10 +392,10 @@ func _net_encode() -> Array:
 	var data := []
 	for s in _slots:
 		if s.is_empty():
-			data.append({"id": "", "qty": 0, "nets": [], "dur": -1})
+			data.append({"id": "", "qty": 0, "nets": []})
 		else:
 			data.append({"id": s.item_id, "qty": s.quantity,
-					"nets": s.net_ids.duplicate(), "dur": s.durability})
+					"nets": s.net_ids.duplicate(), "meta": s.metadata.duplicate()})
 	return data
 
 func apply_remote_state(slots_data: Array) -> void:
@@ -377,10 +406,10 @@ func apply_remote_state(slots_data: Array) -> void:
 		var entry: Dictionary = slots_data[i]
 		var iid: String = entry.get("id", "")
 		if iid.is_empty(): continue
-		var s       := _slots[i]
-		s.item_id    = iid
-		s.quantity   = entry.get("qty", 0)
-		s.durability = entry.get("dur", -1)
+		var s      := _slots[i]
+		s.item_id   = iid
+		s.quantity  = entry.get("qty", 0)
+		s.metadata  = entry.get("meta", {}).duplicate()
 		for nid in entry.get("nets", []):
 			s.net_ids.append(int(nid))
 	changed.emit()

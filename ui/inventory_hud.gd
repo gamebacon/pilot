@@ -111,7 +111,7 @@ func _handle_input(event: InputEvent) -> bool:
 				var player := get_tree().get_first_node_in_group("player") as Player
 				if player:
 					var nid := taken.net_ids[0] if not taken.net_ids.is_empty() else 0
-					player.drop_item_data(taken.item_id, nid, taken.durability)
+					player.drop_item_data(taken.item_id, nid, taken.get_durability())
 		_refresh()
 		get_viewport().set_input_as_handled()
 		return true
@@ -135,6 +135,6 @@ func _refresh() -> void:
 			_slots[i].set_cursor(i == cur)
 	var slot: Inventory.ItemStack = _inv.get_slot(cur)
 	if not slot.is_empty() and cur < _slots.size() and _slots[cur] != null:
-		ItemTooltip.show_for(slot.get_data(), slot.net_ids, slot.durability, _slots[cur])
+		ItemTooltip.show_for(slot.get_data(), slot.net_ids, slot.get_durability(), _slots[cur])
 	else:
 		ItemTooltip.hide()

@@ -266,7 +266,7 @@ func drop_active() -> void:
 	var drag: Inventory.ItemStack = inventory.remove_active_one()
 	if drag.is_empty(): return
 	_eject_data(drag.item_id, drag.net_ids[0] if not drag.net_ids.is_empty() else 0,
-		drag.durability, -transform.basis.z * 3.0 + Vector3(0, 1, 0))
+		drag.get_durability(), -transform.basis.z * 3.0 + Vector3(0, 1, 0))
 
 ## Called from UI drag-drop to drop a single item by data.
 func drop_item_data(item_id: String, net_id: int, durability: int) -> void:

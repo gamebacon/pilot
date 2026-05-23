@@ -39,7 +39,7 @@ func _place_into(sv: Inventory, si: int, d: Inventory.ItemStack) -> Inventory.It
 		var w := _world()
 		if w:
 			w.request_chest_place(chest_net_id, si, d.item_id, qty_placed,
-					d.net_ids.slice(0, qty_placed), d.durability)
+					d.net_ids.slice(0, qty_placed), d.get_durability())
 	return leftover
 
 func quick_transfer(stack: Inventory.ItemStack, from_pos: int,
@@ -74,7 +74,7 @@ func shift_click_transfer(sv: Inventory, si: int, qty: int, from_pos: int) -> vo
 		var w := _world()
 		if w:
 			w.request_chest_place(chest_net_id, si, leftover.item_id,
-					leftover.quantity, leftover.net_ids, leftover.durability)
+					leftover.quantity, leftover.net_ids, leftover.get_durability())
 
 # ── Called by ChestUI when the server denies the take ─────────────────────────
 

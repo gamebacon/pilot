@@ -45,7 +45,7 @@ func _build() -> void:
 			if _inv:
 				var slot := _inv.get_hotbar_slot(_inv.active_hotbar_row, c2)
 				if not slot.is_empty():
-					ItemTooltip.show_for(slot.get_data(), slot.net_ids, slot.durability)
+					ItemTooltip.show_for(slot.get_data(), slot.net_ids, slot.get_durability())
 				else:
 					ItemTooltip.hide()
 		)
@@ -60,6 +60,6 @@ func _refresh() -> void:
 	for col in Inventory.HOTBAR_COLS:
 		var slot := _inv.get_hotbar_slot(active_row, col)
 		var data := slot.get_data() if not slot.is_empty() else null
-		_slots[col].set_item(data, slot.quantity, slot.net_ids, slot.durability)
+		_slots[col].set_item(data, slot.quantity, slot.net_ids, slot.get_durability())
 		_slots[col].set_active(col == active_col)
 
