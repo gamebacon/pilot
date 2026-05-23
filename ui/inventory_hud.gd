@@ -3,8 +3,6 @@ extends InventoryWindow
 ## Player's own inventory window — single-inventory, controller-navigable.
 ## All drag/slot logic lives in InventoryController (via InventoryWindow).
 
-var _cursor := 0
-
 func _window_title()  -> String: return "INVENTORY"
 func _window_layout() -> Layout: return Layout.CENTERED
 
@@ -51,10 +49,12 @@ func _build_content(vbox: VBoxContainer) -> void:
 
 func _on_opened() -> void:
 	_inv = _player.inventory if _player else null
-	_controller.inv = _inv
+	_controller.inv      = _inv
+	_controller.nav_rows = Inventory.ROWS + Inventory.HOTBAR_ROWS
+	_controller.nav_cols = Inventory.COLS
+	_controller.reset_cursor()
 	if _inv and not _inv.changed.is_connected(_on_inv_changed):
 		_inv.changed.connect(_on_inv_changed)
-	_cursor = 0
 	_refresh()
 	var hb := get_tree().get_first_node_in_group("hotbar_hud")
 	if hb: hb.hide()
@@ -116,32 +116,12 @@ func _handle_input(event: InputEvent) -> bool:
 		get_viewport().set_input_as_handled()
 		return true
 
-	# Controller grid navigation
-	if event.is_action_pressed("ui_left",  true): _nav(-1,  0); get_viewport().set_input_as_handled(); return true
-	if event.is_action_pressed("ui_right", true): _nav( 1,  0); get_viewport().set_input_as_handled(); return true
-	if event.is_action_pressed("ui_up",    true): _nav( 0, -1); get_viewport().set_input_as_handled(); return true
-	if event.is_action_pressed("ui_down",  true): _nav( 0,  1); get_viewport().set_input_as_handled(); return true
-	if event.is_action_pressed("ui_accept"):
-		_controller.clear_split()
-		_controller.left_activate(_cursor)
-		get_viewport().set_input_as_handled()
-		return true
-
-	return false
-
-func _nav(dx: int, dy: int) -> void:
-	var total_rows := Inventory.ROWS + Inventory.HOTBAR_ROWS
-	var col := _cursor % Inventory.COLS
-	var row := _cursor / Inventory.COLS
-	col = (col + dx + Inventory.COLS) % Inventory.COLS
-	row = clamp(row + dy, 0, total_rows - 1)
-	_cursor   = row * Inventory.COLS + col
-	_ctrl_nav = true
-	_refresh()
+	return super._handle_input(event)
 
 func _get_ctrl_cursor_pos() -> Vector2:
-	if _cursor >= 0 and _cursor < _slots.size() and _slots[_cursor] != null:
-		return _slots[_cursor].global_position
+	var cur := _controller.cursor
+	if cur >= 0 and cur < _slots.size() and _slots[cur] != null:
+		return _slots[cur].global_position
 	return get_viewport().get_mouse_position()
 
 # ── Refresh ────────────────────────────────────────────────────────────────────
@@ -149,11 +129,12 @@ func _get_ctrl_cursor_pos() -> Vector2:
 func _refresh() -> void:
 	super._refresh()
 	if not _inv or not _ctrl_nav: return
-	for i in _slots.size():
+	var cur := _controller.cursor
+	for i: int in _slots.size():
 		if _slots[i] != null:
-			_slots[i].set_cursor(i == _cursor)
-	var cur := _inv.get_slot(_cursor)
-	if not cur.is_empty() and _cursor < _slots.size() and _slots[_cursor] != null:
-		ItemTooltip.show_for(cur.get_data(), cur.net_ids, cur.durability, _slots[_cursor])
+			_slots[i].set_cursor(i == cur)
+	var slot: Inventory.Slot = _inv.get_slot(cur)
+	if not slot.is_empty() and cur < _slots.size() and _slots[cur] != null:
+		ItemTooltip.show_for(slot.get_data(), slot.net_ids, slot.durability, _slots[cur])
 	else:
 		ItemTooltip.hide()

@@ -46,11 +46,18 @@ var _drag_count: Label       = null
 
 # ── Lifecycle ──────────────────────────────────────────────────────────────────
 
+const NAV_INITIAL: float = 0.35
+const NAV_REPEAT:  float = 0.09
+
+var _nav_dir:   Vector2i = Vector2i.ZERO
+var _nav_timer: float    = 0.0
+
 func _ready() -> void:
 	layer = 10
 	_controller = _make_controller()
 	_controller.drag_changed.connect(_on_drag_changed)
 	_controller.needs_refresh.connect(_refresh)
+	_controller.cursor_moved.connect(_refresh)
 	hide()
 	_build_shell()
 	_build_drag_overlay()
@@ -84,16 +91,78 @@ func _apply_mouse_mode() -> void:
 func _build_content(_vbox: VBoxContainer) -> void: pass
 func _on_opened()  -> void: pass
 func _on_closed()  -> void: pass
-func _handle_input(_event: InputEvent) -> bool: return false
 func _get_ctrl_cursor_pos() -> Vector2: return get_viewport().get_mouse_position()
+
+func _handle_input(event: InputEvent) -> bool:
+	if _controller.nav_rows == 0: return false
+
+	if event.is_action_pressed("ui_left",  false): _start_nav(-1,  0); return true
+	if event.is_action_pressed("ui_right", false): _start_nav( 1,  0); return true
+	if event.is_action_pressed("ui_up",    false): _start_nav( 0, -1); return true
+	if event.is_action_pressed("ui_down",  false): _start_nav( 0,  1); return true
+
+	if event.is_action_pressed("ui_accept"):
+		var now := Time.get_ticks_msec()
+		var c   := _controller
+		if c.last_click_slot == c.cursor \
+				and (now - c.last_click_msec) <= InventoryController.DCLICK_MS:
+			# Double-tap A: pick up whole stack then collect matching items
+			c.clear_split()
+			ItemTooltip.hide()
+			if c.drag == null or c.drag.is_empty():
+				var sv: Inventory = c.sinv(c.cursor)
+				if sv:
+					var src: Inventory.Slot = sv.get_slot(c.sidx(c.cursor))
+					if not src.is_empty():
+						c.drag = c._take_from(sv, c.sidx(c.cursor), src.quantity) \
+								as Inventory.DragStack
+						c.drag_changed.emit()
+			if c.drag and not c.drag.is_empty():
+				c.double_click_collect(c.drag.item_id, _slot_count)
+			c.last_click_slot = -1
+		else:
+			c.last_click_slot = c.cursor
+			c.last_click_msec = now
+			c.clear_split()
+			c.left_activate(c.cursor)
+		return true
+
+	if event.is_action_pressed("inv_split"):
+		_controller.clear_split()
+		_controller.right_activate(_controller.cursor)
+		return true
+
+	if event.is_action_pressed("inv_quick_move"):
+		var c := _controller
+		if c.drag == null or c.drag.is_empty():
+			var sv: Inventory = c.sinv(c.cursor)
+			if sv:
+				var slot: Inventory.Slot = sv.get_slot(c.sidx(c.cursor))
+				if not slot.is_empty():
+					c.shift_click_transfer(sv, c.sidx(c.cursor), slot.quantity, c.cursor)
+		return true
+
+	return false
+
+func _start_nav(dx: int, dy: int) -> void:
+	_nav_dir   = Vector2i(dx, dy)
+	_nav_timer = NAV_INITIAL
+	_ctrl_nav  = true
+	_controller.navigate(dx, dy)
 
 # ── Input ──────────────────────────────────────────────────────────────────────
 
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
 	if not visible: return
+	# Let mouse button events reach gui_input callbacks on slot widgets and the scrim.
+	if event is InputEventMouseButton: return
 	if event is InputEventMouseMotion:
-		_ctrl_nav = false; return
-	if _handle_input(event): return
+		_ctrl_nav = false
+		return
+	# Intercept before Godot's GUI focus system can move focus to unintended controls.
+	if _handle_input(event):
+		get_viewport().set_input_as_handled()
+		return
 	if event.is_action_pressed("ui_cancel"):
 		if _controller.drag and not _controller.drag.is_empty():
 			_controller.cancel_drag()
@@ -103,10 +172,32 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # ── Process ────────────────────────────────────────────────────────────────────
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if not visible: return
 	if _drag_panel and _drag_panel.visible:
 		_drag_root.position = _get_drag_pos()
+
+	# Controller nav repeat — poll held direction and fire at NAV_REPEAT rate.
+	if _controller.nav_rows > 0:
+		var dir := Vector2i.ZERO
+		if   Input.is_action_pressed("ui_left"):  dir.x = -1
+		elif Input.is_action_pressed("ui_right"): dir.x =  1
+		if   Input.is_action_pressed("ui_up"):    dir.y = -1
+		elif Input.is_action_pressed("ui_down"):  dir.y =  1
+		if dir == Vector2i.ZERO:
+			_nav_dir   = Vector2i.ZERO
+			_nav_timer = 0.0
+		elif dir != _nav_dir:
+			# Direction changed mid-hold — _start_nav already fired for first press,
+			# so only update tracking here without an extra navigate call.
+			_nav_dir   = dir
+			_nav_timer = NAV_INITIAL
+		else:
+			_nav_timer -= delta
+			if _nav_timer <= 0.0:
+				_nav_timer = NAV_REPEAT
+				_controller.navigate(_nav_dir.x, _nav_dir.y)
+
 	var c := _controller
 	if c.split_button >= 0 and not Input.is_mouse_button_pressed(c.split_button):
 		if c.split_mode and c.drag and not c.drag.is_empty():

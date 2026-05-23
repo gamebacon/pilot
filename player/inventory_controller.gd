@@ -7,10 +7,30 @@ extends RefCounted
 
 signal drag_changed   # drag state changed — update drag visual
 signal needs_refresh  # slot data changed — repaint slot widgets
+signal cursor_moved   # controller cursor moved — repaint + tooltip
 
 var inv:        Inventory = null
 var player_inv: Inventory = null
 var external_slot_count: int = 0
+
+# ── Controller cursor ─────────────────────────────────────────────────────────
+
+var cursor:   int = 0
+var nav_rows: int = 0   # 0 = grid nav disabled (e.g. CraftingUI uses its own nav)
+var nav_cols: int = 8   # default Inventory.COLS; set before opening if different
+
+func navigate(dx: int, dy: int) -> void:
+	if nav_rows == 0: return
+	var col: int = cursor % nav_cols
+	var row: int = cursor / nav_cols
+	col    = (col + dx + nav_cols) % nav_cols
+	row    = clamp(row + dy, 0, nav_rows - 1)
+	cursor = row * nav_cols + col
+	cursor_moved.emit()
+
+func reset_cursor() -> void:
+	cursor = 0
+	cursor_moved.emit()
 
 # ── Drag state ────────────────────────────────────────────────────────────────
 

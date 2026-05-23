@@ -5,8 +5,8 @@ class_name CraftingUI
 ## Three tabs (Materials / Tools / Weapons) with L1/R1 / Page Up / Page Down.
 ## Controller: stick or D-pad scrolls recipes; ui_accept crafts the selected row.
 
-const ITEM_SCENE := preload("res://items/physical_item.tscn")
-const NAV_REPEAT := 0.15
+const ITEM_SCENE    := preload("res://items/physical_item.tscn")
+const SCROLL_REPEAT := 0.15
 
 const TABS := [
 	["materials", "Materials"],
@@ -23,7 +23,7 @@ var _slot_rows:  Array  = []            # Array of Array[ItemSlotWidget|Button]
 var _row_recipes: Array[CraftingRecipe] = []
 var _row_idx:    int    = 0
 var _col_idx:    int    = 0
-var _nav_timer:  float  = 0.0
+var _scroll_timer:  float  = 0.0
 
 # ── InventoryWindow overrides ──────────────────────────────────────────────────
 
@@ -84,7 +84,7 @@ func _build_content(vbox: VBoxContainer) -> void:
 func _on_opened() -> void:
 	_row_idx   = 0
 	_col_idx   = 0
-	_nav_timer = 0.0
+	_scroll_timer = 0.0
 	_inv       = _player.inventory if _player else null
 	_refresh()
 	if _ctrl_nav:
@@ -138,11 +138,11 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	super._process(delta)
 	if not visible: return
-	_nav_timer = max(0.0, _nav_timer - delta)
-	if _nav_timer > 0.0: return
-	var stick_y := Input.get_axis("move_forward", "move_back")
+	_scroll_timer = max(0.0, _scroll_timer - delta)
+	if _scroll_timer > 0.0: return
+	var stick_y: float = Input.get_joy_axis(0, 1)
 	if abs(stick_y) > 0.5:
-		_nav_timer = NAV_REPEAT
+		_scroll_timer = SCROLL_REPEAT
 		_move_row(1 if stick_y > 0 else -1)
 
 # ── Tab switching ──────────────────────────────────────────────────────────────
