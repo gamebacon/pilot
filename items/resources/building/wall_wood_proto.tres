@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BuildingItemData" format=3]
+
+[ext_resource type="Script" path="res://items/building_item_data.gd" id="1_bdata"]
+[ext_resource type="PackedScene" path="res://build/meshes/wall_wood_proto.glb" id="2_scene"]
+
+[resource]
+script = ExtResource("1_bdata")
+id = "wall_wood_proto"
+display_name = "Wall (Prototype)"
+color = Color(0.52, 0.35, 0.15, 1)
+size = Vector3(3, 2.5, 0.2)
+mass = 10.0
+is_placeable = true
+piece_type = "wall"
+piece_tier = 1
+piece_hp = 100
+upgrade_to = ""
+mesh_scene = ExtResource("2_scene")
