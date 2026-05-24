@@ -14,8 +14,8 @@ var is_foundation: bool   = false
 var piece_type: String = ""
 var piece_tier: int    = 0
 
-var max_hp:     int = 0   # 0 = indestructible (non-building placeables like chests)
-var current_hp: int = 0
+var max_hp: int = 0   # 0 = indestructible (non-building placeables like chests)
+var health: HealthComponent = null
 
 # ── Factory ───────────────────────────────────────────────────────────────────
 
@@ -68,16 +68,19 @@ static func _tinted_mat(base: Color) -> StandardMaterial3D:
 
 func _ready() -> void:
 	add_to_group("placed_pieces")
+	if max_hp > 0:
+		health = HealthComponent.new()
+		add_child(health)
+		health.setup(float(max_hp))
 
 # ── Damage / destruction ──────────────────────────────────────────────────────
 
 ## Apply `amount` damage. Returns true if the piece was destroyed.
 ## No-op and returns false for indestructible pieces (max_hp == 0).
-func take_damage(amount: int) -> bool:
-	if max_hp == 0:
-		return false
-	current_hp = max(0, current_hp - amount)
-	if current_hp <= 0:
+func take_damage(amount: float) -> bool:
+	if not health: return false
+	health.take_damage(amount)
+	if health.is_dead():
 		queue_free()
 		return true
 	return false

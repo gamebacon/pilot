@@ -553,8 +553,7 @@ func _apply_place_local(item_id: String, world_transform: Transform3D, net_id: i
 		if bdata != null:
 			piece.piece_type = bdata.piece_type
 			piece.piece_tier = bdata.piece_tier
-			piece.max_hp     = bdata.piece_hp
-			piece.current_hp = bdata.piece_hp
+			piece.max_hp = bdata.piece_hp
 		_pieces_root.add_child(piece)
 		node = piece
 

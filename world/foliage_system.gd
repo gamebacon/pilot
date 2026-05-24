@@ -70,11 +70,6 @@ const TYPES: Array = [
 	  "h_min": 0.0,  "h_max": 0.80, "w_bog": 0.35, "w_forest": 0.65, "w_rocky": 0.20,
 	  "zones": [0.62, 0.72, 0.40, 0.22, 0.18],
 	  "p": { "s_min": 0.5, "s_max": 1.1, "col_t": Color(0.16, 0.11, 0.07) } },
-	# ── Boulders — pine upland and open ──────────────────────────────────────
-	{ "builder": "_build_boulder",   "count": 80, "min_dist": 1.8, "density": false,
-	  "h_min": 0.0,  "h_max": 1.0,  "w_bog": 0.18, "w_forest": 0.28, "w_rocky": 0.92,
-	  "zones": [0.22, 0.28, 0.16, 0.82, 0.52],
-	  "p": { "s_min": 0.4, "s_max": 1.7, "cluster": 3, "col": Color(0.25, 0.23, 0.20) } },
 	# ── Grass — dense in open/birch, sparse under conifers ───────────────────
 	{ "builder": "_build_grass",     "count": 1400, "min_dist": 0.55, "density": true,
 	  "h_min": 0.0,  "h_max": 0.78, "w_bog": 0.92, "w_forest": 0.72, "w_rocky": 0.20,

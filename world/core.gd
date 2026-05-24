@@ -1,9 +1,9 @@
 extends StaticBody3D
 
-const MAX_HP         := 100
-const CRAFTING_UI_SCRIPT := preload("res://ui/crafting_ui.gd")
+const MAX_HP:             float = 100.0
+const CRAFTING_UI_SCRIPT        := preload("res://ui/crafting_ui.gd")
 
-var hp: int = MAX_HP
+var health: HealthComponent = HealthComponent.new()
 
 signal hp_changed(new_hp: int)
 signal destroyed
@@ -12,6 +12,12 @@ var _crafting_ui: CraftingUI = null
 
 func _ready() -> void:
 	add_to_group("core")
+	add_child(health)
+	health.setup(MAX_HP)
+	health.hp_changed.connect(func(current: float, _max: float) -> void:
+		hp_changed.emit(int(current))
+	)
+	health.died.connect(destroyed.emit)
 
 # ── Interaction ───────────────────────────────────────────────────────────────
 
@@ -27,16 +33,11 @@ func interact(player: Node) -> void:
 # ── Combat ────────────────────────────────────────────────────────────────────
 
 func take_damage(amount: float) -> void:
-	if hp <= 0:
-		return
-	hp = maxi(0, hp - int(ceil(amount)))
+	health.take_damage(amount)
 	if NetworkManager.is_active():
-		_sync_hp.rpc(hp)
-	hp_changed.emit(hp)
-	if hp == 0:
-		destroyed.emit()
+		_sync_hp.rpc(int(health.current_hp))
 
 @rpc("authority", "reliable", "call_remote")
 func _sync_hp(new_hp: int) -> void:
-	hp = new_hp
-	hp_changed.emit(hp)
+	health.current_hp = float(new_hp)
+	hp_changed.emit(new_hp)

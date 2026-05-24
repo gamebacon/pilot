@@ -4,12 +4,11 @@
 
 [resource]
 script = ExtResource("1_oredata")
-display_name = "Amber Deposit"
-rarity = 3
+display_name = "Amber"
 drop_item_id = "amber"
 drop_count_max = 1
 resource_hp = 65
-required_tool_level = 2
+required_tool_level = 3
 spawn_weight = 4.0
 ore_color = Color(0.88, 0.55, 0.12, 1)
 ore_size = Vector3(1.2, 0.9, 1.2)

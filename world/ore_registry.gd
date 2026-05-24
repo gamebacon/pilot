@@ -4,8 +4,6 @@ class_name OreRegistry
 ## Used by HarvestableDeposit for hints and by WorldGenerator for weighted spawning.
 
 const _ALL: Array = [
-	preload("res://world/ores/stone_deposit.tres"),
-	preload("res://world/ores/flint_deposit.tres"),
 	preload("res://world/ores/coal_deposit.tres"),
 	preload("res://world/ores/copper_deposit.tres"),
 	preload("res://world/ores/iron_deposit.tres"),
@@ -34,9 +32,3 @@ static func get_random_weighted(rng: RandomNumberGenerator) -> OreData:
 			return o
 	return _ALL.back()
 
-static func get_by_rarity(r: OreData.Rarity) -> Array[OreData]:
-	var result: Array[OreData] = []
-	for o: OreData in _ALL:
-		if o.rarity == r:
-			result.append(o)
-	return result

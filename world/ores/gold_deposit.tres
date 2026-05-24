@@ -4,12 +4,11 @@
 
 [resource]
 script = ExtResource("1_oredata")
-display_name = "Gold Deposit"
-rarity = 3
+display_name = "Gold"
 drop_item_id = "gold_ore"
 drop_count_max = 1
 resource_hp = 70
-required_tool_level = 2
+required_tool_level = 3
 spawn_weight = 5.0
 ore_color = Color(0.85, 0.7, 0.12, 1)
 ore_size = Vector3(1.5, 1.1, 1.5)

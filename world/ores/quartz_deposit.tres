@@ -4,8 +4,7 @@
 
 [resource]
 script = ExtResource("1_oredata")
-display_name = "Quartz Deposit"
-rarity = 2
+display_name = "Quartz"
 drop_item_id = "quartz"
 drop_count_max = 2
 resource_hp = 50

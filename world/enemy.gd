@@ -5,14 +5,13 @@ const GRAVITY := 9.8
 ## Set by wave_spawner before add_child so _ready() can read it.
 var enemy_type: EnemyType = null
 
-var hp: float            = 60.0
-var _core: Node3D        = null
-var _attack_timer: float = 0.0
-var _footstep_timer: float = 0.0
-var _ambient_timer: float  = 0.0
-var _dead: bool           = false
+var health: HealthComponent = HealthComponent.new()
+var _core: Node3D           = null
+var _attack_timer:   float  = 0.0
+var _footstep_timer: float  = 0.0
+var _ambient_timer:  float  = 0.0
 
-var _hp_bar: MeshInstance3D          = null
+var _hp_bar: MeshInstance3D            = null
 var _snd_footstep: AudioStreamPlayer3D = null
 var _snd_attack:   AudioStreamPlayer3D = null
 var _snd_hurt:     AudioStreamPlayer3D = null
@@ -25,9 +24,11 @@ func _ready() -> void:
 	if not enemy_type:
 		enemy_type = EnemyType._grunt()
 
-	hp = enemy_type.max_hp
+	add_child(health)
+	health.setup(enemy_type.max_hp)
+	health.hp_changed.connect(_update_bar)
+	health.died.connect(_die)
 
-	# Place healthbar above capsule top: top = height/2 + radius
 	var bar_y := enemy_type.capsule_height * 0.5 + enemy_type.capsule_radius + 0.35
 	_build_health_bar(bar_y)
 	_build_sounds()
@@ -93,29 +94,21 @@ func _load_sound(player: AudioStreamPlayer3D, path: String) -> void:
 # ── Combat ────────────────────────────────────────────────────────────────────
 
 func take_damage(amount: float) -> void:
-	if _dead:
-		return
-	hp = maxf(0.0, hp - amount)
-	_update_bar()
-	if hp <= 0.0:
-		_die()
-	elif _snd_hurt.stream:
+	if health.is_dead(): return
+	health.take_damage(amount)
+	if not health.is_dead() and _snd_hurt.stream:
 		_snd_hurt.pitch_scale = randf_range(1.3, 1.6)
 		_snd_hurt.play()
 
-func _update_bar() -> void:
-	if not _hp_bar:
-		return
-	var ratio := hp / enemy_type.max_hp
+func _update_bar(current_hp: float, p_max_hp: float) -> void:
+	if not _hp_bar: return
+	var ratio := current_hp / p_max_hp
 	_hp_bar.scale.x = ratio
 	var mat := _hp_bar.get_surface_override_material(0) as StandardMaterial3D
 	if mat:
 		mat.albedo_color = Color(1.0 - ratio, ratio * 0.88, 0.06)
 
 func _die() -> void:
-	if _dead:
-		return
-	_dead = true
 	set_physics_process(false)
 	_snd_footstep.stop()
 	_snd_ambient.stop()
@@ -165,6 +158,7 @@ func _physics_process(delta: float) -> void:
 # ── Audio ticks ───────────────────────────────────────────────────────────────
 
 func _tick_footstep(delta: float, moving: bool) -> void:
+	return # annoyting
 	if not moving or not _snd_footstep.stream:
 		return
 	var interval := 0.45 / (enemy_type.speed / 3.5)  # faster enemy = faster steps
@@ -184,6 +178,8 @@ func _tick_ambient(delta: float) -> void:
 		_snd_ambient.play()
 
 func _play_attack() -> void:
+	return # annoyting
+
 	if not _snd_attack.stream:
 		return
 	_snd_attack.pitch_scale = randf_range(0.85, 1.15)
