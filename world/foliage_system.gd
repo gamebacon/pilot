@@ -545,12 +545,18 @@ func _add_harvest_trunk(root: Node3D, radius: float, height: float, cy: float) -
 func _maybe_spawn_log(root: Node3D, rng: RandomNumberGenerator) -> void:
 	if rng.randf() >= LOG_SPAWN_CHANCE:
 		return
+	var world: Node = get_tree().get_first_node_in_group("world")
 	var log := ITEM_SCENE.instantiate() as PhysicalItem
-	log.item_data = ItemRegistry.get_item("wood_log")
-	log.net_id    = get_tree().get_first_node_in_group("world").assign_world_gen_id()
+	log.item_data  = ItemRegistry.get_item("wood_log")
+	log.net_id     = world.assign_world_gen_id() if world else 0
 	log.position   = Vector3(rng.randf_range(-1.2, 1.2), 0.4, rng.randf_range(-1.2, 1.2))
 	log.rotation.y = rng.randf_range(0.0, TAU)
 	root.add_child(log)
+	# Must register so request_pickup can locate the item by net_id.
+	# World-gen IDs are deterministic (same seed = same ID on all peers),
+	# so registering during generation keeps the dict consistent everywhere.
+	if world:
+		world.register_item(log)
 
 # ─── Material helpers ─────────────────────────────────────────────────────────
 
