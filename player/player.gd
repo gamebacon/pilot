@@ -43,6 +43,10 @@ func _ready() -> void:
 		_setup_as_remote()
 		return
 
+	# ── Debug starting items — remove when done testing ───────────────────────
+	for _i in 5:
+		inventory.add("wall_wood_proto")
+
 	walk_audio = AudioStreamPlayer.new()
 	walk_audio.bus = "Ambient"
 	add_child(walk_audio)

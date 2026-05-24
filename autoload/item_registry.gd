@@ -13,6 +13,8 @@ const _MATERIALS: Array = [
 	preload("res://items/resources/building/foundation_twig.tres"),
 	preload("res://items/resources/building/wall_twig.tres"),
 	preload("res://items/resources/building/tower_twig.tres"),
+	# Prototype meshes — remove when done testing
+	preload("res://items/resources/building/wall_wood_proto.tres"),
 	# Tools
 	preload("res://items/resources/tools/axe_wooden.tres"),
 	preload("res://items/resources/tools/axe_stone.tres"),

@@ -4,10 +4,14 @@ extends Node
 const ROT_STEP:              float = 90.0
 const MAX_REACH:             float = 15.0
 # Foundation placement constants (camera-relative system).
-const FOUNDATION_REACH:      float = 4.0   # fixed camera-forward distance for slab placement
-const FOUNDATION_MAX_HOVER:  float = 2.0   # max gap between foundation bottom and terrain
-const FOUNDATION_SNAP_DIST:  float = 1.2   # XZ snap radius to adjacent placed foundations
-const FOUNDATION_MAX_SINK:   float = 0.5   # how deep the foundation bottom can go below terrain
+const FOUNDATION_REACH:        float = 4.0   # fixed camera-forward distance for slab placement
+const FOUNDATION_MAX_HOVER:    float = 2.0   # max gap between foundation bottom and terrain
+const FOUNDATION_SNAP_DIST:    float = 2.0   # XZ snap radius to adjacent placed foundations
+const FOUNDATION_MAX_SINK:     float = 0.5   # how deep the foundation bottom can go below terrain
+# How close the ghost can be to any foundation before free placement is blocked.
+# Must be larger than (foundation size + FOUNDATION_SNAP_DIST) so there is no gap
+# between the snap zone and the block zone — prevents unaligned "close but not snapped" slabs.
+const FOUNDATION_BLOCK_RADIUS: float = 6.0
 # Wall / tower placement constant.
 const BUILDING_SNAP_DIST:    float = 2.0   # XZ radius to snap onto a foundation centre
 
@@ -33,6 +37,8 @@ var _mat_free:    StandardMaterial3D
 var _mat_snap:    StandardMaterial3D
 var _mat_blocked: StandardMaterial3D
 
+var _ghost_mesh_child: Node3D = null  # instantiated mesh_scene shown instead of BoxMesh
+
 
 # ── Lifecycle ────────────────────────────────────────────────────────────────
 
@@ -50,7 +56,7 @@ func _ready() -> void:
 	_mat_free    = _ghost_mat(Color(0.20, 0.60, 0.95, 0.50))
 
 	_ghost.cast_shadow       = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_ghost.material_override = _mat_free
+	_set_ghost_material(_mat_free)
 	_ghost.hide()
 
 # ── Input ────────────────────────────────────────────────────────────────────
@@ -146,34 +152,81 @@ func _update_ghost_foundation(cam: Camera3D) -> void:
 		_ghost.global_rotation = Vector3(0.0, snap["yaw"] as float, 0.0)
 	_snapping = is_snapping
 
+	# Block free placement near existing foundations — the player must either snap
+	# onto the grid or move far enough away to start a genuinely separate group.
+	# This prevents placing an unaligned slab that looks adjacent but isn't synced.
+	if not is_snapping and _is_near_any_foundation():
+		_ghost.show()
+		_set_ghost_material(_mat_blocked)
+		return
+
 	# Stretch the bottom face down to terrain — top face stays at current position.
-	# When snapping, match the adjacent foundation's top face exactly so they stay level.
+	# When snapping, top_y is locked to the adjacent piece's top face so the surface
+	# is always flush.  Do NOT clamp to min height here — on rising terrain the clamp
+	# would push the top face above top_y and cause a height mismatch.
+	# In free placement the min-height clamp still applies to keep the slab usable.
 	var top_y: float = snap["top_y"] as float if is_snapping else _ghost.global_position.y + _held_size.y * 0.5
 	var terrain_y:   float = _sample_terrain_y(_ghost.global_position)
-	var stretched_h: float = max(_held_size.y, top_y - terrain_y)
+	var raw_h:       float = top_y - terrain_y
+	var stretched_h: float = raw_h if is_snapping else max(_held_size.y, raw_h)
 	_foundation_stretched_h       = stretched_h
 	_ghost.global_position.y      = terrain_y + stretched_h * 0.5
 	(_ghost.mesh as BoxMesh).size = Vector3(_held_size.x, stretched_h, _held_size.z)
 
+	# Terrain is flush with or above the snap level — can't place here.
+	if is_snapping and raw_h < 0.05:
+		_ghost.show()
+		_set_ghost_material(_mat_blocked)
+		return
+
 	if _foundation_ground_invalid():
 		_ghost.show()
-		_ghost.material_override = _mat_blocked
+		_set_ghost_material(_mat_blocked)
 		return
 	_ghost.show()
-	_ghost.material_override = _mat_snap if is_snapping else _mat_free
+	_set_ghost_material(_mat_snap if is_snapping else _mat_free)
 
-## Shoots a ray straight down from the given XZ and returns the terrain Y.
-## Returns a fallback that produces minimum stretch if nothing is found.
+## Returns the lowest terrain Y beneath the foundation footprint by sampling the
+## centre and four inset corners.  Taking the minimum ensures the slab always
+## reaches down to the deepest dip — a centre-only sample misses terrain that
+## dips near the edges and leaves an air gap on the underside.
 func _sample_terrain_y(at: Vector3) -> float:
-	var space: PhysicsDirectSpaceState3D   = player.get_world_3d().direct_space_state
-	var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(
-		Vector3(at.x, at.y + 10.0, at.z),
-		Vector3(at.x, at.y - 30.0, at.z))
-	query.exclude = [player.get_rid()]
-	var hit: Dictionary = space.intersect_ray(query)
-	if hit.is_empty() or hit["collider"] is PlacedPiece:
-		return at.y - _held_size.y * 0.5
-	return hit["position"].y as float
+	var hx: float = _held_size.x * 0.45
+	var hz: float = _held_size.z * 0.45
+	var offsets: Array[Vector2] = [
+		Vector2(0.0,  0.0),
+		Vector2( hx,  hz), Vector2(-hx,  hz),
+		Vector2( hx, -hz), Vector2(-hx, -hz),
+	]
+	var min_y: float = 1e9
+	for off: Vector2 in offsets:
+		var hit_y: float = _cast_terrain_ray(Vector3(at.x + off.x, at.y, at.z + off.y))
+		if hit_y < min_y:
+			min_y = hit_y
+	return min_y if min_y < 1e8 else at.y - _held_size.y * 0.5
+
+## Shoots a single ray straight down, skipping any PlacedPiece it encounters,
+## so it always returns the terrain surface below any placed structures.
+## Returns a large sentinel value (1e9) if no terrain is found.
+func _cast_terrain_ray(at: Vector3) -> float:
+	var space:   PhysicsDirectSpaceState3D = player.get_world_3d().direct_space_state
+	var start_y: float = at.y + 10.0
+	var end_y:   float = at.y - 30.0
+	for _i: int in 4:  # max passes through stacked placed pieces
+		var query: PhysicsRayQueryParameters3D = PhysicsRayQueryParameters3D.create(
+			Vector3(at.x, start_y, at.z),
+			Vector3(at.x, end_y,   at.z))
+		query.exclude = [player.get_rid()]
+		var hit: Dictionary = space.intersect_ray(query)
+		if hit.is_empty():
+			break
+		if not (hit["collider"] is PlacedPiece):
+			return hit["position"].y as float
+		# Landed on a placed piece — step below it and cast again.
+		start_y = (hit["position"].y as float) - 0.05
+		if start_y <= end_y:
+			break
+	return 1e9
 
 ## Returns true if placement should be blocked:
 ##   - No terrain found below.
@@ -190,6 +243,17 @@ func _foundation_ground_invalid() -> bool:
 		return true
 	if hit["collider"] is PlacedPiece:
 		return true
+	return false
+
+## Returns true when the ghost is within FOUNDATION_BLOCK_RADIUS of any placed
+## foundation, used to block free placement that would produce an unaligned slab.
+func _is_near_any_foundation() -> bool:
+	var ghost_xz: Vector2 = Vector2(_ghost.global_position.x, _ghost.global_position.z)
+	for piece: PlacedPiece in get_tree().get_nodes_in_group("placed_pieces"):
+		if not piece.is_foundation: continue
+		var piece_xz: Vector2 = Vector2(piece.global_position.x, piece.global_position.z)
+		if ghost_xz.distance_to(piece_xz) < FOUNDATION_BLOCK_RADIUS:
+			return true
 	return false
 
 ## Returns {position, yaw} for the nearest open grid slot adjacent to any placed
@@ -210,6 +274,17 @@ func _find_foundation_grid_snap() -> Dictionary:
 		]
 		for candidate: Vector3 in candidates:
 			var snap_pos: Vector3 = Vector3(candidate.x, piece.global_position.y, candidate.z)
+			var snap_xz:  Vector2 = Vector2(snap_pos.x, snap_pos.z)
+			# Skip slots already filled by another foundation so the ghost never
+			# snaps to a red blocked position — only open slots are offered.
+			var is_occupied: bool = false
+			for other: PlacedPiece in get_tree().get_nodes_in_group("placed_pieces"):
+				if not other.is_foundation or other == piece: continue
+				var other_xz: Vector2 = Vector2(other.global_position.x, other.global_position.z)
+				if other_xz.distance_to(snap_xz) < 0.3:
+					is_occupied = true
+					break
+			if is_occupied: continue
 			# XZ-only distance so slope height differences don't block snapping.
 			var flat_d: float = Vector2(ghost_pos.x - snap_pos.x, ghost_pos.z - snap_pos.z).length()
 			if flat_d < best_dist:
@@ -238,9 +313,9 @@ func _update_ghost_building(hit: Dictionary) -> void:
 		_ghost.global_rotation = Vector3(0.0, (snap["yaw"] as float) + _building_rot_offset, 0.0)
 
 	if _is_blocked():
-		_ghost.material_override = _mat_blocked
+		_set_ghost_material(_mat_blocked)
 		return
-	_ghost.material_override = _mat_snap if _snapping else _mat_free
+	_set_ghost_material(_mat_snap if _snapping else _mat_free)
 
 ## Returns {position, yaw} for the nearest foundation within BUILDING_SNAP_DIST,
 ## or an empty Dictionary when nothing is close enough.
@@ -277,9 +352,9 @@ func _update_ghost_free(hit: Dictionary) -> void:
 	_snapping = true  # free-placement items are always valid
 
 	if _is_blocked():
-		_ghost.material_override = _mat_blocked
+		_set_ghost_material(_mat_blocked)
 		return
-	_ghost.material_override = _mat_free
+	_set_ghost_material(_mat_free)
 
 # ── Overlap check ─────────────────────────────────────────────────────────────
 
@@ -393,11 +468,23 @@ func _hold_from_slot(slot: Inventory.ItemStack) -> void:
 	_building_rot_offset  = 0.0
 
 func _refresh_ghost_for_held() -> void:
-	var box: BoxMesh = BoxMesh.new()
-	box.size         = _held_size
-	_ghost.mesh      = box
-	_mat_free        = _ghost_mat(Color(0.20, 0.60, 0.95, 0.50))
-	_ghost.material_override = _mat_free
+	if _ghost_mesh_child:
+		_ghost_mesh_child.queue_free()
+		_ghost_mesh_child = null
+
+	var bdata: BuildingItemData = _held_data as BuildingItemData if _held_data is BuildingItemData else null
+	if bdata != null and bdata.mesh_scene != null:
+		_ghost.mesh          = null
+		_ghost_mesh_child    = bdata.mesh_scene.instantiate() as Node3D
+		_ghost_mesh_child.position = Vector3(0.0, -_held_size.y * 0.5, 0.0) + bdata.visual_offset
+		_ghost.add_child(_ghost_mesh_child)
+	else:
+		var box: BoxMesh = BoxMesh.new()
+		box.size         = _held_size
+		_ghost.mesh      = box
+
+	_mat_free = _ghost_mat(Color(0.20, 0.60, 0.95, 0.50))
+	_set_ghost_material(_mat_free)
 
 # ── Mode enter / exit ─────────────────────────────────────────────────────────
 
@@ -456,12 +543,14 @@ func _apply_place_local(item_id: String, world_transform: Transform3D, net_id: i
 		node.set("net_id", net_id)
 		_placed_root.add_child(node)
 	else:
-		var use_size: Vector3  = actual_size if actual_size != Vector3.ZERO else data.size
-		var piece: PlacedPiece = PlacedPiece.build(use_size, data.color)
+		var use_size:   Vector3          = actual_size if actual_size != Vector3.ZERO else data.size
+		var bdata:      BuildingItemData = data as BuildingItemData if data is BuildingItemData else null
+		var bscene:     PackedScene      = bdata.mesh_scene    if bdata != null else null
+		var vis_offset: Vector3          = bdata.visual_offset if bdata != null else Vector3.ZERO
+		var piece: PlacedPiece           = PlacedPiece.build(use_size, data.color, bscene, vis_offset)
 		piece.net_id        = net_id
 		piece.is_foundation = data.is_foundation
-		if data is BuildingItemData:
-			var bdata: BuildingItemData = data as BuildingItemData
+		if bdata != null:
 			piece.piece_type = bdata.piece_type
 			piece.piece_tier = bdata.piece_tier
 			piece.max_hp     = bdata.piece_hp
@@ -505,6 +594,18 @@ func _rumble(weak: float, strong: float, duration: float) -> void:
 	var pads: Array[int] = Input.get_connected_joypads()
 	if pads.is_empty(): return
 	Input.start_joy_vibration(pads[0], weak, strong, duration)
+
+func _set_ghost_material(mat: StandardMaterial3D) -> void:
+	_ghost.material_override = mat
+	if _ghost_mesh_child:
+		_apply_mat_recursive(_ghost_mesh_child, mat)
+
+func _apply_mat_recursive(node: Node3D, mat: StandardMaterial3D) -> void:
+	if node is MeshInstance3D:
+		(node as MeshInstance3D).material_override = mat
+	for child: Node in node.get_children():
+		if child is Node3D:
+			_apply_mat_recursive(child as Node3D, mat)
 
 func _ghost_mat(color: Color) -> StandardMaterial3D:
 	var m: StandardMaterial3D = StandardMaterial3D.new()

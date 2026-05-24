@@ -19,7 +19,12 @@ var current_hp: int = 0
 
 # ── Factory ───────────────────────────────────────────────────────────────────
 
-static func build(p_size: Vector3, p_color: Color) -> PlacedPiece:
+## [p_scene] is an optional PackedScene (e.g. imported GLB) used as the visual.
+## When provided the scene is instantiated as a child; the tinted box is skipped.
+## Collision always uses a BoxShape3D from [p_size] regardless of scene.
+## [p_visual_offset] is added to the default bottom-face alignment so that models
+## with a non-bottom-centre pivot can be corrected without re-exporting from Blender.
+static func build(p_size: Vector3, p_color: Color, p_scene: PackedScene = null, p_visual_offset: Vector3 = Vector3.ZERO) -> PlacedPiece:
 	var piece        := PlacedPiece.new()
 	piece.size        = p_size
 	piece.color       = p_color
@@ -30,12 +35,21 @@ static func build(p_size: Vector3, p_color: Color) -> PlacedPiece:
 	col.shape         = shape
 	piece.add_child(col)
 
-	var box          := BoxMesh.new()
-	box.size          = p_size
-	var mi           := MeshInstance3D.new()
-	mi.mesh            = box
-	mi.material_override = _tinted_mat(p_color)
-	piece.add_child(mi)
+	if p_scene:
+		# The PlacedPiece origin is at the bounding-box centre.  Shifting the
+		# visual down by half-height aligns its root with the bottom face, which
+		# is correct when the GLB origin is at the mesh's bottom-centre.
+		# p_visual_offset lets callers compensate for a different pivot.
+		var visual: Node3D = p_scene.instantiate() as Node3D
+		visual.position    = Vector3(0.0, -p_size.y * 0.5, 0.0) + p_visual_offset
+		piece.add_child(visual)
+	else:
+		var box          := BoxMesh.new()
+		box.size          = p_size
+		var mi           := MeshInstance3D.new()
+		mi.mesh            = box
+		mi.material_override = _tinted_mat(p_color)
+		piece.add_child(mi)
 
 	return piece
 
