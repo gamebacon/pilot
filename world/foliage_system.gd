@@ -100,6 +100,12 @@ const TYPES: Array = [
 var _mat_cache:     Dictionary = {}
 var _dbl_mat_cache: Dictionary = {}   # double-sided (grass blades)
 
+# Explicit naming counters — Godot's auto-names (@Node3D@N) use a global
+# counter that diverges between server and client processes, breaking RPC routing.
+# These counters are driven by the same seeded RNG order on all peers, so the
+# resulting names are identical everywhere.
+var _placed_counter: int = 0
+
 # Forest-zone noise — large scale (~250 m patches), decides which species dominates.
 var _forest_noise  := FastNoiseLite.new()
 # Density noise — medium scale, punches clearings and thickens dense areas.
@@ -209,6 +215,8 @@ func _place_type(
 
 		var node := call(def["builder"], Vector3(wx, h, wz), def["p"], rng) as Node3D
 		if node:
+			node.name = "Foliage_%d" % _placed_counter
+			_placed_counter += 1
 			add_child(node)
 		# Always track position so spacing is respected even for batched types (grass).
 		placed.append(Vector2(wx, wz))
@@ -530,6 +538,7 @@ func _build_flower(pos: Vector3, p: Dictionary, rng: RandomNumberGenerator) -> N
 
 func _add_harvest_trunk(root: Node3D, radius: float, height: float, cy: float) -> void:
 	var body  := StaticBody3D.new()
+	body.name = "Trunk"
 	body.set_script(HarvestableTree)
 	var col   := CollisionShape3D.new()
 	var shape := CapsuleShape3D.new()

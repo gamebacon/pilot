@@ -115,14 +115,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("drop") and not GameState.is_building:
 		drop_active()
 
-	if event.is_action_pressed("inventory_next") and not interact_target:
+	if event.is_action_pressed("inventory_next"):
 		inventory.cycle_next()
 
 	for slot in Inventory.HOTBAR_COLS:
 		if event.is_action_pressed("hotbar_slot_%d" % (slot + 1)):
 			inventory.set_active_hotbar_slot(slot)
 
-	if not GameState.is_building and not interact_target:
+	if not GameState.is_building:
 		if event.is_action_pressed("hotbar_cycle_prev"):
 			inventory.cycle_prev()
 		elif event.is_action_pressed("hotbar_cycle_next"):

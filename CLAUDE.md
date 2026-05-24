@@ -111,6 +111,13 @@ Always guard against `tree == null` (e.g. during unit test or tool context).
 
 ---
 
+## Godot export gotchas
+
+- **Never use `PackedStringArray` as an `@export` property on a Resource subclass.** Values set in `.tres` files are silently dropped in exported builds — the property always reads as `[]`. Use `Array[String]` instead; it serialises correctly in both editor and export. Same caution applies to other packed arrays (`PackedInt32Array`, etc.) used as exported resource properties.
+- **Dynamically created nodes get auto-names (`@Node3D@N`) from a global counter that diverges between server and client processes.** Any node that will be the target of an `@rpc` call must be given an explicit deterministic name before `add_child()` so both peers resolve the same NodePath.
+
+---
+
 ## Patterns to follow
 
 - Always fetch items via `ItemRegistry.get_item(id)`, never hardcode resource paths at runtime

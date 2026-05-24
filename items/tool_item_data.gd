@@ -25,4 +25,4 @@ func _init() -> void:
 @export var attack_damage: float = 10.0
 
 ## Which resource tags this tool can harvest ("tree", "rock")
-@export var harvest_tags: PackedStringArray = []
+@export var harvest_tags: Array[String] = []

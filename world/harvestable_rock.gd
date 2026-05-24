@@ -8,7 +8,8 @@ const SND_MINE := preload("res://audio/sfx/item_collide.mp3")
 
 @export var ore_data: OreData
 
-var _hp: float = 0.0
+var _hp:                float = 0.0
+var _exhausted:         bool  = false
 var _mine_snd: AudioStreamPlayer3D = null
 
 func _ready() -> void:
@@ -71,29 +72,54 @@ func interact(player: Node) -> void:
 	if not ore_data: return
 	var p := player as Player
 	if not p: return
-	var slot      := p.inventory.active_slot_data()
-	var tool_data := slot.get_data() as ToolItemData
+	var slot:      Inventory.ItemStack = p.inventory.active_slot_data()
+	var tool_data: ToolItemData        = slot.get_data() as ToolItemData
 	if not tool_data or _pickaxe_level(p) < ore_data.required_tool_level:
 		return
 
+	# Client-local: audio and durability — immediate feedback on every machine.
 	_mine_snd.pitch_scale = randf_range(0.85, 1.15)
 	_mine_snd.play()
-
-	_hp -= tool_data.harvest_damage
 	if p.inventory.use_active_durability(1):
 		p.inventory.remove_active_one()
 
+	# HP and exhaustion are server-authoritative.
+	if NetworkManager.is_active() and not multiplayer.is_server():
+		_rpc_request_hit.rpc_id(1, tool_data.harvest_damage)
+	else:
+		_apply_hit(tool_data.harvest_damage)
+
+# ── Server-side damage ────────────────────────────────────────────────────────
+
+func _apply_hit(damage: float) -> void:
+	_hp -= damage
 	if _hp <= 0.0:
 		_exhaust()
 
+@rpc("any_peer", "reliable")
+func _rpc_request_hit(damage: float) -> void:
+	if not multiplayer.is_server(): return
+	_apply_hit(damage)
+
+# ── Exhaustion — server spawns drops, then broadcasts removal to all peers ────
+
 func _exhaust() -> void:
+	if _exhausted: return
+	_exhausted = true
 	if ore_data:
-		var count := randi_range(ore_data.drop_count_min, ore_data.drop_count_max)
-		var world := get_tree().get_first_node_in_group("world")
+		var count: int = randi_range(ore_data.drop_count_min, ore_data.drop_count_max)
+		var world: Node = get_tree().get_first_node_in_group("world")
 		if world:
 			for i in count:
-				var pos := global_position + Vector3(randf_range(-1.0, 1.0), 0.6, randf_range(-1.0, 1.0))
+				var pos: Vector3 = global_position + Vector3(randf_range(-1.0, 1.0), 0.6, randf_range(-1.0, 1.0))
 				world.request_spawn_item(ore_data.drop_item_id, pos)
+	if NetworkManager.is_active():
+		_rpc_remove.rpc()
+	else:
+		queue_free()
+
+@rpc("authority", "call_local", "reliable")
+func _rpc_remove() -> void:
 	queue_free()
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

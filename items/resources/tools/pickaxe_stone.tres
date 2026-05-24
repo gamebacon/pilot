@@ -20,4 +20,4 @@ level_name = "Stone"
 durability_max = 120
 harvest_damage = 15.0
 attack_damage = 10.0
-harvest_tags = PackedStringArray("rock")
+harvest_tags = Array[String](["rock"])
