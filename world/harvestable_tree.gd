@@ -7,10 +7,11 @@ const RESOURCE_HP: float = 30.0
 const WOOD_DROPS:  int   = 2
 
 func _ready() -> void:
-	super()
+	max_hp             = RESOURCE_HP
+	bar_height         = 3.2
 	required_tool_type = "axe"
-	_hp     = RESOURCE_HP
-	_max_hp = RESOURCE_HP
+	scale_target       = get_parent()
+	super()
 	_hit_snd = AudioStreamPlayer3D.new()
 	_hit_snd.stream       = SND_CHOP
 	_hit_snd.max_distance = 18.0
@@ -36,9 +37,9 @@ func get_interact_hint(player: Node) -> String:
 	var key := InputHelper.action_label("attack")
 	if not _get_tool(p):
 		return "Need an axe"
-	if _hp >= RESOURCE_HP:
+	if damageable.get_ratio() >= 1.0:
 		return key + "  Tree"
-	return key + "  %d%%" % int((1.0 - _hp / RESOURCE_HP) * 100.0)
+	return key + "  %d%%" % int((1.0 - damageable.get_ratio()) * 100.0)
 
 func interact(player: Node) -> void:
 	var p := player as Player

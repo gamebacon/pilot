@@ -35,3 +35,9 @@ func get_ratio() -> float:
 
 func is_dead() -> bool:
 	return _is_dead
+
+## Set HP directly without emitting any signals — used for network late-join sync.
+func set_hp_direct(p_current: float, p_max: float) -> void:
+	max_hp     = p_max
+	current_hp = clampf(p_current, 0.0, p_max)
+	_is_dead   = current_hp <= 0.0

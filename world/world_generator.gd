@@ -14,9 +14,12 @@ const CELL_D     := T_DEPTH / GRID_D   # 2.5 m
 const HEIGHT_AMP := 13.0
 
 # ── State ─────────────────────────────────────────────────────────────────────
-var _rng   := RandomNumberGenerator.new()
-var _noise := FastNoiseLite.new()
-var _heights: PackedFloat32Array          # [i + j*VERT_W], j=0 → z=T_ORIGIN_Z
+var _rng        := RandomNumberGenerator.new()
+var _noise      := FastNoiseLite.new()
+var _heights:   PackedFloat32Array        # [i + j*VERT_W], j=0 → z=T_ORIGIN_Z
+# Explicit ore counter — Godot auto-names diverge between server/client.
+# Driven by the same seeded order on all peers so names are deterministic.
+var _ore_counter: int = 0
 
 const FoliageSystem          = preload("res://world/foliage_system.gd")
 const DayNightCycle          = preload("res://world/day_night_cycle.gd")
@@ -334,6 +337,8 @@ func _spawn_ore_deposits() -> void:
 			continue
 		var ore  := OreRegistry.get_random_weighted(_rng)
 		var body := StaticBody3D.new()
+		body.name = "Ore_%d" % _ore_counter
+		_ore_counter += 1
 		body.set_script(HarvestableDepositScript)
 		body.set("ore_data", ore)
 		get_parent().add_child(body)

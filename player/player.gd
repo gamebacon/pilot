@@ -312,7 +312,7 @@ func _update_interact_target() -> void:
 		interact_target = null
 	if interact_ray.is_colliding():
 		var t := interact_ray.get_collider()
-		if is_instance_valid(t) and (t.has_method("interact") or t.is_in_group("enemies")):
+		if is_instance_valid(t) and (t.has_method("interact") or t.is_in_group("enemies") or t is DamageableBody):
 			interact_target = t
 		else:
 			interact_target = null
@@ -331,18 +331,19 @@ func _try_attack() -> void:
 	var target := interact_target
 	if not is_instance_valid(target): return
 
-	if target.is_in_group("enemies"):
-		var dmg  := 25.0
-		var slot: Inventory.ItemStack = inventory.active_slot_data()
-		if not slot.is_empty():
-			var data := slot.get_data()
-			if data is ToolItemData:
-				dmg = (data as ToolItemData).attack_damage
-				if inventory.use_active_durability(1):
-					inventory.remove_active_one()
-		target.take_damage(dmg)
-	elif target.is_in_group("harvestable"):
+	var dmg := 25.0
+	var slot: Inventory.ItemStack = inventory.active_slot_data()
+	if not slot.is_empty():
+		var data: ItemData = slot.get_data()
+		if data is ToolItemData:
+			dmg = (data as ToolItemData).attack_damage
+			if inventory.use_active_durability(1):
+				inventory.remove_active_one()
+
+	if target.is_in_group("harvestable"):
 		target.interact(self)
+	elif target.has_method("take_damage"):
+		target.take_damage(dmg)
 
 func _carry_weight_multiplier() -> float:
 	if GameState.debug_mode: return 1.0

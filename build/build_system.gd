@@ -544,6 +544,7 @@ func _apply_place_local(item_id: String, world_transform: Transform3D, net_id: i
 		if not scene: return
 		node = scene.instantiate()
 		node.set("net_id", net_id)
+		node.name = "placed_%d" % net_id   # deterministic — net_id is identical on all peers
 		_placed_root.add_child(node)
 	else:
 		var use_size:   Vector3          = actual_size if actual_size != Vector3.ZERO else data.size
@@ -553,10 +554,11 @@ func _apply_place_local(item_id: String, world_transform: Transform3D, net_id: i
 		var piece: PlacedPiece           = PlacedPiece.build(use_size, data.color, bscene, vis_offset)
 		piece.net_id        = net_id
 		piece.is_foundation = data.is_foundation
+		piece.name          = "piece_%d" % net_id   # deterministic — net_id is identical on all peers
 		if bdata != null:
 			piece.piece_type = bdata.piece_type
 			piece.piece_tier = bdata.piece_tier
-			piece.max_hp = bdata.piece_hp
+			piece.max_hp     = bdata.piece_hp
 		_pieces_root.add_child(piece)
 		node = piece
 
@@ -589,6 +591,15 @@ func apply_piece_snapshot(snapshot: Array[Dictionary]) -> void:
 	for entry: Dictionary in snapshot:
 		var sz: Vector3 = entry.get("size", Vector3.ZERO) as Vector3
 		_apply_place_local(entry["item_id"], entry["transform"], entry["net_id"], sz)
+		# Restore HP state — find the piece we just placed and sync its health.
+		var hp_current: float = entry.get("hp_current", -1.0) as float
+		var hp_max:     float = entry.get("hp_max",     -1.0) as float
+		if hp_current >= 0.0 and hp_max > 0.0 and hp_current < hp_max:
+			var world: Node = get_tree().get_first_node_in_group("world")
+			if world:
+				var piece: Node3D = world.get_placed_piece(entry["net_id"] as int)
+				if piece is DamageableBody:
+					(piece as DamageableBody).sync_hp(hp_current, hp_max)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 

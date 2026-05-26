@@ -1,41 +1,45 @@
-extends StaticBody3D
+extends DamageableBody
 class_name Harvestable
 
 ## Base class for all harvestable world resources (trees, ore deposits, etc.).
-## Subclasses implement _on_depleted() to spawn drops and override
-## _get_remove_target() if the node to free is not self.
+## Set max_hp and bar_height before calling super()._ready().
+## Override _on_depleted() and _get_remove_target() for drop and removal behaviour.
 
-var required_tool_type: String = ""
-
-var _hp:          float = 0.0
-var _max_hp:      float = 0.0
-var _is_depleted: bool  = false
-var _hit_snd:     AudioStreamPlayer3D = null
+var required_tool_type: String    = ""
+var _is_depleted:       bool      = false
+var _hit_snd: AudioStreamPlayer3D = null
 
 func _ready() -> void:
 	add_to_group("harvestable")
-
-func get_interact_hint(_player: Node) -> String:
-	return ""
-
-func interact(_player: Node) -> void:
-	pass
+	super()
 
 # ── Server-side damage ────────────────────────────────────────────────────────
 
 func _apply_hit(damage: float) -> void:
-	_hp -= damage
-	if _hp <= 0.0 and not _is_depleted:
-		_is_depleted = true
-		_on_depleted()
-		_do_remove()
+	damageable.take_damage(damage)
 
 @rpc("any_peer", "reliable")
 func _rpc_request_hit(damage: float) -> void:
 	if not multiplayer.is_server(): return
 	_apply_hit(damage)
 
-# ── Removal — server broadcasts to all peers ──────────────────────────────────
+# ── Multiplayer bar sync ──────────────────────────────────────────────────────
+
+func _on_hp_changed(current: float, maximum: float) -> void:
+	if NetworkManager.is_active():
+		_rpc_hp_update.rpc(current, maximum)
+
+@rpc("authority", "call_remote", "unreliable")
+func _rpc_hp_update(current: float, maximum: float) -> void:
+	damageable.show_hit(current, maximum)
+
+# ── Destruction ───────────────────────────────────────────────────────────────
+
+func _on_destroyed() -> void:
+	if _is_depleted: return
+	_is_depleted = true
+	_on_depleted()
+	_do_remove()
 
 func _do_remove() -> void:
 	if NetworkManager.is_active():
@@ -54,3 +58,9 @@ func _on_depleted() -> void:
 
 func _get_remove_target() -> Node:
 	return self
+
+func get_interact_hint(_player: Node) -> String:
+	return ""
+
+func interact(_player: Node) -> void:
+	pass

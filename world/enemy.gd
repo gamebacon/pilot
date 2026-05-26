@@ -5,13 +5,12 @@ const GRAVITY := 9.8
 ## Set by wave_spawner before add_child so _ready() can read it.
 var enemy_type: EnemyType = null
 
-var health: HealthComponent = HealthComponent.new()
-var _core: Node3D           = null
-var _attack_timer:   float  = 0.0
-var _footstep_timer: float  = 0.0
-var _ambient_timer:  float  = 0.0
+var damageable: Damageable = null
+var _core:      Node3D     = null
+var _attack_timer:   float        = 0.0
+var _footstep_timer: float        = 0.0
+var _ambient_timer:  float        = 0.0
 
-var _hp_bar: MeshInstance3D            = null
 var _snd_footstep: AudioStreamPlayer3D = null
 var _snd_attack:   AudioStreamPlayer3D = null
 var _snd_hurt:     AudioStreamPlayer3D = null
@@ -24,44 +23,12 @@ func _ready() -> void:
 	if not enemy_type:
 		enemy_type = EnemyType._grunt()
 
-	add_child(health)
-	health.setup(enemy_type.max_hp)
-	health.hp_changed.connect(_update_bar)
-	health.died.connect(_die)
+	var bar_y: float = enemy_type.capsule_height * 0.5 + enemy_type.capsule_radius + 0.35
+	damageable = Damageable.new(enemy_type.max_hp, bar_y)
+	add_child(damageable)
+	damageable.died.connect(_die)
 
-	var bar_y := enemy_type.capsule_height * 0.5 + enemy_type.capsule_radius + 0.35
-	_build_health_bar(bar_y)
 	_build_sounds()
-
-# ── Health bar ────────────────────────────────────────────────────────────────
-
-func _build_health_bar(y: float) -> void:
-	var root := Node3D.new()
-	root.position = Vector3(0.0, y, 0.0)
-	add_child(root)
-
-	var bg      := MeshInstance3D.new()
-	var bg_mesh := QuadMesh.new()
-	bg_mesh.size = Vector2(1.1, 0.16)
-	bg.mesh      = bg_mesh
-	var bg_mat  := StandardMaterial3D.new()
-	bg_mat.albedo_color   = Color(0.08, 0.08, 0.08, 0.85)
-	bg_mat.transparency   = BaseMaterial3D.TRANSPARENCY_ALPHA
-	bg_mat.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
-	bg_mat.no_depth_test  = true
-	bg.set_surface_override_material(0, bg_mat)
-	root.add_child(bg)
-
-	_hp_bar      = MeshInstance3D.new()
-	var hp_mesh := QuadMesh.new()
-	hp_mesh.size = Vector2(1.04, 0.11)
-	_hp_bar.mesh = hp_mesh
-	var hp_mat  := StandardMaterial3D.new()
-	hp_mat.albedo_color   = Color(0.15, 0.9, 0.1)
-	hp_mat.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
-	hp_mat.no_depth_test  = true
-	_hp_bar.set_surface_override_material(0, hp_mat)
-	root.add_child(_hp_bar)
 
 # ── Sounds ────────────────────────────────────────────────────────────────────
 
@@ -94,19 +61,11 @@ func _load_sound(player: AudioStreamPlayer3D, path: String) -> void:
 # ── Combat ────────────────────────────────────────────────────────────────────
 
 func take_damage(amount: float) -> void:
-	if health.is_dead(): return
-	health.take_damage(amount)
-	if not health.is_dead() and _snd_hurt.stream:
+	if damageable.is_dead(): return
+	damageable.take_damage(amount)
+	if not damageable.is_dead() and _snd_hurt.stream:
 		_snd_hurt.pitch_scale = randf_range(1.3, 1.6)
 		_snd_hurt.play()
-
-func _update_bar(current_hp: float, p_max_hp: float) -> void:
-	if not _hp_bar: return
-	var ratio := current_hp / p_max_hp
-	_hp_bar.scale.x = ratio
-	var mat := _hp_bar.get_surface_override_material(0) as StandardMaterial3D
-	if mat:
-		mat.albedo_color = Color(1.0 - ratio, ratio * 0.88, 0.06)
 
 func _die() -> void:
 	set_physics_process(false)

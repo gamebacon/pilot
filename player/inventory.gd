@@ -391,6 +391,10 @@ func _on_net_changed() -> void:
 	if not world: return
 	world.sync_inventory_state(container_net_id, _net_encode())
 
+## Public accessor used by world.gd when sending a full state snapshot to late joiners.
+func net_encode() -> Array:
+	return _net_encode()
+
 func _net_encode() -> Array:
 	var data := []
 	for s in _slots:

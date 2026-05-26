@@ -9,11 +9,11 @@ const SND_MINE := preload("res://audio/sfx/item_collide.mp3")
 @export var ore_data: OreData
 
 func _ready() -> void:
-	super()
+	max_hp             = float(ore_data.resource_hp) if ore_data else 1.0
+	bar_height         = 1.0
 	required_tool_type = "pickaxe"
+	super()
 	if ore_data:
-		_hp     = float(ore_data.resource_hp)
-		_max_hp = float(ore_data.resource_hp)
 		_build_visual()
 	_hit_snd = AudioStreamPlayer3D.new()
 	_hit_snd.stream       = SND_MINE
@@ -54,9 +54,9 @@ func get_interact_hint(player: Node) -> String:
 		return "Need a %s" % required_tool_type
 	if level < ore_data.required_tool_level:
 		return "Need a stronger tool"
-	if _hp >= _max_hp:
+	if damageable.get_ratio() >= 1.0:
 		return "%s  %s" % [key, ore_data.display_name]
-	return "%s  %d%%" % [key, int((1.0 - _hp / _max_hp) * 100.0)]
+	return "%s  %d%%" % [key, int((1.0 - damageable.get_ratio()) * 100.0)]
 
 func interact(player: Node) -> void:
 	if not ore_data: return

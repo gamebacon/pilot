@@ -53,6 +53,9 @@ func _request_players() -> void:
 		_do_spawn.rpc_id(id, pid)
 	_do_spawn.rpc(id)
 	_rpc_receive_piece_snapshot.rpc_id(id, _build_piece_snapshot())
+	_rpc_receive_harvestable_snapshot.rpc_id(id, _build_harvestable_snapshot())
+	_rpc_receive_item_snapshot.rpc_id(id, _build_item_snapshot())
+	_send_container_snapshots(id)
 
 @rpc("authority", "reliable", "call_local")
 func _do_spawn(id: int) -> void:
@@ -107,6 +110,10 @@ func register_piece(net_id: int, piece: Node3D) -> void:
 	if net_id != 0:
 		_placed_pieces[net_id] = piece
 
+func get_placed_piece(net_id: int) -> Node3D:
+	var piece: Node3D = _placed_pieces.get(net_id) as Node3D
+	return piece if piece and is_instance_valid(piece) else null
+
 func unregister_piece(net_id: int) -> Node3D:
 	var piece: Node3D = _placed_pieces.get(net_id) as Node3D
 	_placed_pieces.erase(net_id)
@@ -115,18 +122,86 @@ func unregister_piece(net_id: int) -> Node3D:
 func _build_piece_snapshot() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	for net_id: int in _placed_pieces:
-		var piece: Node3D = _placed_pieces[net_id] as Node3D
-		if not piece or not is_instance_valid(piece): continue
+		var raw: Variant = _placed_pieces[net_id]
+		if not is_instance_valid(raw): continue
+		var piece: Node3D = raw as Node3D
+		if not piece: continue
+		var hp_current: float = piece.damageable.get_current_hp() if piece is DamageableBody and (piece as DamageableBody).damageable else -1.0
+		var hp_max:     float = piece.damageable.get_max_hp()     if piece is DamageableBody and (piece as DamageableBody).damageable else -1.0
 		result.append({
-			"net_id":    net_id,
-			"item_id":   piece.get_meta("item_id", ""),
-			"transform": piece.global_transform,
+			"net_id":     net_id,
+			"item_id":    piece.get_meta("item_id", ""),
+			"transform":  piece.global_transform,
+			"hp_current": hp_current,
+			"hp_max":     hp_max,
 		})
 	return result
 
 @rpc("authority", "reliable")
 func _rpc_receive_piece_snapshot(snapshot: Array[Dictionary]) -> void:
 	($BuildSystem as BuildSystem).apply_piece_snapshot(snapshot)
+
+## Build HP snapshot for harvestable nodes (trees, ore deposits).
+## Only includes nodes that are actually damaged — path is deterministic on all peers.
+func _build_harvestable_snapshot() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	var nodes: Array[Node] = get_tree().get_nodes_in_group("harvestable")
+	for node: Node in nodes:
+		if not node is DamageableBody: continue
+		var db: DamageableBody = node as DamageableBody
+		if not db.damageable: continue
+		var current: float = db.damageable.get_current_hp()
+		var maximum: float = db.damageable.get_max_hp()
+		if current >= maximum: continue   # undamaged — skip
+		result.append({
+			"path":    str(get_tree().root.get_path_to(node)),
+			"current": current,
+			"maximum": maximum,
+		})
+	return result
+
+@rpc("authority", "reliable")
+func _rpc_receive_harvestable_snapshot(snapshot: Array[Dictionary]) -> void:
+	for entry: Dictionary in snapshot:
+		var node: Node = get_tree().root.get_node_or_null(entry["path"] as String)
+		if node is DamageableBody:
+			(node as DamageableBody).sync_hp(entry["current"] as float, entry["maximum"] as float)
+
+# ── Dropped-item snapshot (late-join) ─────────────────────────────────────────
+
+func _build_item_snapshot() -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for net_id: int in _world_items:
+		var item: PhysicalItem = _find_item(net_id)
+		if not item or not item.item_data: continue
+		result.append({
+			"item_id":    item.item_data.id,
+			"net_id":     net_id,
+			"pos":        item.global_position,
+			"durability": item.current_durability,
+		})
+	return result
+
+## Spawns all current world items locally on the receiving client — does NOT
+## re-register them on the server or broadcast further.
+@rpc("authority", "reliable")
+func _rpc_receive_item_snapshot(items: Array[Dictionary]) -> void:
+	for entry: Dictionary in items:
+		_spawn_local(
+			entry["item_id"]    as String,
+			entry["pos"]        as Vector3,
+			entry["net_id"]     as int,
+			entry["durability"] as int,
+		)
+
+# ── Container inventory snapshot (late-join) ──────────────────────────────────
+
+## Sends the current slot state of every synced container to [peer_id].
+func _send_container_snapshots(peer_id: int) -> void:
+	for node: Node in get_tree().get_nodes_in_group("synced_inventory"):
+		var inv: Inventory = node as Inventory
+		if not inv or inv.container_net_id == 0: continue
+		_rpc_sync_inventory.rpc_id(peer_id, inv.container_net_id, inv.net_encode())
 
 # ── Item spawn ────────────────────────────────────────────────────────────────
 

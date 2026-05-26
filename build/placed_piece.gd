@@ -1,5 +1,5 @@
 class_name PlacedPiece
-extends StaticBody3D
+extends DamageableBody
 
 const GRID_SIZE: float = 3.0
 
@@ -13,9 +13,6 @@ var is_foundation: bool   = false
 
 var piece_type: String = ""
 var piece_tier: int    = 0
-
-var max_hp: int = 0   # 0 = indestructible (non-building placeables like chests)
-var health: HealthComponent = null
 
 # ── Factory ───────────────────────────────────────────────────────────────────
 
@@ -104,21 +101,37 @@ static func _tinted_mat(base: Color) -> StandardMaterial3D:
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
+const SND_HIT := preload("res://audio/sfx/item_collide.mp3")
+
 func _ready() -> void:
+	bar_height = size.y + 0.4
+	hit_sound  = SND_HIT
 	add_to_group("placed_pieces")
-	if max_hp > 0:
-		health = HealthComponent.new()
-		add_child(health)
-		health.setup(float(max_hp))
+	super()
 
-# ── Damage / destruction ──────────────────────────────────────────────────────
+# ── Multiplayer sync ──────────────────────────────────────────────────────────
 
-## Apply `amount` damage. Returns true if the piece was destroyed.
-## No-op and returns false for indestructible pieces (max_hp == 0).
-func take_damage(amount: float) -> bool:
-	if not health: return false
-	health.take_damage(amount)
-	if health.is_dead():
-		queue_free()
-		return true
-	return false
+func _on_hp_changed(current: float, maximum: float) -> void:
+	super(current, maximum)
+	if NetworkManager.is_active():
+		_rpc_hp_sync.rpc(current, maximum)
+
+@rpc("authority", "call_remote", "unreliable")
+func _rpc_hp_sync(current: float, maximum: float) -> void:
+	damageable.show_hit(current, maximum)
+
+func _on_destroyed() -> void:
+	if NetworkManager.is_active():
+		_rpc_destroy.rpc()
+	else:
+		_destroy_local()
+
+@rpc("authority", "call_local", "reliable")
+func _rpc_destroy() -> void:
+	_destroy_local()
+
+func _destroy_local() -> void:
+	var world: Node = get_tree().get_first_node_in_group("world")
+	if world:
+		world.unregister_piece(net_id)
+	queue_free()
