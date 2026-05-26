@@ -122,15 +122,14 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.is_action_pressed("hotbar_slot_%d" % (slot + 1)):
 			inventory.set_active_hotbar_slot(slot)
 
-	if not GameState.is_building:
-		if event.is_action_pressed("hotbar_cycle_prev"):
-			inventory.cycle_prev()
-		elif event.is_action_pressed("hotbar_cycle_next"):
-			inventory.cycle_next()
-		elif event.is_action_pressed("hotbar_row_prev"):
-			inventory.prev_hotbar_row()
-		elif event.is_action_pressed("hotbar_row_next"):
-			inventory.next_hotbar_row()
+	if event.is_action_pressed("hotbar_cycle_prev"):
+		inventory.cycle_prev()
+	elif event.is_action_pressed("hotbar_cycle_next"):
+		inventory.cycle_next()
+	elif event.is_action_pressed("hotbar_row_prev"):
+		inventory.prev_hotbar_row()
+	elif event.is_action_pressed("hotbar_row_next"):
+		inventory.next_hotbar_row()
 
 func _physics_process(delta: float) -> void:
 	if NetworkManager.is_active() and not is_multiplayer_authority():
@@ -323,7 +322,7 @@ func _update_interact_target() -> void:
 func _try_interact() -> void:
 	if interact_ray.is_colliding():
 		var target := interact_ray.get_collider()
-		if target.has_method("interact"):
+		if target and target.has_method("interact"):
 			target.interact(self)
 
 func _try_attack() -> void:

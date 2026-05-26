@@ -98,11 +98,11 @@ func _process(_delta: float) -> void:
 		_hold_from_slot(slot)
 		_refresh_ghost_for_held()
 
-	if Input.is_action_just_pressed("attack") and not _place_held:
+	if Input.is_action_just_pressed("interact") and not _place_held:
 		_place_held = true
 		_place()
 		if not _active: return
-	elif _place_held and Input.get_action_raw_strength("attack") <= 0.1:
+	elif _place_held and Input.get_action_raw_strength("interact") <= 0.1:
 		_place_held = false
 
 	_update_ghost()
@@ -474,10 +474,13 @@ func _refresh_ghost_for_held() -> void:
 
 	var bdata: BuildingItemData = _held_data as BuildingItemData if _held_data is BuildingItemData else null
 	if bdata != null and bdata.mesh_scene != null:
-		_ghost.mesh          = null
-		_ghost_mesh_child    = bdata.mesh_scene.instantiate() as Node3D
-		_ghost_mesh_child.position = Vector3(0.0, -_held_size.y * 0.5, 0.0) + bdata.visual_offset
+		_ghost.mesh       = null
+		_ghost_mesh_child = bdata.mesh_scene.instantiate() as Node3D
 		_ghost.add_child(_ghost_mesh_child)
+
+		# Match PlacedPiece.build(): shift down by half-height so a bottom-origin
+		# mesh sits correctly inside the ghost box. XZ offset from Blender is kept.
+		_ghost_mesh_child.position = Vector3(0.0, -_held_size.y * 0.5, 0.0) + bdata.visual_offset
 	else:
 		var box: BoxMesh = BoxMesh.new()
 		box.size         = _held_size

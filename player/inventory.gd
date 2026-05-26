@@ -227,7 +227,10 @@ func _find_priority_slot(item_id: String) -> ItemStack:
 	for i in main_slots:
 		var s := _slots[i]
 		if not s.is_empty() and s.can_add(item_id): return s
-	# 3. Empty hotbar (prefer active row)
+	# 3. Active hotbar slot
+	var active := _slots[_active_abs()]
+	if active.is_empty(): return active
+	# 4. Empty hotbar (prefer active row)
 	for r in hotbar_rows:
 		var row := (active_hotbar_row + r) % hotbar_rows
 		for c in hotbar_cols:

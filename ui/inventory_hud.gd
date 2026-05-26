@@ -52,7 +52,8 @@ func _on_opened() -> void:
 	_controller.inv      = _inv
 	_controller.nav_rows = Inventory.ROWS + Inventory.HOTBAR_ROWS
 	_controller.nav_cols = Inventory.COLS
-	_controller.reset_cursor()
+	_controller.cursor = _inv.active_index
+	_controller.cursor_moved.emit()
 	if _inv and not _inv.changed.is_connected(_on_inv_changed):
 		_inv.changed.connect(_on_inv_changed)
 	_refresh()
@@ -71,16 +72,21 @@ func _on_inv_changed() -> void:
 # ── Input ──────────────────────────────────────────────────────────────────────
 
 func _handle_input(event: InputEvent) -> bool:
-	# open_inventory also closes
-	if event.is_action_pressed("open_inventory"):
+	if event.is_action_pressed("ui_cancel"):
 		if _controller.drag and not _controller.drag.is_empty():
 			_controller.cancel_drag()
-		else:
-			_close()
+		_close()
 		get_viewport().set_input_as_handled()
 		return true
 
-	var hs := _controller.hovered_slot
+	if event.is_action_pressed("open_inventory"):
+		if _controller.drag and not _controller.drag.is_empty():
+			_controller.cancel_drag()
+		_close()
+		get_viewport().set_input_as_handled()
+		return true
+
+	var hs: int = _controller.hovered_slot if _controller.hovered_slot >= 0 else _controller.cursor
 	# Hotbar number keys while hovering a slot
 	if hs >= 0 and (_controller.drag == null or _controller.drag.is_empty()) and _inv:
 		for slot_num in Inventory.HOTBAR_COLS:
@@ -101,21 +107,6 @@ func _handle_input(event: InputEvent) -> bool:
 				get_viewport().set_input_as_handled()
 				return true
 
-	# Q to drop hovered item
-	if event.is_action_pressed("drop") and hs >= 0 \
-			and (_controller.drag == null or _controller.drag.is_empty()) and _inv:
-		var slot := _inv.get_slot(hs)
-		if not slot.is_empty():
-			var taken: Inventory.ItemStack = _inv.take_items(hs, 1)
-			if not taken.is_empty():
-				var player := get_tree().get_first_node_in_group("player") as Player
-				if player:
-					var nid := taken.net_ids[0] if not taken.net_ids.is_empty() else 0
-					player.drop_item_data(taken.item_id, nid, taken.get_durability())
-		_refresh()
-		get_viewport().set_input_as_handled()
-		return true
-
 	return super._handle_input(event)
 
 func _get_ctrl_cursor_pos() -> Vector2:
@@ -128,11 +119,12 @@ func _get_ctrl_cursor_pos() -> Vector2:
 
 func _refresh() -> void:
 	super._refresh()
-	if not _inv or not _ctrl_nav: return
+	if not _inv: return
 	var cur := _controller.cursor
 	for i: int in _slots.size():
 		if _slots[i] != null:
-			_slots[i].set_cursor(i == cur)
+			_slots[i].set_active(false)
+			_slots[i].set_cursor(_ctrl_nav and i == cur)
 	var slot: Inventory.ItemStack = _inv.get_slot(cur)
 	if not slot.is_empty() and cur < _slots.size() and _slots[cur] != null:
 		ItemTooltip.show_for(slot.get_data(), slot.net_ids, slot.get_durability(), _slots[cur])

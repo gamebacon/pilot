@@ -119,9 +119,12 @@ func _handle_input(event: InputEvent) -> bool:
 	if event.is_action_pressed("ui_left",  true): _move_col(-1); get_viewport().set_input_as_handled(); return true
 	if event.is_action_pressed("ui_right", true): _move_col( 1); get_viewport().set_input_as_handled(); return true
 	if event.is_action_pressed("ui_accept"):
-		if not _slot_rows.is_empty():
+		if not _slot_rows.is_empty() and _row_idx < _row_recipes.size():
 			var row: Array = _slot_rows[_row_idx]
-			if row[_col_idx] is ItemSlotWidget and _row_idx < _row_recipes.size():
+			var el = row[_col_idx]
+			if el is ItemSlotWidget:
+				_on_craft(_row_recipes[_row_idx])
+			elif el is Button and not (el as Button).disabled:
 				_on_craft(_row_recipes[_row_idx])
 		get_viewport().set_input_as_handled()
 		return true
@@ -223,7 +226,7 @@ func _make_recipe_row(recipe: CraftingRecipe, inv: Dictionary) -> Control:
 	craft_btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	craft_btn.size_flags_vertical   = Control.SIZE_SHRINK_CENTER
 	craft_btn.focus_mode            = Control.FOCUS_ALL
-	craft_btn.add_theme_stylebox_override("focus", UIStyle.make_focus_style())
+	craft_btn.add_theme_stylebox_override("focus", UIStyle.make_focus_style(UIStyle.SECONDARY))
 	craft_btn.pressed.connect(_on_craft.bind(recipe))
 	hbox.add_child(craft_btn)
 

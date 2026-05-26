@@ -19,6 +19,8 @@ var item_data:   ItemData    = null
 var _net_ids:    Array[int]  = []
 var _durability: int         = -1
 var _hovered:    bool        = false
+var _is_active:  bool        = false
+var _is_cursor:  bool        = false
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────────
 
@@ -92,15 +94,21 @@ func set_item(data: ItemData, qty: int = 0, net_ids: Array[int] = [],
 		else:         ItemTooltip.hide()
 
 func set_active(on: bool) -> void:
-	_ensure_built()
-	_style.border_color        = UIStyle.PRIMARY if on else UIStyle.SURFACE_BORDER
-	_style.border_width_bottom = 3 if on else 2
-	_panel.add_theme_stylebox_override("panel", _style)
+	_is_active = on
+	_update_border()
 
 func set_cursor(on: bool) -> void:
+	_is_cursor = on
+	_update_border()
+
+func _update_border() -> void:
 	_ensure_built()
-	_style.border_color        = UIStyle.SECONDARY if on else UIStyle.SURFACE_BORDER
-	_style.border_width_bottom = 2
+	if _is_active or _is_cursor:
+		_style.border_color        = UIStyle.PRIMARY
+		_style.border_width_bottom = 3 if _is_active else 2
+	else:
+		_style.border_color        = UIStyle.SURFACE_BORDER
+		_style.border_width_bottom = 2
 	_panel.add_theme_stylebox_override("panel", _style)
 
 func set_badge(text: String, color: Color = Color.WHITE) -> void:

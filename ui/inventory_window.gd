@@ -46,12 +46,6 @@ var _drag_count: Label       = null
 
 # ── Lifecycle ──────────────────────────────────────────────────────────────────
 
-const NAV_INITIAL: float = 0.35
-const NAV_REPEAT:  float = 0.09
-
-var _nav_dir:   Vector2i = Vector2i.ZERO
-var _nav_timer: float    = 0.0
-
 func _ready() -> void:
 	layer = 10
 	_controller = _make_controller()
@@ -96,10 +90,10 @@ func _get_ctrl_cursor_pos() -> Vector2: return get_viewport().get_mouse_position
 func _handle_input(event: InputEvent) -> bool:
 	if _controller.nav_rows == 0: return false
 
-	if event.is_action_pressed("ui_left",  false): _start_nav(-1,  0); return true
-	if event.is_action_pressed("ui_right", false): _start_nav( 1,  0); return true
-	if event.is_action_pressed("ui_up",    false): _start_nav( 0, -1); return true
-	if event.is_action_pressed("ui_down",  false): _start_nav( 0,  1); return true
+	if event.is_action_pressed("ui_left",  false): _ctrl_nav = true; _controller.start_nav(-1,  0); return true
+	if event.is_action_pressed("ui_right", false): _ctrl_nav = true; _controller.start_nav( 1,  0); return true
+	if event.is_action_pressed("ui_up",    false): _ctrl_nav = true; _controller.start_nav( 0, -1); return true
+	if event.is_action_pressed("ui_down",  false): _ctrl_nav = true; _controller.start_nav( 0,  1); return true
 
 	if event.is_action_pressed("ui_accept"):
 		var now := Time.get_ticks_msec()
@@ -144,12 +138,6 @@ func _handle_input(event: InputEvent) -> bool:
 
 	return false
 
-func _start_nav(dx: int, dy: int) -> void:
-	_nav_dir   = Vector2i(dx, dy)
-	_nav_timer = NAV_INITIAL
-	_ctrl_nav  = true
-	_controller.navigate(dx, dy)
-
 # ── Input ──────────────────────────────────────────────────────────────────────
 
 func _input(event: InputEvent) -> void:
@@ -166,8 +154,12 @@ func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
 		if _controller.drag and not _controller.drag.is_empty():
 			_controller.cancel_drag()
-		else:
-			_close()
+		_close()
+		get_viewport().set_input_as_handled()
+	if event.is_action_pressed("open_inventory"):
+		if _controller.drag and not _controller.drag.is_empty():
+			_controller.cancel_drag()
+		_close()
 		get_viewport().set_input_as_handled()
 
 # ── Process ────────────────────────────────────────────────────────────────────
@@ -177,26 +169,7 @@ func _process(delta: float) -> void:
 	if _drag_panel and _drag_panel.visible:
 		_drag_root.position = _get_drag_pos()
 
-	# Controller nav repeat — poll held direction and fire at NAV_REPEAT rate.
-	if _controller.nav_rows > 0:
-		var dir := Vector2i.ZERO
-		if   Input.is_action_pressed("ui_left"):  dir.x = -1
-		elif Input.is_action_pressed("ui_right"): dir.x =  1
-		if   Input.is_action_pressed("ui_up"):    dir.y = -1
-		elif Input.is_action_pressed("ui_down"):  dir.y =  1
-		if dir == Vector2i.ZERO:
-			_nav_dir   = Vector2i.ZERO
-			_nav_timer = 0.0
-		elif dir != _nav_dir:
-			# Direction changed mid-hold — _start_nav already fired for first press,
-			# so only update tracking here without an extra navigate call.
-			_nav_dir   = dir
-			_nav_timer = NAV_INITIAL
-		else:
-			_nav_timer -= delta
-			if _nav_timer <= 0.0:
-				_nav_timer = NAV_REPEAT
-				_controller.navigate(_nav_dir.x, _nav_dir.y)
+	_controller.tick_nav(delta)
 
 	var c := _controller
 	if c.split_button >= 0 and not Input.is_mouse_button_pressed(c.split_button):
@@ -455,9 +428,7 @@ func _on_drag_changed() -> void:
 	var col := data.color
 	var s   := StyleBoxFlat.new()
 	s.set_corner_radius_all(6)
-	s.bg_color     = Color(col.r * 0.55, col.g * 0.55, col.b * 0.55, 0.95)
-	s.border_color = UIStyle.PRIMARY
-	s.set_border_width_all(2)
+	s.bg_color = Color(col.r * 0.55, col.g * 0.55, col.b * 0.55, 0.95)
 	_drag_panel.add_theme_stylebox_override("panel", s)
 	_drag_count.text   = str(c.drag.quantity) if c.drag.quantity > 1 else ""
 	_drag_icon.texture = data.icon

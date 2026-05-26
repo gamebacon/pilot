@@ -15,9 +15,14 @@ var external_slot_count: int = 0
 
 # ── Controller cursor ─────────────────────────────────────────────────────────
 
-var cursor:   int = 0
-var nav_rows: int = 0   # 0 = grid nav disabled (e.g. CraftingUI uses its own nav)
-var nav_cols: int = 8   # default Inventory.COLS; set before opening if different
+const NAV_INITIAL: float = 0.35
+const NAV_REPEAT:  float = 0.09
+
+var cursor:    int      = 0
+var nav_rows:  int      = 0   # 0 = grid nav disabled (e.g. CraftingUI uses its own nav)
+var nav_cols:  int      = 8   # default Inventory.COLS; set before opening if different
+var _nav_dir:  Vector2i = Vector2i.ZERO
+var _nav_timer: float   = 0.0
 
 func navigate(dx: int, dy: int) -> void:
 	if nav_rows == 0: return
@@ -31,6 +36,33 @@ func navigate(dx: int, dy: int) -> void:
 func reset_cursor() -> void:
 	cursor = 0
 	cursor_moved.emit()
+
+func start_nav(dx: int, dy: int) -> void:
+	var new_dir := Vector2i(dx, dy)
+	if new_dir == _nav_dir:
+		return
+	_nav_dir   = new_dir
+	_nav_timer = NAV_INITIAL
+	navigate(dx, dy)
+
+func tick_nav(delta: float) -> void:
+	if nav_rows == 0: return
+	var dir := Vector2i.ZERO
+	if   Input.is_action_pressed("ui_left"):  dir.x = -1
+	elif Input.is_action_pressed("ui_right"): dir.x =  1
+	if   Input.is_action_pressed("ui_up"):    dir.y = -1
+	elif Input.is_action_pressed("ui_down"):  dir.y =  1
+	if dir == Vector2i.ZERO:
+		_nav_dir   = Vector2i.ZERO
+		_nav_timer = 0.0
+	elif dir != _nav_dir:
+		_nav_dir   = dir
+		_nav_timer = NAV_INITIAL
+	else:
+		_nav_timer -= delta
+		if _nav_timer <= 0.0:
+			_nav_timer = NAV_REPEAT
+			navigate(_nav_dir.x, _nav_dir.y)
 
 # ── Drag state ────────────────────────────────────────────────────────────────
 

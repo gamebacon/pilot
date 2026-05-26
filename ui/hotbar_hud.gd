@@ -5,10 +5,10 @@ const HAND_LABEL_SHOW_SECS: float = 2.0
 var _inv: Inventory = null
 var _player_found := false
 
-var _slots: Array[ItemSlotWidget] = []
-var _hand_label: Label = null
-var _hand_tween: Tween = null
-var _last_hand_id: String = ""
+var _slots:        Array[ItemSlotWidget] = []
+var _hand_label:   Label                 = null
+var _hand_tween:   Tween                 = null
+var _last_hand_id: String                = ""
 
 func _ready() -> void:
 	add_to_group("hotbar_hud")

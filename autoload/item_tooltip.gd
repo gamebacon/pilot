@@ -3,7 +3,7 @@ extends Node
 ## Singleton tooltip for ItemData.
 ## show_for(data, net_ids, durability, anchor) — net_ids shown in debug mode only.
 
-var _panel:  Panel         = null
+var _panel:  PanelContainer = null
 var _vbox:   VBoxContainer = null
 var _anchor: Control       = null
 
@@ -75,7 +75,7 @@ func _populate(data: ItemData, net_ids: Array[int], durability: int) -> void:
 		desc.custom_minimum_size = Vector2(200, 0)
 		desc.add_theme_font_override("font", UIStyle.FONT_LIGHT)
 		desc.add_theme_font_size_override("font_size", UIStyle.SIZE_SM)
-		desc.add_theme_color_override("font_color", UIStyle.ON_BACKGROUND_DIM)
+		desc.add_theme_color_override("font_color", UIStyle.ON_SURFACE_DIM)
 		_vbox.add_child(desc)
 
 	var sep := HSeparator.new()
@@ -114,29 +114,33 @@ func _stat(label: String, value: String) -> void:
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lbl.add_theme_font_override("font", UIStyle.FONT)
 	lbl.add_theme_font_size_override("font_size", UIStyle.SIZE_SM)
-	lbl.add_theme_color_override("font_color", UIStyle.ON_BACKGROUND_DIM)
+	lbl.add_theme_color_override("font_color", UIStyle.ON_SURFACE_DIM)
 	row.add_child(lbl)
 	var val := Label.new()
 	val.text = value
 	val.add_theme_font_override("font", UIStyle.FONT_BOLD)
 	val.add_theme_font_size_override("font_size", UIStyle.SIZE_SM)
-	val.add_theme_color_override("font_color", UIStyle.ON_BACKGROUND)
+	val.add_theme_color_override("font_color", UIStyle.ON_SURFACE)
 	row.add_child(val)
 	_vbox.add_child(row)
 
 # ── Build ──────────────────────────────────────────────────────────────────────
 
 func _build(layer: CanvasLayer) -> void:
-	_panel = Panel.new()
-	_panel.add_theme_stylebox_override("panel",
-		UIStyle.make_panel_style(UIStyle.SURFACE, UIStyle.SURFACE_BORDER, 6, 10))
+	var tooltip_style := StyleBoxFlat.new()
+	tooltip_style.bg_color = UIStyle.SURFACE_VARIANT
+	tooltip_style.border_color = UIStyle.SURFACE_BORDER
+	tooltip_style.set_border_width_all(1)
+	tooltip_style.set_corner_radius_all(6)
+	tooltip_style.set_content_margin_all(10)
+
+	_panel = PanelContainer.new()
+	_panel.add_theme_stylebox_override("panel", tooltip_style)
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_panel.visible      = false
 	layer.add_child(_panel)
 
 	_vbox = VBoxContainer.new()
 	_vbox.add_theme_constant_override("separation", 4)
-	_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_vbox.set_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 10)
 	_vbox.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_panel.add_child(_vbox)

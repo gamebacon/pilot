@@ -36,15 +36,16 @@ func _get_ctrl_cursor_pos() -> Vector2:
 func _on_opened() -> void:
 	if not _chest:
 		return
-	_controller.nav_rows = CHEST_ROWS + Inventory.ROWS + Inventory.HOTBAR_ROWS
-	_controller.nav_cols = Inventory.COLS
-	_controller.reset_cursor()
 	_inv        = _chest.inventory
 	_player_inv = _player.inventory
 	var c := _controller as ChestInventoryController
 	c.chest_net_id = _chest.inventory.container_net_id
 	c.inv          = _inv
 	c.player_inv   = _player_inv
+	_controller.nav_rows = CHEST_ROWS + Inventory.ROWS + Inventory.HOTBAR_ROWS
+	_controller.nav_cols = Inventory.COLS
+	_controller.cursor   = _controller.external_slot_count + (_player_inv.active_index if _player_inv else 0)
+	_controller.cursor_moved.emit()
 	if not _inv.changed.is_connected(_on_inv_changed):
 		_inv.changed.connect(_on_inv_changed)
 	if not _player_inv.changed.is_connected(_on_inv_changed):
@@ -74,6 +75,7 @@ func _refresh() -> void:
 	var cur := _controller.cursor
 	for i: int in _slots.size():
 		if _slots[i] != null:
+			_slots[i].set_active(false)
 			_slots[i].set_cursor(i == cur)
 	var sv: Inventory = _controller.sinv(cur)
 	if sv:
