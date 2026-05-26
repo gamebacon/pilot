@@ -41,7 +41,7 @@ func on_hit(current_hp: float, max_hp: float) -> void:
 func refresh_bar(current_hp: float, max_hp: float) -> void:
 	if current_hp >= max_hp: return   # full health — bar stays hidden
 	_ratio = current_hp / max_hp if max_hp > 0.0 else 1.0
-	_update_fill(_ratio)
+	_update_fill(_ratio)             # also triggers UPDATE_ONCE
 	_set_bar_visible(true)
 	if _ratio >= LOW_HP_RATIO:
 		_hide_timer = HIDE_DELAY
@@ -60,7 +60,7 @@ func _build_bar(bar_y: float) -> void:
 	_viewport                          = SubViewport.new()
 	_viewport.size                     = Vector2i(BAR_VIEWPORT_W, BAR_VIEWPORT_H)
 	_viewport.transparent_bg           = true
-	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	add_child(_viewport)
 
 	# Background style.
@@ -105,6 +105,9 @@ func _update_fill(ratio: float) -> void:
 	_bar.value = ratio
 	if _fill_style:
 		_fill_style.bg_color = Color(1.0 - ratio, ratio * 0.88, 0.06)
+	# Render once — viewport stays DISABLED every other frame.
+	if _viewport:
+		_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 
 func _set_bar_visible(p_visible: bool) -> void:
 	if _sprite:
