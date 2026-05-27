@@ -76,8 +76,7 @@ func play_pickup_sound() -> void:
 	_play(_resolve(item_data.sound_pickup if item_data else null, DEFAULT_PICKUP))
 
 func play_place_sound() -> void:
-	var pitch = randf_range(0.95, 1)
-	AudioManager.play_sfx(_resolve(item_data.sound_place if item_data else null, DEFAULT_PLACE), pitch)
+	_play(_resolve(item_data.sound_place if item_data else null, DEFAULT_PLACE))
 
 func get_walk_sound() -> AudioStream:
 	return _resolve(item_data.sound_walk if item_data else null, DEFAULT_WALK)
