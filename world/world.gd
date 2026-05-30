@@ -110,6 +110,16 @@ func register_piece(net_id: int, piece: Node3D) -> void:
 	if net_id != 0:
 		_placed_pieces[net_id] = piece
 
+func get_all_placed_nodes() -> Array[Node3D]:
+	var result: Array[Node3D] = []
+	for nid: int in _placed_pieces:
+		var raw: Variant = _placed_pieces[nid]
+		if not is_instance_valid(raw): continue
+		var node: Node3D = raw as Node3D
+		if node:
+			result.append(node)
+	return result
+
 func get_placed_piece(net_id: int) -> Node3D:
 	var piece: Node3D = _placed_pieces.get(net_id) as Node3D
 	return piece if piece and is_instance_valid(piece) else null
@@ -128,10 +138,12 @@ func _build_piece_snapshot() -> Array[Dictionary]:
 		if not piece: continue
 		var hp_current: float = piece.damageable.get_current_hp() if piece is DamageableBody and (piece as DamageableBody).damageable else -1.0
 		var hp_max:     float = piece.damageable.get_max_hp()     if piece is DamageableBody and (piece as DamageableBody).damageable else -1.0
+		var piece_size: Vector3 = (piece as PlacedPiece).size if piece is PlacedPiece else Vector3.ZERO
 		result.append({
 			"net_id":     net_id,
 			"item_id":    piece.get_meta("item_id", ""),
 			"transform":  piece.global_transform,
+			"size":       piece_size,
 			"hp_current": hp_current,
 			"hp_max":     hp_max,
 		})

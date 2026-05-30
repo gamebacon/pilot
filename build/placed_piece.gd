@@ -153,6 +153,8 @@ func _rpc_destroy() -> void:
 	_destroy_local()
 
 func _destroy_local() -> void:
+	if is_foundation:
+		_cascade_destroy_supported()
 	var world: Node = get_tree().get_first_node_in_group("world")
 	if world:
 		world.unregister_piece(net_id)
@@ -160,6 +162,41 @@ func _destroy_local() -> void:
 	remove_from_group("nav_static")
 	_request_nav_rebake()
 	queue_free()
+
+## Server-only: destroys all non-foundation placed nodes sitting on this foundation.
+## Runs on the server so each node's _on_destroyed() fires exactly once, triggering
+## its own RPC to sync removal (and loot scatter for chests) to all peers.
+func _cascade_destroy_supported() -> void:
+	if NetworkManager.is_active() and not multiplayer.is_server():
+		return
+	const Y_TOL:        float = 0.15
+	const MAX_HEIGHT:   float = 4.0   # tallest placeable that can sit on a foundation
+	var foundation_top_y: float  = global_position.y + size.y * 0.5
+	var foundation_xz:    Vector2 = Vector2(global_position.x, global_position.z)
+	var half_x: float = size.x * 0.5 + 0.5
+	var half_z: float = size.z * 0.5 + 0.5
+	var world: Node = get_tree().get_first_node_in_group("world")
+	if not world: return
+	var candidates: Array[Node3D] = world.get_all_placed_nodes()
+	var to_destroy: Array[Node3D] = []
+	for node: Node3D in candidates:
+		if node == self: continue
+		if node is PlacedPiece and (node as PlacedPiece).is_foundation: continue
+		var node_xz: Vector2 = Vector2(node.global_position.x, node.global_position.z)
+		if absf(node_xz.x - foundation_xz.x) >= half_x: continue
+		if absf(node_xz.y - foundation_xz.y) >= half_z: continue
+		var bottom_y: float
+		if node is PlacedPiece:
+			bottom_y = node.global_position.y - (node as PlacedPiece).size.y * 0.5
+		else:
+			# Scene-based placeables (chests, etc.): ghost is placed so its centre
+			# is above the surface, so test the centre against a Y window instead.
+			bottom_y = node.global_position.y - MAX_HEIGHT * 0.5
+		if absf(bottom_y - foundation_top_y) < Y_TOL + MAX_HEIGHT * 0.5:
+			to_destroy.append(node)
+	for node: Node3D in to_destroy:
+		if is_instance_valid(node) and node.has_method("_on_destroyed"):
+			node._on_destroyed()
 
 ## Schedules a nav-mesh rebake after NAV_REBAKE_DELAY seconds.
 ## Debounced via metadata on the NavigationRegion3D node: if a rebake is
