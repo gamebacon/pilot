@@ -14,6 +14,22 @@ var capsule_radius: float = 0.40
 var capsule_height: float = 1.80
 var wave_min: int         = 1     # first wave this type can appear
 
+# Model — set to a .tscn/.glb/.fbx path to use a real mesh; empty = capsule fallback.
+# The scene root must be a Node3D containing an AnimationPlayer.
+var model_scene_path: String = ""
+
+# Animation names as they will exist after merging (see anim_files below).
+var anim_idle: String   = "idle"
+var anim_walk: String   = "walk"
+var anim_attack: String = "attack"
+var anim_death: String  = "death"
+var anim_hurt: String   = "hurt"
+
+# Each entry maps a logical anim name → FBX path whose "mixamo_com" clip is used.
+# enemy.gd merges them all into the model's AnimationPlayer at spawn time.
+# Leave empty to skip animation merging (uses whatever the model FBX contains).
+var anim_files: Dictionary[String, String] = {}
+
 # Sound paths — empty string = no sound for that slot.
 # Drop replacements into res://audio/sfx/ and update the paths here.
 var snd_footstep: String = ""
@@ -56,11 +72,24 @@ static func _grunt() -> EnemyType:
 	t.capsule_radius    = 0.40
 	t.capsule_height    = 1.80
 	t.wave_min          = 1
+	t.model_scene_path  = "res://world/enemies/grunt/grunt.fbx"
+	t.anim_idle         = "idle"
+	t.anim_walk         = "walk"
+	t.anim_attack       = "attack"
+	t.anim_death        = "death"
+	t.anim_hurt         = "hurt"
+	t.anim_files        = {
+		"idle":   "res://world/enemies/grunt/idle.fbx",
+		"walk":   "res://world/enemies/grunt/grunt.fbx",
+		"attack": "res://world/enemies/grunt/attack.fbx",
+		"death":  "res://world/enemies/grunt/death.fbx",
+		"hurt":   "res://world/enemies/grunt/hurt.fbx",
+	}
 	t.snd_footstep      = "res://audio/sfx/footstep_default.mp3"
 	t.snd_attack        = "res://audio/sfx/item_collide.mp3"
 	t.snd_hurt          = "res://audio/sfx/item_collide.mp3"
 	t.snd_death         = "res://audio/sfx/item_place.mp3"
-	t.snd_ambient       = ""   # swap in: res://audio/sfx/enemy_grunt_idle.mp3
+	t.snd_ambient       = ""
 	return t
 
 static func _brute() -> EnemyType:
@@ -79,7 +108,7 @@ static func _brute() -> EnemyType:
 	t.snd_attack        = "res://audio/sfx/item_collide.mp3"
 	t.snd_hurt          = "res://audio/sfx/item_collide.mp3"
 	t.snd_death         = "res://audio/sfx/item_place.mp3"
-	t.snd_ambient       = ""   # swap in: res://audio/sfx/enemy_brute_idle.mp3
+	t.snd_ambient       = ""
 	return t
 
 static func _runner() -> EnemyType:
@@ -98,5 +127,5 @@ static func _runner() -> EnemyType:
 	t.snd_attack        = "res://audio/sfx/item_collide.mp3"
 	t.snd_hurt          = "res://audio/sfx/item_collide.mp3"
 	t.snd_death         = "res://audio/sfx/item_place.mp3"
-	t.snd_ambient       = ""   # swap in: res://audio/sfx/enemy_runner_idle.mp3
+	t.snd_ambient       = ""
 	return t

@@ -89,20 +89,28 @@ func _rpc_spawn(pos: Vector3, type_id: String) -> void:
 
 	var col   := CollisionShape3D.new()
 	var shape := CapsuleShape3D.new()
-	shape.radius = type.capsule_radius
-	shape.height = type.capsule_height
-	col.shape    = shape
+	shape.radius    = type.capsule_radius
+	shape.height    = type.capsule_height
+	col.shape       = shape
+	col.position.y  = type.capsule_height * 0.5
 	body.add_child(col)
 
-	var mi   := MeshInstance3D.new()
-	var mesh := CapsuleMesh.new()
-	mesh.radius = type.capsule_radius
-	mesh.height = type.capsule_height
-	mi.mesh     = mesh
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = type.body_color
-	mi.set_surface_override_material(0, mat)
-	body.add_child(mi)
+	if type.model_scene_path != "":
+		var packed: PackedScene = load(type.model_scene_path)
+		if packed:
+			var model: Node3D = packed.instantiate() as Node3D
+			if model:
+				body.add_child(model)
+	else:
+		var mi   := MeshInstance3D.new()
+		var mesh := CapsuleMesh.new()
+		mesh.radius = type.capsule_radius
+		mesh.height = type.capsule_height
+		mi.mesh     = mesh
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = type.body_color
+		mi.set_surface_override_material(0, mat)
+		body.add_child(mi)
 
 	get_tree().current_scene.add_child(body)
 	body.global_position = pos

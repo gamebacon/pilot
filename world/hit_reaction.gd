@@ -31,6 +31,9 @@ func setup(bar_y: float) -> void:
 
 func on_hit(current_hp: float, max_hp: float) -> void:
 	_ratio = current_hp / max_hp if max_hp > 0.0 else 1.0
+	if _ratio <= 0.0:
+		_set_bar_visible(false)
+		return
 	_update_fill(_ratio)
 	_set_bar_visible(true)
 	if _ratio >= LOW_HP_RATIO:

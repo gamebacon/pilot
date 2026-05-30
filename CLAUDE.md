@@ -10,7 +10,9 @@ Engine: Godot 4.6, Forward+, Jolt Physics. Steam multiplayer via GodotSteam + `S
 
 ---
 
-## GDScript coding conventions
+## General coding rules
+
+- **Never reformat or reindent existing code** when editing a file. Only change the lines directly relevant to the task. Do not align colons, equals signs, or anything else in surrounding untouched code.
 
 ### Typing — always explicit, no exceptions
 
@@ -71,17 +73,17 @@ enemies_alive_cap = 3 + (wave - 1) * 2
 
 Function names must communicate what the function **does** and, when it returns a value, **what it returns**.
 
-| Pattern | Use for |
-| --- | --- |
-| `get_*` | Returns a value, no side-effects (`get_active_slot() -> Slot`) |
-| `find_*` | Searches and may return null (`find_player(id) -> Player`) |
-| `is_*` / `has_*` / `can_*` | Returns `bool` (`is_full()`, `has_item(id)`, `can_place()`) |
-| `try_*` | Attempts an operation, returns `bool` success (`try_pickup(item)`) |
-| `request_*` | Sends a network request, no direct return (`request_chest_take(...)`) |
-| `_on_*` | Signal/event handler (`_on_inv_changed()`) |
-| `_build_*` | Constructs and adds UI nodes (`_build_slot(...)`) |
-| `_server_do_*` | Server-only execution path (`_server_do_pickup(...)`) |
-| `_rpc_*` | RPC target functions — never called directly (`_rpc_sync_inventory(...)`) |
+| Pattern                    | Use for                                                                   |
+| -------------------------- | ------------------------------------------------------------------------- |
+| `get_*`                    | Returns a value, no side-effects (`get_active_slot() -> Slot`)            |
+| `find_*`                   | Searches and may return null (`find_player(id) -> Player`)                |
+| `is_*` / `has_*` / `can_*` | Returns `bool` (`is_full()`, `has_item(id)`, `can_place()`)               |
+| `try_*`                    | Attempts an operation, returns `bool` success (`try_pickup(item)`)        |
+| `request_*`                | Sends a network request, no direct return (`request_chest_take(...)`)     |
+| `_on_*`                    | Signal/event handler (`_on_inv_changed()`)                                |
+| `_build_*`                 | Constructs and adds UI nodes (`_build_slot(...)`)                         |
+| `_server_do_*`             | Server-only execution path (`_server_do_pickup(...)`)                     |
+| `_rpc_*`                   | RPC target functions — never called directly (`_rpc_sync_inventory(...)`) |
 
 Avoid vague names like `update()`, `handle()`, `process()`, `do_thing()`. If you can't name it clearly, the function is probably doing too much.
 
@@ -136,14 +138,14 @@ Always guard against `tree == null` (e.g. during unit test or tool context).
 
 ## Autoloads (singletons)
 
-| Name             | File                          | Role                                                                    |
-| ---------------- | ----------------------------- | ----------------------------------------------------------------------- |
+| Name             | File                          | Role                                                                   |
+| ---------------- | ----------------------------- | ---------------------------------------------------------------------- |
 | `GameState`      | `autoload/game_state.gd`      | Currency, `is_building` flag, `ui_open` stack (push/pop), `debug_mode` |
-| `InputHelper`    | `autoload/input_helper.gd`    | Detects gamepad vs keyboard (`is_joy()`)                                |
-| `AudioManager`   | `autoload/audio_manager.gd`   | SFX/music bus wrapper                                                   |
-| `ItemRegistry`   | `autoload/item_registry.gd`   | Preloads all `ItemData` resources; lookup by string `id`                |
-| `ItemTooltip`    | `autoload/item_tooltip.gd`    | Floating tooltip shown on hover/controller cursor                       |
-| `NetworkManager` | `autoload/network_manager.gd` | Steam lobby + `SteamMultiplayerPeer`; handshake, player dict            |
+| `InputHelper`    | `autoload/input_helper.gd`    | Detects gamepad vs keyboard (`is_joy()`)                               |
+| `AudioManager`   | `autoload/audio_manager.gd`   | SFX/music bus wrapper                                                  |
+| `ItemRegistry`   | `autoload/item_registry.gd`   | Preloads all `ItemData` resources; lookup by string `id`               |
+| `ItemTooltip`    | `autoload/item_tooltip.gd`    | Floating tooltip shown on hover/controller cursor                      |
+| `NetworkManager` | `autoload/network_manager.gd` | Steam lobby + `SteamMultiplayerPeer`; handshake, player dict           |
 
 `UIStyle` (`autoload/ui_style.gd`) is NOT in `project.godot` autoloads — loaded via `preload` where needed.
 
