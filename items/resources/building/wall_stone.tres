@@ -7,6 +7,7 @@ script = ExtResource("1_bdata")
 id = "wall_stone"
 display_name = "Stone Wall"
 description = "A thick stone rampart. Walkable top surface. Snaps to foundation edges or tower faces."
+blocker_priority = 10
 color = Color(0.55, 0.53, 0.50, 1)
 size = Vector3(3, 2, 1.5)
 mass = 30.0

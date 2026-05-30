@@ -33,19 +33,34 @@ var _last_held_id: String      = ""     # item_id of the current visual
 
 var walk_audio: AudioStreamPlayer
 
+var damageable: Damageable
+
 func _ready() -> void:
+
+	add_to_group("players")
+
 	inventory = Inventory.new()
 	inventory.name = "Inventory"
 	add_child(inventory)
 	inventory.changed.connect(_update_held_visual)
+
+	# Include the harvestable physics layer so trees/ores are still detectable
+	# even though enemies no longer collide with them (see Harvestable.PHYSICS_LAYER).
+	interact_ray.set_collision_mask_value(Harvestable.PHYSICS_LAYER, true)
+
+	damageable = Damageable.new(100, 2)
+	add_child(damageable)
+	# damageable.died.connect(_die)
 
 	if NetworkManager.is_active() and not is_multiplayer_authority():
 		_setup_as_remote()
 		return
 
 	# ── Debug starting items — remove when done testing ───────────────────────
-	for _i in 5:
-		inventory.add("wall_wood_proto")
+	inventory.add("wall_wood_proto")
+	inventory.add("foundation")
+	inventory.add("tower")
+	inventory.add("axe_wooden")
 
 	walk_audio = AudioStreamPlayer.new()
 	walk_audio.bus = "Ambient"
@@ -344,6 +359,12 @@ func _try_attack() -> void:
 		target.interact(self)
 	elif target.has_method("take_damage"):
 		target.take_damage(dmg)
+
+func take_damage(amount: float) -> void:
+	if damageable.is_dead():
+		return
+
+	damageable.take_damage(amount)
 
 func _carry_weight_multiplier() -> float:
 	if GameState.debug_mode: return 1.0

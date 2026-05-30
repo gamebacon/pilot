@@ -1,9 +1,11 @@
-[gd_resource type="Resource" script_class="BuildingItemData" format=3]
+[gd_resource type="Resource" script_class="BuildingItemData" format=3 uid="uid://xy57dhrhdrq2"]
 
-[ext_resource type="Script" path="res://items/building_item_data.gd" id="1_bdata"]
+[ext_resource type="Script" uid="uid://dq7630873j4d4" path="res://items/building_item_data.gd" id="1_bdata"]
 
 [resource]
 script = ExtResource("1_bdata")
+piece_type = "tower"
+piece_hp = 150
 id = "tower"
 display_name = "Tower"
 description = "A rickety tower of lashed branches. Tall enough to spot enemies from."
@@ -11,9 +13,4 @@ color = Color(0.55, 0.43, 0.24, 1)
 size = Vector3(3, 6, 3)
 mass = 20.0
 is_placeable = true
-is_foundation = false
 can_rotate = false
-piece_type = "tower"
-piece_tier = 1
-piece_hp = 150
-upgrade_to = ""

@@ -297,8 +297,8 @@ func _confirm_pickup_local(net_id: int, item_id: String, durability: int) -> voi
 	var dur := durability if data is ToolItemData else -1
 	player.inventory.add(item_id, net_id, dur)
 	player._update_held_visual()
-	AudioManager.play_sfx(data.sound_pickup if data.sound_pickup else
-		preload("res://audio/sfx/item_pickup.mp3"))
+	# TODO: fix audio
+	# AudioManager.play_sfx(data.sound_pickup if data.sound_pickup else preload("res://audio/sfx/item_pickup.mp3"))
 
 func _notify_held(player_id: int, item_id: String) -> void:
 	var p := get_node_or_null("Players/" + str(player_id)) as Player

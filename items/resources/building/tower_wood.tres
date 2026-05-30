@@ -12,6 +12,7 @@ size = Vector3(3, 6, 3)
 mass = 50.0
 is_placeable = true
 is_foundation = false
+blocker_priority = 20
 can_rotate = false
 piece_type = "tower"
 piece_tier = 1

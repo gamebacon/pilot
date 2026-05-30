@@ -3,10 +3,16 @@ extends DamageableBody
 
 const GRID_SIZE: float = 3.0
 
+## Delay before the nav mesh is rebaked after a placement or destruction.
+## Debounced so rapid successive events (e.g. building a wall row) only
+## trigger one expensive bake at the end, not one per piece.
+const NAV_REBAKE_DELAY: float = 0.4
+
 var size:         Vector3 = Vector3(1.0, 1.0, 1.0)
 var color:        Color   = Color(0.7, 0.46, 0.2)
 var net_id:       int     = 0
 var is_foundation: bool   = false
+var blocker_priority = 0;
 
 # ── Building piece identity ───────────────────────────────────────────────────
 # Set from BuildingItemData at placement time.  Empty/0 for non-building items.
@@ -107,6 +113,22 @@ func _ready() -> void:
 	bar_height = size.y + 0.4
 	hit_sound  = SND_HIT
 	add_to_group("placed_pieces")
+	# All placed pieces join nav_static so the nav mesh knows about them:
+	# • Foundations: horizontal top surface becomes a walkable nav region.
+	# • Walls: vertical geometry is carved out of the nav mesh, forcing enemies
+	#   to route around intact walls.  Destroying a wall → rebake → path opens.
+	# All placed pieces are physical obstacles — both walls and foundations
+	# must be reachable by the enemy blocker-fallback targeting system.
+	# Foundations are also walkable surfaces (nav_static bakes their top face).
+	add_to_group("nav_static")
+
+	# add_to_group("enemy_blockers")
+
+	if piece_type == "wall" or piece_type == "tower" or piece_type == "foundation":
+		add_to_group("enemy_blockers")
+		set_meta("blocker_priority", blocker_priority)
+
+	_request_nav_rebake()
 	super()
 
 # ── Multiplayer sync ──────────────────────────────────────────────────────────
@@ -134,4 +156,24 @@ func _destroy_local() -> void:
 	var world: Node = get_tree().get_first_node_in_group("world")
 	if world:
 		world.unregister_piece(net_id)
+	# Remove from nav_static before freeing so the rebake sees the gap.
+	remove_from_group("nav_static")
+	_request_nav_rebake()
 	queue_free()
+
+## Schedules a nav-mesh rebake after NAV_REBAKE_DELAY seconds.
+## Debounced via metadata on the NavigationRegion3D node: if a rebake is
+## already pending the timer is left alone (it will fire for all queued
+## changes at once).
+func _request_nav_rebake() -> void:
+	var nav: NavigationRegion3D = get_tree().get_first_node_in_group("nav_region") as NavigationRegion3D
+	if not nav:
+		return
+	if nav.has_meta("rebake_pending"):
+		return
+	nav.set_meta("rebake_pending", true)
+	get_tree().create_timer(NAV_REBAKE_DELAY).timeout.connect(func() -> void:
+		if is_instance_valid(nav):
+			nav.remove_meta("rebake_pending")
+			nav.bake_navigation_mesh()
+	)

@@ -5,11 +5,19 @@ class_name Harvestable
 ## Set max_hp and bar_height before calling super()._ready().
 ## Override _on_depleted() and _get_remove_target() for drop and removal behaviour.
 
+## Dedicated physics layer for harvestable world objects.
+## Enemies only collide with layer 1 (terrain + placed pieces) so they walk
+## through trees and ores rather than getting stuck on them.
+## The player's InteractRay mask includes this layer so harvesting still works.
+const PHYSICS_LAYER: int = 2
+
 var required_tool_type: String    = ""
 var _is_depleted:       bool      = false
 var _hit_snd: AudioStreamPlayer3D = null
 
 func _ready() -> void:
+	set_collision_layer_value(1, false)
+	set_collision_layer_value(PHYSICS_LAYER, true)
 	add_to_group("harvestable")
 	super()
 

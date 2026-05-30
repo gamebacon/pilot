@@ -7,6 +7,7 @@ script = ExtResource("1_bdata")
 id = "wall_wood"
 display_name = "Wooden Wall"
 description = "A thin wooden palisade panel. Snaps to foundation edges."
+blocker_priority = 10
 color = Color(0.52, 0.35, 0.15, 1)
 size = Vector3(3, 2, 1.5)
 mass = 10.0

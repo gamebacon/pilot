@@ -11,6 +11,7 @@ color = Color(0.48, 0.46, 0.44, 1)
 size = Vector3(3, 6, 3)
 mass = 120.0
 is_placeable = true
+blocker_priority = 20
 is_foundation = false
 can_rotate = false
 piece_type = "tower"

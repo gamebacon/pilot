@@ -554,6 +554,7 @@ func _apply_place_local(item_id: String, world_transform: Transform3D, net_id: i
 		var piece: PlacedPiece           = PlacedPiece.build(use_size, data.color, bscene, vis_offset)
 		piece.net_id        = net_id
 		piece.is_foundation = data.is_foundation
+	 	# ? piece.blocker_priority = data.blocker_priority
 		piece.name          = "piece_%d" % net_id   # deterministic — net_id is identical on all peers
 		if bdata != null:
 			piece.piece_type = bdata.piece_type

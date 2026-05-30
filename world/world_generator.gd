@@ -73,6 +73,7 @@ func generate(seed_val: int) -> void:
 	_spawn_day_night_cycle()
 	_spawn_core()
 	_spawn_ore_deposits()
+	_setup_navigation()
 
 # ── Environment / sky ─────────────────────────────────────────────────────────
 func _setup_environment() -> void:
@@ -213,6 +214,7 @@ func _build_terrain() -> void:
 	mi.name = "TerrainMesh"
 	mi.mesh = st.commit()
 	mi.set_surface_override_material(0, _mat_snow)
+	mi.add_to_group("nav_static")
 	add_child(mi)
 
 	# Collision — HeightMapShape3D. Shape j=0 → world Z negative, so flip Z index.
@@ -344,6 +346,39 @@ func _spawn_ore_deposits() -> void:
 		get_parent().add_child(body)
 		body.global_position = Vector3(wx, h, wz)
 		spawned += 1
+
+# ── Navigation ────────────────────────────────────────────────────────────────
+
+func _setup_navigation() -> void:
+	var nav_mesh := NavigationMesh.new()
+
+	nav_mesh.cell_size = 0.75
+	nav_mesh.cell_height = 0.3
+
+	nav_mesh.agent_height = 2.0
+	nav_mesh.agent_radius = 0.45
+	nav_mesh.agent_max_slope = 60.0
+	nav_mesh.agent_max_climb = 2.4
+
+	nav_mesh.region_min_size = 2.0
+	nav_mesh.edge_max_length = 12.0
+
+	nav_mesh.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_MESH_INSTANCES
+	nav_mesh.geometry_source_geometry_mode = NavigationMesh.SOURCE_GEOMETRY_GROUPS_WITH_CHILDREN
+	nav_mesh.geometry_source_group_name = "nav_static"
+
+	var nav_region := NavigationRegion3D.new()
+	nav_region.name = "NavigationRegion"
+	nav_region.navigation_mesh = nav_mesh
+
+	get_parent().add_child(nav_region)
+
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	nav_region.bake_navigation_mesh()
+
+	await nav_region.bake_finished
 
 func _valid_pos(wx: float, wz: float, placed: PackedVector2Array, min_dist: float) -> bool:
 	if wx < T_ORIGIN_X + 8 or wx > T_ORIGIN_X + T_WIDTH - 8:
